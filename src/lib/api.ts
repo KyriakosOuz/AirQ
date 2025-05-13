@@ -1,6 +1,6 @@
 
 import { toast } from "sonner";
-import { Pollutant, Region, Dataset, HealthTip } from "@/lib/types";
+import { Pollutant, Region, Dataset, HealthTip, TrendChart, SeasonalityChart } from "@/lib/types";
 
 // Define the base URL for API requests - fallback to mock data if API fails
 export const API_URL = "http://localhost:8000"; 
@@ -142,8 +142,28 @@ export const fetchWithAuth = async <T>(
       };
     }
 
+    // Handle specific error codes
+    if (response.status === 401) {
+      console.error("Authentication error:", data);
+      removeToken(); // Clear invalid token
+      toast.error("Session expired. Please login again.");
+      return { success: false, error: "Authentication required" };
+    }
+    
+    if (response.status === 403) {
+      console.error("Forbidden access:", data);
+      toast.error("You don't have permission to access this resource");
+      return { success: false, error: "Access denied" };
+    }
+    
+    if (response.status === 400) {
+      console.error("Bad request:", data);
+      toast.error(data.detail || "Invalid request");
+      return { success: false, error: data.detail || "Invalid request" };
+    }
+
     if (!response.ok) {
-      // Handle error response
+      // Handle other error responses
       console.error("API Error Response:", data);
       tripCircuitBreaker();
       return { success: false, error: data.detail || "API Error" };
@@ -169,20 +189,27 @@ export const fetchWithAuth = async <T>(
 
 // Auth endpoints - will use Supabase directly in their respective components
 export const authApi = {
-  // Placeholder for reference. Actual auth will be handled by Supabase.
+  // Updated to match the required backend endpoints
   login: async (email: string, password: string) => {
-    // This will be replaced with Supabase auth
-    const response = await fetchWithAuth<{ token: string }>("/auth/login", {
+    const response = await fetchWithAuth<{ access_token: string }>("/users/login/", {
       method: "POST",
       body: JSON.stringify({ email, password }),
     });
     
-    if (response.success && response.data?.token) {
-      setToken(response.data.token);
+    if (response.success && response.data?.access_token) {
+      setToken(response.data.access_token);
     }
     
     return response;
   },
+  
+  signup: async (email: string, password: string) => {
+    return fetchWithAuth<{ access_token: string }>("/users/signup/", {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    });
+  },
+  
   logout: () => {
     removeToken();
   }
@@ -191,17 +218,10 @@ export const authApi = {
 // User profile endpoints
 export const userApi = {
   saveProfile: async (profileData: any) => {
-    // Transform frontend camelCase to backend snake_case
-    const transformedData = {
-      age: profileData.age,
-      has_asthma: profileData.hasAsthma,
-      has_heart_disease: profileData.hasHeartIssues,
-      is_smoker: profileData.isSmoker,
-    };
-    
+    // Backend expects snake_case field names
     return fetchWithAuth("/users/profile/", {
       method: "POST",
-      body: JSON.stringify(transformedData),
+      body: JSON.stringify(profileData), // Already in snake_case from the frontend
     });
   },
   getProfile: async () => {
@@ -240,9 +260,9 @@ export const datasetApi = {
 // Model training endpoints with improved error handling
 export const modelApi = {
   train: async (trainData: { pollutant: string; region: string }) => {
-    return fetchWithAuth("/models/train/", {
-      method: "POST",
-      body: JSON.stringify(trainData),
+    const queryParams = new URLSearchParams(trainData as any).toString();
+    return fetchWithAuth(`/models/train/?${queryParams}`, {
+      method: "POST"
     }, 10000); // Longer timeout for training requests
   },
   list: async () => {
@@ -256,7 +276,6 @@ export const modelApi = {
 // Prediction endpoints with improved error handling
 export const predictionApi = {
   forecast: async (params: { pollutant: string; region: string }) => {
-    // Updated to use models/predict instead of prediction/forecast
     const queryParams = new URLSearchParams(params as any).toString();
     return fetchWithAuth<Array<{ ds: string; yhat: number; category: string }>>(`/models/predict/?${queryParams}`, {}, 8000);
   },
@@ -285,7 +304,7 @@ export const healthApi = {
 export const insightApi = {
   getTrend: async (params: { pollutant: string; region: string }) => {
     const queryParams = new URLSearchParams(params as any).toString();
-    return fetchWithAuth<Array<{ year: number; value: number }>>(`/insights/trend/?${queryParams}`);
+    return fetchWithAuth<TrendChart>(`/insights/trend/?${queryParams}`);
   },
   getTopPolluted: async (params: { pollutant: string; year: number }) => {
     const queryParams = new URLSearchParams(params as any).toString();
@@ -293,7 +312,7 @@ export const insightApi = {
   },
   getSeasonality: async (params: { pollutant: string; region: string }) => {
     const queryParams = new URLSearchParams(params as any).toString();
-    return fetchWithAuth<Array<{ month: string; value: number }>>(`/insights/seasonality/?${queryParams}`);
+    return fetchWithAuth<SeasonalityChart>(`/insights/seasonality/?${queryParams}`);
   },
   getPersonalized: async (params: { pollutant: string; region: string }) => {
     const queryParams = new URLSearchParams(params as any).toString();

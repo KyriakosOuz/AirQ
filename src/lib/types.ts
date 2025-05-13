@@ -1,3 +1,4 @@
+
 // Core data types
 export type Pollutant = "NO2" | "O3" | "SO2";
 
@@ -75,6 +76,19 @@ export interface HealthTip {
   tip: string;
   riskLevel: AqiLevel;
   personalized: boolean;
+}
+
+// New interface to match backend trend data response
+export interface TrendChart {
+  labels: string[];
+  values: number[];
+  deltas: number[];
+}
+
+// New interface to match backend seasonality data response
+export interface SeasonalityChart {
+  labels: string[];
+  values: number[];
 }
 
 export interface InsightSummary {

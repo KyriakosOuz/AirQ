@@ -1,328 +1,284 @@
+
 import React, { useState, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
+import { useForm } from "react-hook-form";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
-import { toast } from "sonner";
+import { userApi } from "@/lib/api";
 import { useUserStore } from "@/stores/userStore";
-import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { UserProfile } from "@/lib/types";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+
+const profileFormSchema = z.object({
+  age: z.number().min(1).max(120).optional().nullable(),
+  has_asthma: z.boolean().optional(),
+  is_smoker: z.boolean().optional(),
+  has_heart_disease: z.boolean().optional(),
+  has_diabetes: z.boolean().optional(),
+  has_lung_disease: z.boolean().optional(),
+});
+
+type ProfileFormValues = z.infer<typeof profileFormSchema>;
 
 const ProfilePage: React.FC = () => {
-  const [loading, setLoading] = useState(false);
-  const { user, updateProfile } = useUserStore();
-  const [profile, setProfile] = useState({
-    age: user?.age || 35,
-    has_asthma: user?.has_asthma || false,
-    is_smoker: user?.is_smoker || false,
-    has_heart_disease: user?.has_heart_disease || false,
-    has_diabetes: user?.has_diabetes || false,
-    has_lung_disease: user?.has_lung_disease || false,
+  const user = useUserStore(state => state.user);
+  const profile = useUserStore(state => state.profile);
+  const updateProfile = useUserStore(state => state.updateProfile);
+  
+  const [saving, setSaving] = useState(false);
+  
+  const form = useForm<ProfileFormValues>({
+    resolver: zodResolver(profileFormSchema),
+    defaultValues: {
+      age: profile?.age || undefined,
+      has_asthma: profile?.has_asthma || false,
+      is_smoker: profile?.is_smoker || false,
+      has_heart_disease: profile?.has_heart_disease || false,
+      has_diabetes: profile?.has_diabetes || false,
+      has_lung_disease: profile?.has_lung_disease || false,
+    },
   });
-  const [riskData, setRiskData] = useState<any[]>([]);
-  const [showingRiskTimeline, setShowingRiskTimeline] = useState(false);
   
-  // Mock data for risk timeline - in a real app, this would come from an endpoint
+  // Update form when profile is loaded/changed
   useEffect(() => {
-    const mockRiskData = [
-      { month: "Jan 2024", risk: 25 },
-      { month: "Feb 2024", risk: 28 },
-      { month: "Mar 2024", risk: 32 },
-      { month: "Apr 2024", risk: 35 },
-      { month: "May 2024", risk: 30 },
-      { month: "Jun 2024", risk: 25 },
-      { month: "Jul 2024", risk: 20 },
-      { month: "Aug 2024", risk: 18 },
-      { month: "Sep 2024", risk: 22 },
-      { month: "Oct 2024", risk: 27 },
-      { month: "Nov 2024", risk: 32 },
-      { month: "Dec 2024", risk: 35 },
-      { month: "Jan 2025", risk: 37 },
-      { month: "Feb 2025", risk: 35 },
-      { month: "Mar 2025", risk: 32 },
-      { month: "Apr 2025", risk: 28 },
-      { month: "May 2025", risk: 25 },
-      { month: "Jun 2025", risk: 23 },
-      { month: "Jul 2025", risk: 20 },
-      { month: "Aug 2025", risk: 22 },
-      { month: "Sep 2025", risk: 27 },
-      { month: "Oct 2025", risk: 30 },
-      { month: "Nov 2025", risk: 33 },
-      { month: "Dec 2025", risk: 35 },
-      { month: "Jan 2026", risk: 38 },
-      { month: "Feb 2026", risk: 36 },
-      { month: "Mar 2026", risk: 33 },
-      { month: "Apr 2026", risk: 30 },
-      { month: "May 2026", risk: 27 },
-      { month: "Jun 2026", risk: 25 },
-    ];
-    
-    setRiskData(mockRiskData);
-  }, []);
-
-  // Fetch profile from Supabase on component mount
-  useEffect(() => {
-    const fetchProfileData = async () => {
-      if (!user?.id) return;
-      
-      setLoading(true);
-      try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('user_id', user.id)
-          .single();
-        
-        if (error) {
-          console.error("Error fetching profile:", error);
-          toast.error("Failed to load profile");
-          return;
-        }
-        
-        if (data) {
-          setProfile({
-            age: data.age || 35,
-            has_asthma: data.has_asthma || false,
-            is_smoker: data.is_smoker || false,
-            has_heart_disease: data.has_heart_disease || false,
-            has_diabetes: false, // Not in current profiles table
-            has_lung_disease: false, // Not in current profiles table
-          });
-          
-          toast.success("Profile loaded");
-        }
-      } catch (error) {
-        console.error(error);
-        toast.error("Failed to load profile");
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchProfileData();
-  }, [user]);
-  
-  const saveProfile = async () => {
-    setLoading(true);
-    try {
-      const success = await updateProfile({
-        age: profile.age,
-        has_asthma: profile.has_asthma,
-        is_smoker: profile.is_smoker,
-        has_heart_disease: profile.has_heart_disease,
-        has_diabetes: profile.has_diabetes,
-        has_lung_disease: profile.has_lung_disease
+    if (profile) {
+      form.reset({
+        age: profile.age || undefined,
+        has_asthma: profile.has_asthma || false,
+        is_smoker: profile.is_smoker || false, 
+        has_heart_disease: profile.has_heart_disease || false,
+        has_diabetes: profile.has_diabetes || false,
+        has_lung_disease: profile.has_lung_disease || false,
       });
+    }
+  }, [profile, form]);
+
+  const onSubmit = async (data: ProfileFormValues) => {
+    setSaving(true);
+    try {
+      // Clean up the data for submission
+      const profileData = {
+        age: data.age || null,
+        has_asthma: data.has_asthma || false,
+        is_smoker: data.is_smoker || false,
+        has_heart_disease: data.has_heart_disease || false,
+        has_diabetes: data.has_diabetes || false,
+        has_lung_disease: data.has_lung_disease || false,
+      };
       
-      if (success) {
+      // Save to API
+      const response = await userApi.saveProfile(profileData);
+      
+      if (response.success) {
+        // Update local state
+        updateProfile(profileData);
         toast.success("Profile saved successfully");
       } else {
         toast.error("Failed to save profile");
       }
     } catch (error) {
-      console.error(error);
-      toast.error("Failed to save profile");
+      console.error("Error saving profile:", error);
+      toast.error("Something went wrong while saving your profile");
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
-  };
-  
-  const fetchRiskTimeline = async () => {
-    setLoading(true);
-    try {
-      // In a real app, you would fetch this from Supabase or an API endpoint
-      // const { data, error } = await supabase.functions.invoke('get-risk-timeline', {
-      //   body: { user_id: user?.id }
-      // });
-      
-      // For demo, we'll just show the mock data
-      setShowingRiskTimeline(true);
-      toast.success("Risk timeline loaded");
-    } catch (error) {
-      console.error(error);
-      toast.error("Failed to load risk timeline");
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  const resetProfile = () => {
-    if (!user) return;
-    
-    setProfile({
-      age: user.age || 35,
-      has_asthma: user.has_asthma || false,
-      is_smoker: user.is_smoker || false,
-      has_heart_disease: user.has_heart_disease || false,
-      has_diabetes: user.has_diabetes || false,
-      has_lung_disease: user.has_lung_disease || false,
-    });
-  };
-  
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setProfile(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-  
-  const handleSwitchChange = (name: string, checked: boolean) => {
-    setProfile(prev => ({
-      ...prev,
-      [name]: checked
-    }));
   };
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight">Health Profile</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Your Profile</h1>
         <p className="text-muted-foreground">
-          Personalize your health information to receive tailored air quality recommendations.
+          Add your health information to receive personalized air quality recommendations.
         </p>
       </div>
       
-      <Card>
-        <CardHeader>
-          <CardTitle>Personal Information</CardTitle>
-          <CardDescription>
-            This information helps us provide personalized health recommendations based on air quality.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* User Information */}
+        <Card className="md:col-span-1">
+          <CardHeader>
+            <CardTitle>Account Information</CardTitle>
+            <CardDescription>Your basic account details</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                name="email"
-                value={user?.email || ''}
-                disabled
-              />
+              <div className="font-medium">Email</div>
+              <div className="text-muted-foreground">{user?.email || "Not available"}</div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="age">Age</Label>
-              <Input
-                id="age"
-                name="age"
-                type="number"
-                min={1}
-                max={120}
-                value={profile.age}
-                onChange={handleInputChange}
-              />
-            </div>
-          </div>
-          
-          <Separator />
-          
-          <div className="space-y-4">
-            <h3 className="text-lg font-medium">Health Conditions</h3>
+          </CardContent>
+        </Card>
+        
+        {/* Health Profile */}
+        <Card className="md:col-span-1 lg:col-span-2 md:row-span-2">
+          <CardHeader>
+            <CardTitle>Health Information</CardTitle>
+            <CardDescription>
+              This information helps us provide you with personalized air quality recommendations.
+              Your data is kept private and secure.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <FormField
+                    control={form.control}
+                    name="age"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Age</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            min={1}
+                            max={120}
+                            placeholder="Your age"
+                            {...field}
+                            value={field.value || ''}
+                            onChange={event => field.onChange(event.target.value === '' ? undefined : Number(event.target.value))}
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Your age helps determine your risk factors.
+                        </FormDescription>
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <div className="space-y-6">
+                    <FormField
+                      control={form.control}
+                      name="has_asthma"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between">
+                          <div className="space-y-0">
+                            <FormLabel>Asthma</FormLabel>
+                            <FormDescription>
+                              Do you have asthma?
+                            </FormDescription>
+                          </div>
+                          <FormControl>
+                            <Switch
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="is_smoker"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between">
+                          <div className="space-y-0">
+                            <FormLabel>Smoker</FormLabel>
+                            <FormDescription>
+                              Are you a smoker?
+                            </FormDescription>
+                          </div>
+                          <FormControl>
+                            <Switch
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="has_heart_disease"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between">
+                          <div className="space-y-0">
+                            <FormLabel>Heart Disease</FormLabel>
+                            <FormDescription>
+                              Do you have heart disease?
+                            </FormDescription>
+                          </div>
+                          <FormControl>
+                            <Switch
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="has_diabetes"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between">
+                          <div className="space-y-0">
+                            <FormLabel>Diabetes</FormLabel>
+                            <FormDescription>
+                              Do you have diabetes?
+                            </FormDescription>
+                          </div>
+                          <FormControl>
+                            <Switch
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="has_lung_disease"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between">
+                          <div className="space-y-0">
+                            <FormLabel>Lung Disease</FormLabel>
+                            <FormDescription>
+                              Do you have any lung diseases?
+                            </FormDescription>
+                          </div>
+                          <FormControl>
+                            <Switch
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
+                
+                <Button type="submit" disabled={saving}>
+                  {saving ? "Saving..." : "Save Health Profile"}
+                </Button>
+              </form>
+            </Form>
+          </CardContent>
+        </Card>
+        
+        {/* Privacy Information */}
+        <Card className="md:col-span-1">
+          <CardHeader>
+            <CardTitle>Privacy Information</CardTitle>
+          </CardHeader>
+          <CardContent>
             <p className="text-sm text-muted-foreground">
-              Select any conditions that apply to you for more accurate health recommendations.
+              Your health data is used only to personalize air quality recommendations. 
+              We never share your personal information with third parties.
+              You can delete your profile data at any time from this page.
             </p>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="flex items-center justify-between space-x-2">
-                <Label htmlFor="has_asthma">Asthma</Label>
-                <Switch
-                  id="has_asthma"
-                  checked={profile.has_asthma}
-                  onCheckedChange={(checked) => handleSwitchChange("has_asthma", checked)}
-                />
-              </div>
-              
-              <div className="flex items-center justify-between space-x-2">
-                <Label htmlFor="is_smoker">Smoker</Label>
-                <Switch
-                  id="is_smoker"
-                  checked={profile.is_smoker}
-                  onCheckedChange={(checked) => handleSwitchChange("is_smoker", checked)}
-                />
-              </div>
-              
-              <div className="flex items-center justify-between space-x-2">
-                <Label htmlFor="has_heart_disease">Heart Disease</Label>
-                <Switch
-                  id="has_heart_disease"
-                  checked={profile.has_heart_disease}
-                  onCheckedChange={(checked) => handleSwitchChange("has_heart_disease", checked)}
-                />
-              </div>
-              
-              <div className="flex items-center justify-between space-x-2">
-                <Label htmlFor="has_diabetes">Diabetes</Label>
-                <Switch
-                  id="has_diabetes"
-                  checked={profile.has_diabetes}
-                  onCheckedChange={(checked) => handleSwitchChange("has_diabetes", checked)}
-                />
-              </div>
-              
-              <div className="flex items-center justify-between space-x-2">
-                <Label htmlFor="has_lung_disease">Other Lung Conditions</Label>
-                <Switch
-                  id="has_lung_disease"
-                  checked={profile.has_lung_disease}
-                  onCheckedChange={(checked) => handleSwitchChange("has_lung_disease", checked)}
-                />
-              </div>
-            </div>
-          </div>
-        </CardContent>
-        <CardFooter className="flex justify-between">
-          <Button variant="outline" onClick={resetProfile} disabled={loading}>
-            Reset
-          </Button>
-          <Button onClick={saveProfile} disabled={loading}>
-            {loading ? "Saving..." : "Save Profile"}
-          </Button>
-        </CardFooter>
-      </Card>
-      
-      {/* Risk Analysis Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Risk Analysis</CardTitle>
-          <CardDescription>
-            View your personalized health risk timeline based on forecasted air quality.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="mb-4 text-sm text-muted-foreground">
-            Based on your health profile and our air quality forecasts, we can estimate your personal risk levels over time. This helps you plan ahead and take precautions when needed.
-          </p>
-          
-          {showingRiskTimeline ? (
-            <div className="h-96">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={riskData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Line type="monotone" dataKey="risk" name="Risk Index" stroke="#f43f5e" strokeWidth={2} activeDot={{ r: 8 }} />
-                </LineChart>
-              </ResponsiveContainer>
-              
-              <div className="mt-4 p-4 bg-muted rounded-md">
-                <h4 className="font-medium mb-2">Risk Assessment</h4>
-                <p className="text-sm">Your risk index peaks during winter months due to increased pollution levels and your health profile. Consider taking extra precautions during these periods.</p>
-              </div>
-            </div>
-          ) : (
-            <div className="flex justify-center">
-              <Button onClick={fetchRiskTimeline} disabled={loading}>
-                {loading ? "Loading..." : "View Risk Timeline"}
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };

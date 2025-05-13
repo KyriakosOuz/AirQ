@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -44,8 +45,9 @@ const AlertsPage: React.FC = () => {
       const response = await alertApi.list();
       
       if (response.success && response.data) {
-        // Explicitly type the response data as Alert[]
-        setAlerts(response.data as Alert[]);
+        // Safely handle the response data
+        const safeData = Array.isArray(response.data) ? response.data : [];
+        setAlerts(safeData as Alert[]);
       } else {
         toast.error("Failed to load alerts");
         // Use empty array as fallback

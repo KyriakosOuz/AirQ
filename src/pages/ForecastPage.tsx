@@ -1,402 +1,255 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { RegionSelector } from "@/components/ui/region-selector";
 import { PollutantSelector } from "@/components/ui/pollutant-selector";
 import { predictionApi } from "@/lib/api";
-import { Pollutant } from "@/lib/types";
-import { ComposedChart, Line, Area, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Scatter } from "recharts";
+import { Forecast, Pollutant, aqiLevelLabels, stringToAqiLevel } from "@/lib/types";
+import { Button } from "@/components/ui/button";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, AreaChart, Area } from "recharts";
+import { aqiChartConfig } from "@/lib/chart-config";
 import { toast } from "sonner";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
+import { AqiBadge } from "@/components/ui/aqi-badge";
+import { format } from "date-fns";
 
 const ForecastPage: React.FC = () => {
   const [region, setRegion] = useState("thessaloniki");
   const [pollutant, setPollutant] = useState<Pollutant>("NO2");
+  const [forecasts, setForecasts] = useState<Forecast[]>([]);
   const [loading, setLoading] = useState(false);
-  const [forecastData, setForecastData] = useState<any[]>([]);
-  const [compareMode, setCompareMode] = useState(false);
-  const [selectedRegions, setSelectedRegions] = useState<string[]>(["thessaloniki"]);
-  const [comparisonData, setComparisonData] = useState<any[]>([]);
-  
-  // Fetch initial forecast data
+
   useEffect(() => {
-    if (!compareMode) {
-      fetchForecast();
-    } else {
-      fetchComparison();
-    }
-  }, []); // Empty dependency array ensures this runs only once on mount
-  
-  const fetchForecast = async () => {
+    loadForecasts();
+  }, []);
+
+  const loadForecasts = async () => {
     setLoading(true);
     try {
-      const response = await predictionApi.forecast({ pollutant, region });
-      
+      const response = await predictionApi.forecast({
+        pollutant,
+        region
+      });
+
       if (response.success && response.data) {
-        // Transform API response data for the chart
-        const transformedData = response.data.map(item => {
-          // Format the date as "Jun 2024" etc.
-          const date = new Date(item.ds);
-          const month = date.toLocaleDateString('en-US', { month: 'short' });
-          const year = date.getFullYear();
-          
-          // Check if this is historical or future data
-          const now = new Date();
-          const isHistorical = date < now;
-          
-          // Add derived confidence intervals (not provided by backend)
-          const value = item.yhat;
-          const lowerBound = value * 0.9; // Derive lower bound as 90% of value
-          const upperBound = value * 1.1; // Derive upper bound as 110% of value
+        // Process the forecast data to include derived properties
+        const processedForecasts = response.data.map((item) => {
+          // Make a variance of about 10-15% for lower and upper bounds to display error bands
+          const yhat = item.yhat;
+          const yhat_lower = yhat * 0.85; // 15% lower
+          const yhat_upper = yhat * 1.15; // 15% higher
           
           return {
-            month: `${month} ${year}`,
-            actual: isHistorical ? item.yhat : null, // Only show actual for historical data
-            predicted: item.yhat,
-            lower: lowerBound,
-            upper: upperBound,
-            category: item.category
+            ...item,
+            yhat_lower,
+            yhat_upper
           };
         });
         
-        setForecastData(transformedData);
-        toast.success(`Forecast updated for ${pollutant} in ${region}`);
+        setForecasts(processedForecasts);
       } else {
-        console.error("Failed to fetch forecast:", response.success ? "No data" : "API error");
+        console.error("Failed to load forecasts:", response.error);
         toast.error("Failed to load forecast data");
-        
-        // If API fails, maintain current data or use empty array if no data exists
-        if (forecastData.length === 0) {
-          // Provide fallback mock data if no data exists
-          const mockForecastData = [
-            { month: "Jan 2024", actual: 105, predicted: 108, lower: 95, upper: 118 },
-            { month: "Feb 2024", actual: 102, predicted: 104, lower: 92, upper: 114 },
-            { month: "Mar 2024", actual: 98, predicted: 100, lower: 88, upper: 112 },
-            { month: "Apr 2024", actual: 95, predicted: 96, lower: 86, upper: 105 },
-            { month: "May 2024", actual: 92, predicted: 93, lower: 84, upper: 102 },
-            { month: "Jun 2024", actual: null, predicted: 90, lower: 82, upper: 98 },
-            { month: "Jul 2024", actual: null, predicted: 87, lower: 78, upper: 96 },
-            { month: "Aug 2024", actual: null, predicted: 85, lower: 76, upper: 94 },
-            { month: "Sep 2024", actual: null, predicted: 88, lower: 80, upper: 96 },
-            { month: "Oct 2024", actual: null, predicted: 92, lower: 83, upper: 101 },
-            { month: "Nov 2024", actual: null, predicted: 97, lower: 87, upper: 107 },
-            { month: "Dec 2024", actual: null, predicted: 102, lower: 92, upper: 112 },
-          ];
-          setForecastData(mockForecastData);
-        }
+        setForecasts([]);
       }
     } catch (error) {
-      console.error("Error fetching forecast:", error);
+      console.error("Error loading forecasts:", error);
       toast.error("Failed to load forecast data");
+      setForecasts([]);
     } finally {
       setLoading(false);
     }
   };
-  
-  const fetchComparison = async () => {
-    setLoading(true);
-    try {
-      // In real app, this would call the comparison API
-      // For now, we'll simulate it using multiple forecast calls
-      
-      // Create a map to store results by month
-      const resultsByMonth: Record<string, Record<string, any>> = {};
-      const regions = selectedRegions.length > 0 ? selectedRegions : ["thessaloniki"];
-      
-      // For each selected region, fetch its forecast
-      for (const regionValue of regions) {
-        const response = await predictionApi.forecast({ pollutant, region: regionValue });
-        
-        if (response.success && response.data) {
-          // Find the matching region display name
-          const regionName = comparisonRegions.find(r => r.value === regionValue)?.label || regionValue;
-          
-          // Process each data point
-          response.data.forEach(item => {
-            const date = new Date(item.ds);
-            const monthStr = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-            
-            // Initialize month entry if needed
-            if (!resultsByMonth[monthStr]) {
-              resultsByMonth[monthStr] = { month: monthStr };
-            }
-            
-            // Add region value to this month
-            resultsByMonth[monthStr][regionName] = item.yhat;
-          });
-        }
-      }
-      
-      // Convert to array format for chart
-      const comparisonArray = Object.values(resultsByMonth);
-      
-      // Sort by date
-      comparisonArray.sort((a, b) => {
-        const dateA = new Date(a.month.replace(' ', ' 1, '));
-        const dateB = new Date(b.month.replace(' ', ' 1, '));
-        return dateA.getTime() - dateB.getTime();
-      });
-      
-      if (comparisonArray.length > 0) {
-        setComparisonData(comparisonArray);
-        toast.success(`Comparison updated for ${selectedRegions.join(", ")}`);
-      } else {
-        // If no data was returned, maintain current comparison data or use fallback
-        if (comparisonData.length === 0) {
-          // Use fallback mock data
-          const mockComparisonData = [
-            { month: "Jan 2024", "Thessaloniki Center": 108, "Kalamaria": 85, "Panorama": 62 },
-            { month: "Feb 2024", "Thessaloniki Center": 104, "Kalamaria": 82, "Panorama": 60 },
-            { month: "Mar 2024", "Thessaloniki Center": 100, "Kalamaria": 80, "Panorama": 58 },
-            { month: "Apr 2024", "Thessaloniki Center": 96, "Kalamaria": 78, "Panorama": 55 },
-            { month: "May 2024", "Thessaloniki Center": 93, "Kalamaria": 75, "Panorama": 53 },
-            { month: "Jun 2024", "Thessaloniki Center": 90, "Kalamaria": 72, "Panorama": 50 },
-            { month: "Jul 2024", "Thessaloniki Center": 87, "Kalamaria": 70, "Panorama": 48 },
-            { month: "Aug 2024", "Thessaloniki Center": 85, "Kalamaria": 68, "Panorama": 46 },
-            { month: "Sep 2024", "Thessaloniki Center": 88, "Kalamaria": 70, "Panorama": 50 },
-            { month: "Oct 2024", "Thessaloniki Center": 92, "Kalamaria": 74, "Panorama": 53 },
-            { month: "Nov 2024", "Thessaloniki Center": 97, "Kalamaria": 78, "Panorama": 55 },
-            { month: "Dec 2024", "Thessaloniki Center": 102, "Kalamaria": 82, "Panorama": 58 },
-          ];
-          setComparisonData(mockComparisonData);
-        }
-      }
-    } catch (error) {
-      console.error("Error fetching comparison data:", error);
-      toast.error("Failed to load comparison data");
-    } finally {
-      setLoading(false);
-    }
-  };
-  
+
+  // Get the next 7 days of forecasts
+  const next7DaysForecasts = forecasts.slice(0, 7);
+
+  // Get the latest forecast for displaying current AQI
+  const latestForecast = forecasts[0];
+
+  // Handler for region change
   const handleRegionChange = (value: string) => {
     setRegion(value);
-    if (!compareMode) {
-      fetchForecast();
-    }
+    loadForecasts();
   };
-  
+
+  // Handler for pollutant change
   const handlePollutantChange = (value: Pollutant) => {
     setPollutant(value);
-    if (!compareMode) {
-      fetchForecast();
-    } else {
-      fetchComparison();
+    loadForecasts();
+  };
+
+  // Format date for display
+  const formatForecastDate = (dateStr: string) => {
+    try {
+      const date = new Date(dateStr);
+      return format(date, "MMM d");
+    } catch {
+      return dateStr;
     }
   };
-  
-  const handleRegionCheckboxChange = (regionValue: string, checked: boolean) => {
-    if (checked) {
-      setSelectedRegions(prev => [...prev, regionValue]);
-    } else {
-      setSelectedRegions(prev => prev.filter(r => r !== regionValue));
-    }
-  };
-  
-  // List of available regions for comparison
-  const comparisonRegions = [
-    { value: "thessaloniki", label: "Thessaloniki Center" },
-    { value: "kalamaria", label: "Kalamaria" },
-    { value: "panorama", label: "Panorama" },
-    { value: "ampelokipoi-menemeni", label: "Ampelokipoi-Menemeni" },
-    { value: "neapoli-sykies", label: "Neapoli-Sykies" },
-  ];
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight">Pollutant Forecasts</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Air Quality Forecast</h1>
         <p className="text-muted-foreground">
-          View future air quality projections based on historical data and statistical models.
+          View predicted air quality levels for the coming days.
         </p>
       </div>
-      
-      <Card>
-        <CardHeader>
-          <CardTitle>Forecast Settings</CardTitle>
-          <CardDescription>
-            Select parameters for pollutant forecasting
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center space-x-2 mb-4">
-            <Checkbox 
-              id="compareMode"
-              checked={compareMode}
-              onCheckedChange={(checked) => setCompareMode(!!checked)} 
-            />
-            <Label htmlFor="compareMode">Enable region comparison mode</Label>
-          </div>
-          
-          {!compareMode ? (
-            // Single region forecast mode
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Region</Label>
-                <RegionSelector value={region} onValueChange={handleRegionChange} />
-              </div>
-              <div className="space-y-2">
-                <Label>Pollutant</Label>
-                <PollutantSelector value={pollutant} onValueChange={handlePollutantChange} />
-              </div>
-              <div className="md:col-span-2">
-                <Button onClick={fetchForecast} disabled={loading} className="w-full">
-                  {loading ? "Loading..." : "Update Forecast"}
-                </Button>
-              </div>
-            </div>
-          ) : (
-            // Comparison mode
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Pollutant</Label>
-                <PollutantSelector value={pollutant} onValueChange={handlePollutantChange} />
-              </div>
-              
-              <div className="space-y-2">
-                <Label>Select Regions to Compare</Label>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                  {comparisonRegions.map((regionOption) => (
-                    <div key={regionOption.value} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`region-${regionOption.value}`}
-                        checked={selectedRegions.includes(regionOption.value)}
-                        onCheckedChange={(checked) => 
-                          handleRegionCheckboxChange(regionOption.value, !!checked)
-                        }
-                      />
-                      <Label htmlFor={`region-${regionOption.value}`}>{regionOption.label}</Label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              
-              <Button 
-                onClick={fetchComparison} 
-                disabled={loading || selectedRegions.length === 0}
-                className="w-full"
-              >
-                {loading ? "Loading..." : "Compare Regions"}
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-      
-      {!compareMode ? (
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
-          <CardHeader>
-            <CardTitle>{pollutant} Forecast for {region}</CardTitle>
-            <CardDescription>
-              12-month forecast with confidence intervals
-            </CardDescription>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Region</CardTitle>
           </CardHeader>
-          <CardContent className="h-96">
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={forecastData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Area 
-                  type="monotone" 
-                  dataKey="upper" 
-                  stackId="1" 
-                  stroke="none" 
-                  fill="#0ea5e970" 
-                  name="Upper Bound"
-                />
-                <Area 
-                  type="monotone" 
-                  dataKey="lower" 
-                  stackId="2" 
-                  stroke="none" 
-                  fill="#0ea5e930" 
-                  name="Lower Bound"
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="predicted" 
-                  stroke="#0ea5e9" 
-                  strokeWidth={2}
-                  name="Predicted"
-                />
-                <Scatter 
-                  dataKey="actual" 
-                  fill="#f97316" 
-                  name="Actual" 
-                />
-              </ComposedChart>
-            </ResponsiveContainer>
+          <CardContent>
+            <RegionSelector value={region} onValueChange={handleRegionChange} />
           </CardContent>
         </Card>
-      ) : (
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Pollutant</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <PollutantSelector value={pollutant} onValueChange={handlePollutantChange} />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Actions</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Button onClick={loadForecasts} className="w-full" disabled={loading}>
+              {loading ? "Loading..." : "Update Forecast"}
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+
+      {latestForecast && (
         <Card>
           <CardHeader>
-            <CardTitle>{pollutant} Comparison Across Regions</CardTitle>
+            <CardTitle>Current Air Quality</CardTitle>
             <CardDescription>
-              Forecasted values for selected regions
+              {region} - {new Date().toLocaleDateString()}
             </CardDescription>
           </CardHeader>
-          <CardContent className="h-96">
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={comparisonData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                {selectedRegions.includes("thessaloniki") && (
-                  <Line
-                    type="monotone"
-                    dataKey="Thessaloniki Center"
-                    stroke="#0ea5e9"
-                    strokeWidth={2}
-                  />
-                )}
-                {selectedRegions.includes("kalamaria") && (
-                  <Line
-                    type="monotone"
-                    dataKey="Kalamaria"
-                    stroke="#10b981"
-                    strokeWidth={2}
-                  />
-                )}
-                {selectedRegions.includes("panorama") && (
-                  <Line
-                    type="monotone"
-                    dataKey="Panorama"
-                    stroke="#f97316"
-                    strokeWidth={2}
-                  />
-                )}
-                {selectedRegions.includes("ampelokipoi-menemeni") && (
-                  <Line
-                    type="monotone"
-                    dataKey="Ampelokipoi-Menemeni"
-                    stroke="#8b5cf6"
-                    strokeWidth={2}
-                  />
-                )}
-                {selectedRegions.includes("neapoli-sykies") && (
-                  <Line
-                    type="monotone"
-                    dataKey="Neapoli-Sykies"
-                    stroke="#f43f5e"
-                    strokeWidth={2}
-                  />
-                )}
-              </ComposedChart>
-            </ResponsiveContainer>
-            
-            <div className="mt-4 p-4 bg-muted rounded-md">
-              <h4 className="font-medium mb-2">Forecast Analysis</h4>
-              <p className="text-sm">
-                The forecast shows significant variation between urban center locations and suburban areas. 
-                City centers typically experience 30-50% higher pollutant levels than peripheral areas.
+          <CardContent className="flex flex-col md:flex-row items-center gap-6">
+            <div className="flex flex-col items-center justify-center">
+              <AqiBadge level={stringToAqiLevel(latestForecast.category)} size="xl" />
+              <span className="text-xl font-bold mt-2">{aqiLevelLabels[stringToAqiLevel(latestForecast.category)]}</span>
+              <span className="text-sm text-muted-foreground">{latestForecast.yhat.toFixed(1)} µg/m³</span>
+            </div>
+            <div className="flex-1">
+              <p>
+                The air quality in {region} today is considered <strong>{aqiLevelLabels[stringToAqiLevel(latestForecast.category)]}</strong> based on {pollutant} levels.
               </p>
+              {stringToAqiLevel(latestForecast.category) === "good" && (
+                <p className="mt-2">
+                  The air is clean and poses little to no health risk. It's a great day to be outdoors and enjoy activities.
+                </p>
+              )}
+              {stringToAqiLevel(latestForecast.category) === "moderate" && (
+                <p className="mt-2">
+                  Air quality is acceptable, but there may be some risk for people who are unusually sensitive to air pollution.
+                </p>
+              )}
+              {stringToAqiLevel(latestForecast.category) === "unhealthy-sensitive" && (
+                <p className="mt-2">
+                  Members of sensitive groups may experience health effects. The general public is less likely to be affected.
+                </p>
+              )}
+              {(stringToAqiLevel(latestForecast.category) === "unhealthy" || 
+                stringToAqiLevel(latestForecast.category) === "very-unhealthy" || 
+                stringToAqiLevel(latestForecast.category) === "hazardous") && (
+                <p className="mt-2 text-red-600 dark:text-red-400 font-medium">
+                  Health alert: Everyone may experience more serious health effects! Limit outdoor activities and wear a mask if going outside.
+                </p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>7-Day Forecast: {pollutant} Levels</CardTitle>
+          <CardDescription>
+            Predicted air quality levels for the next week
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="h-96">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={next7DaysForecasts} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+              <defs>
+                {Object.entries(aqiChartConfig).map(([key, config]) => (
+                  <linearGradient key={key} id={`color${key}`} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor={config.color} stopOpacity={0.8} />
+                    <stop offset="95%" stopColor={config.color} stopOpacity={0.2} />
+                  </linearGradient>
+                ))}
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis 
+                dataKey="ds" 
+                tickFormatter={formatForecastDate}
+              />
+              <YAxis domain={['auto', 'auto']} />
+              <Tooltip 
+                labelFormatter={(label) => formatForecastDate(label)}
+                formatter={(value: any, name: any) => {
+                  if (name === "AQI") return [value.toFixed(1) + " µg/m³", name];
+                  if (name === "Range") return [value.toFixed(1) + " µg/m³", name];
+                  return [value, name];
+                }}
+              />
+              <Legend />
+              <Area 
+                type="monotone" 
+                dataKey="yhat_upper" 
+                name="Upper Bound" 
+                stroke="transparent" 
+                fillOpacity={0.2}
+                fill="#888888"
+              />
+              <Area 
+                type="monotone" 
+                dataKey="yhat" 
+                stroke="#8884d8" 
+                fillOpacity={0}
+                name="Forecast"
+                strokeWidth={2} 
+              />
+              <Area 
+                type="monotone" 
+                dataKey="yhat_lower" 
+                name="Lower Bound" 
+                stroke="transparent" 
+                fillOpacity={0.2}
+                fill="#888888"
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+
+      {next7DaysForecasts.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Daily Forecast</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4">
+              {next7DaysForecasts.map((forecast, index) => (
+                <div key={index} className="flex flex-col items-center p-3 border rounded-lg">
+                  <div className="text-sm font-medium">{formatForecastDate(forecast.ds)}</div>
+                  <AqiBadge level={stringToAqiLevel(forecast.category)} size="md" className="my-3" />
+                  <div className="font-bold text-center">{aqiLevelLabels[stringToAqiLevel(forecast.category)]}</div>
+                  <div className="text-xs text-muted-foreground text-center">{forecast.yhat.toFixed(1)} µg/m³</div>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RegionSelector } from "@/components/ui/region-selector";
 import { PollutantSelector } from "@/components/ui/pollutant-selector";
 import { insightApi } from "@/lib/api";
-import { Pollutant, AqiLevel } from "@/lib/types";
+import { Pollutant } from "@/lib/types";
 import { LineChart, Line, BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { toast } from "sonner";
 
@@ -38,10 +39,18 @@ const Insights: React.FC = () => {
       });
       
       if (trendResponse.success && trendResponse.data) {
-        setTrendData(trendResponse.data);
+        // Convert the backend format to a format suitable for charts
+        // Backend returns: { labels: string[], values: number[], deltas: number[] }
+        const transformedTrendData = trendResponse.data.labels.map((year, index) => ({
+          year,
+          value: trendResponse.data.values[index],
+          delta: trendResponse.data.deltas[index]
+        }));
+        setTrendData(transformedTrendData);
       } else {
         console.error("Failed to fetch trend data:", trendResponse.error);
         toast.error("Failed to load trend data");
+        setTrendData([]);
       }
       
       // Fetch seasonal data
@@ -51,10 +60,17 @@ const Insights: React.FC = () => {
       });
       
       if (seasonalResponse.success && seasonalResponse.data) {
-        setSeasonalData(seasonalResponse.data);
+        // Convert the backend format to a format suitable for charts
+        // Backend returns: { labels: string[], values: number[] }
+        const transformedSeasonalData = seasonalResponse.data.labels.map((month, index) => ({
+          month,
+          value: seasonalResponse.data.values[index]
+        }));
+        setSeasonalData(transformedSeasonalData);
       } else {
         console.error("Failed to fetch seasonality data:", seasonalResponse.error);
         toast.error("Failed to load seasonal data");
+        setSeasonalData([]);
       }
       
       // Fetch top polluted data
@@ -64,10 +80,13 @@ const Insights: React.FC = () => {
       });
       
       if (topPollutedResponse.success && topPollutedResponse.data) {
-        setTopPollutedData(topPollutedResponse.data);
+        // Ensure data is an array
+        const safeData = Array.isArray(topPollutedResponse.data) ? topPollutedResponse.data : [];
+        setTopPollutedData(safeData);
       } else {
         console.error("Failed to fetch top polluted data:", topPollutedResponse.error);
         toast.error("Failed to load top polluted data");
+        setTopPollutedData([]);
       }
       
       toast.success(`Insights updated for ${pollutant}`);

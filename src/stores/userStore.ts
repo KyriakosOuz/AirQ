@@ -1,89 +1,76 @@
 
-import { create } from 'zustand';
-import { UserProfile, UserRole } from '@/lib/types';
-import { supabase } from '@/integrations/supabase/client';
+import { create } from 'zustand'
+import { User } from '@supabase/supabase-js';
+import { UserProfile } from '@/lib/types';
+import { persist } from 'zustand/middleware';
+import { aqiLevelLabels } from '@/lib/types';
 
-type UserState = {
-  user: UserProfile | null;
-  token: string | null;
-  role: UserRole | null;
-  isAdmin: boolean;
-  isAuthenticated: boolean;
-  setUser: (user: UserProfile | null) => void;
-  setToken: (token: string | null) => void;
-  setRole: (role: UserRole | null) => void;
-  logout: () => void;
-  updateProfile: (profileData: Partial<UserProfile>) => Promise<boolean>;
-};
+interface UserState {
+  user: User | null;
+  profile: UserProfile | null;
+  recommendations: string[];
+  riskLevel: string | null;
+  updateUser: (user: User | null) => void;
+  updateProfile: (profile: UserProfile | null) => void;
+  updateRecommendations: (recommendations: string[]) => void;
+  updateRiskLevel: (riskLevel: string | null) => void;
+  getSensitiveStatus: () => boolean;
+  getPersonalization: () => string;
+}
 
-export const useUserStore = create<UserState>((set, get) => ({
-  user: null,
-  token: null,
-  role: null,
-  isAdmin: false,
-  isAuthenticated: false,
-  
-  setUser: (user) => set(() => ({ 
-    user,
-    isAuthenticated: !!user
-  })),
-  
-  setToken: (token) => set(() => ({ token })),
-  
-  setRole: (role) => set(() => ({ 
-    role,
-    isAdmin: role === 'admin'
-  })),
-  
-  logout: async () => {
-    // Sign out from Supabase
-    await supabase.auth.signOut();
-    
-    // Reset local state
-    set({
+export const useUserStore = create<UserState>()(
+  persist(
+    (set, get) => ({
       user: null,
-      token: null,
-      role: null,
-      isAdmin: false,
-      isAuthenticated: false
-    });
-  },
-  
-  updateProfile: async (profileData) => {
-    const { user } = get();
-    
-    if (!user) return false;
-    
-    try {
-      // Update the profiles table in Supabase
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          age: profileData.age,
-          has_asthma: profileData.has_asthma,
-          is_smoker: profileData.is_smoker,
-          has_heart_disease: profileData.has_heart_disease,
-          // Add other profile fields as needed
-        })
-        .eq('user_id', user.id);
+      profile: null,
+      recommendations: [],
+      riskLevel: null,
+      updateUser: (user) => set({ user }),
+      updateProfile: (profile) => set({ profile }),
+      updateRecommendations: (recommendations) => set({ recommendations }),
+      updateRiskLevel: (riskLevel) => set({ riskLevel }),
+      
+      // Check if user has any health conditions that make them sensitive to air pollution
+      getSensitiveStatus: () => {
+        const profile = get().profile;
+        if (!profile) return false;
         
-      if (error) {
-        console.error("Error updating profile:", error);
-        return false;
-      }
+        return (
+          profile.has_asthma === true || 
+          profile.has_lung_disease === true || 
+          profile.has_heart_disease === true ||
+          profile.has_diabetes === true ||
+          (profile.age !== undefined && profile.age !== null && profile.age > 65)
+        );
+      },
       
-      // Update local state
-      set({
-        user: {
-          ...user,
-          ...profileData
+      // Get personalization summary for the user
+      getPersonalization: () => {
+        const profile = get().profile;
+        if (!profile) return "Not personalized";
+        
+        const conditions = [];
+        
+        if (profile.has_asthma) conditions.push("asthma");
+        if (profile.is_smoker) conditions.push("smoker");
+        if (profile.has_heart_disease) conditions.push("heart disease");
+        if (profile.has_diabetes) conditions.push("diabetes");
+        if (profile.has_lung_disease) conditions.push("lung disease");
+        
+        if (conditions.length === 0) {
+          return profile.age ? `Personalized for age ${profile.age}` : "Basic personalization";
         }
-      });
-      
-      return true;
-    } catch (error) {
-      console.error("Error in updateProfile:", error);
-      return false;
+        
+        return `Personalized for ${conditions.join(', ')}${profile.age ? ` and age ${profile.age}` : ''}`;
+      }
+    }),
+    {
+      name: 'user-storage',
+      partialize: (state) => ({ 
+        // Only persist these fields
+        user: state.user,
+        profile: state.profile
+      }),
     }
-  }
-}));
+  )
+);
