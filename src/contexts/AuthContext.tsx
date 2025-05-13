@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -180,50 +179,54 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     );
 
-    // Check for existing session
-    supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
-      setSession(initialSession);
-      
-      if (initialSession?.user && !user) {
-        setUserToken(initialSession.access_token);
+    // Check for existing session - FIX: properly handle Promise
+    try {
+      supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
+        setSession(initialSession);
         
-        // Fetch user profile data
-        supabase
-          .from('profiles')
-          .select('*')
-          .eq('user_id', initialSession.user.id)
-          .maybeSingle()
-          .then(({ data: profileData }) => {
-            // Create user profile
-            const userProfile: UserProfile = {
-              id: initialSession.user.id,
-              email: initialSession.user.email || '',
-              // Add profile data if available
-              ...(profileData && {
-                age: profileData.age,
-                hasAsthma: profileData.has_asthma,
-                isSmoker: profileData.is_smoker,
-                hasHeartIssues: profileData.has_heart_disease,
-                hasDiabetes: false,
-                hasLungDisease: false,
-              }),
-            };
-            
-            setUser(userProfile);
-            
-            // Set role based on email for now
-            const userRole: UserRole = initialSession.user.email?.includes('admin') 
-              ? 'admin' 
-              : 'authenticated';
-            setRole(userRole);
-          })
-          .catch((error) => {
-            console.error("Error fetching profile on init:", error);
-          });
-      }
-    }).catch(error => {
-      console.error("Error getting session:", error);
-    });
+        if (initialSession?.user && !user) {
+          setUserToken(initialSession.access_token);
+          
+          // Fetch user profile data
+          supabase
+            .from('profiles')
+            .select('*')
+            .eq('user_id', initialSession.user.id)
+            .maybeSingle()
+            .then(({ data: profileData }) => {
+              // Create user profile
+              const userProfile: UserProfile = {
+                id: initialSession.user.id,
+                email: initialSession.user.email || '',
+                // Add profile data if available
+                ...(profileData && {
+                  age: profileData.age,
+                  hasAsthma: profileData.has_asthma,
+                  isSmoker: profileData.is_smoker,
+                  hasHeartIssues: profileData.has_heart_disease,
+                  hasDiabetes: false,
+                  hasLungDisease: false,
+                }),
+              };
+              
+              setUser(userProfile);
+              
+              // Set role based on email for now
+              const userRole: UserRole = initialSession.user.email?.includes('admin') 
+                ? 'admin' 
+                : 'authenticated';
+              setRole(userRole);
+            })
+            .catch((error) => {
+              console.error("Error fetching profile on init:", error);
+            });
+        }
+      }).catch(error => {
+        console.error("Error getting session:", error);
+      });
+    } catch (error) {
+      console.error("Error in session initialization:", error);
+    }
 
     return () => {
       subscription.unsubscribe();
