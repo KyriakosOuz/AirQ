@@ -5,6 +5,6 @@ import './index.css'
 import { supabase } from './integrations/supabase/client.ts'
 
 // Log Supabase initialization for debugging
-console.log("Initializing app with Supabase URL:", supabase.supabaseUrl);
+console.log("Initializing app with Supabase");
 
 createRoot(document.getElementById("root")!).render(<App />);

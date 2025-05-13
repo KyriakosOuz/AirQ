@@ -41,9 +41,14 @@ export function PollutantSelector({
       try {
         const response = await metadataApi.getPollutants();
         if (response.success && response.data) {
-          setPollutantOptions(response.data);
+          // Cast the data to ensure it matches the expected Pollutant type
+          const typedData = response.data.map(item => ({
+            label: item.label,
+            value: item.value as Pollutant
+          }));
+          setPollutantOptions(typedData);
         } else {
-          console.error("Failed to fetch pollutants:", response.error);
+          console.error("Failed to fetch pollutants:", response.success ? "No data" : response.error);
           toast.error("Failed to load pollutant options");
         }
       } catch (error) {
