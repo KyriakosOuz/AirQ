@@ -5,6 +5,7 @@ import { Pollutant } from "@/lib/types";
 import TrainModelCard from "./TrainModelCard";
 import RecentTrainingsCard, { TrainingRecord } from "./RecentTrainingsCard";
 import ForecastPreview, { ForecastDataPoint } from "./ForecastPreview";
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 
 // Interface for model training API response
 interface ModelTrainingResponse {
@@ -226,39 +227,47 @@ const ModelTrainingTab: React.FC = () => {
   }, [trainRegion, trainPollutant, trainFrequency, trainPeriods]);
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <TrainModelCard
-        trainRegion={trainRegion}
-        setTrainRegion={setTrainRegion}
-        trainPollutant={trainPollutant}
-        setTrainPollutant={setTrainPollutant}
-        trainFrequency={trainFrequency}
-        setTrainFrequency={setTrainFrequency}
-        trainPeriods={trainPeriods}
-        setTrainPeriods={setTrainPeriods}
-        trainLoading={trainLoading}
-        onTrainModel={trainModel}
-        frequencyOptions={FREQUENCY_OPTIONS}
-        availableRanges={availableRanges}
-      />
-      
-      <RecentTrainingsCard
-        recentTrainings={recentTrainings}
-        formatters={formatters}
-        isLoading={modelsLoading}
-        onModelDeleted={fetchTrainedModels}
-      />
-      
-      {forecastData && forecastData.length > 0 && (
-        <ForecastPreview
-          data={forecastData}
-          region={trainRegion}
-          pollutant={trainPollutant}
-          frequency={trainFrequency}
-          formatters={formatters}
+    <ResizablePanelGroup direction="horizontal" className="min-h-[600px]">
+      <ResizablePanel defaultSize={33} minSize={25}>
+        <TrainModelCard
+          trainRegion={trainRegion}
+          setTrainRegion={setTrainRegion}
+          trainPollutant={trainPollutant}
+          setTrainPollutant={setTrainPollutant}
+          trainFrequency={trainFrequency}
+          setTrainFrequency={setTrainFrequency}
+          trainPeriods={trainPeriods}
+          setTrainPeriods={setTrainPeriods}
+          trainLoading={trainLoading}
+          onTrainModel={trainModel}
+          frequencyOptions={FREQUENCY_OPTIONS}
+          availableRanges={availableRanges}
         />
-      )}
-    </div>
+      </ResizablePanel>
+      
+      <ResizableHandle withHandle />
+      
+      <ResizablePanel defaultSize={67}>
+        <div className="h-full space-y-6 p-1">
+          <RecentTrainingsCard
+            recentTrainings={recentTrainings}
+            formatters={formatters}
+            isLoading={modelsLoading}
+            onModelDeleted={fetchTrainedModels}
+          />
+          
+          {forecastData && forecastData.length > 0 && (
+            <ForecastPreview
+              data={forecastData}
+              region={trainRegion}
+              pollutant={trainPollutant}
+              frequency={trainFrequency}
+              formatters={formatters}
+            />
+          )}
+        </div>
+      </ResizablePanel>
+    </ResizablePanelGroup>
   );
 };
 

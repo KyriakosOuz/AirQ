@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -60,29 +59,29 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
   };
   
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center">
-          <Clock className="mr-2 h-5 w-5" />
-          Train Forecast Model
+    <Card className="h-full overflow-auto">
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center text-lg">
+          <Clock className="mr-2 h-4 w-4" />
+          Train Model
         </CardTitle>
-        <CardDescription>
-          Create a new forecasting model for pollution data
+        <CardDescription className="text-xs">
+          Create a new forecasting model
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="region">Region</Label>
+      <CardContent className="space-y-3">
+        <div className="space-y-1">
+          <Label htmlFor="region" className="text-xs">Region</Label>
           <RegionSelector value={trainRegion} onValueChange={setTrainRegion} />
         </div>
         
-        <div className="space-y-2">
-          <Label htmlFor="pollutant">Pollutant</Label>
+        <div className="space-y-1">
+          <Label htmlFor="pollutant" className="text-xs">Pollutant</Label>
           <PollutantSelector value={trainPollutant} onValueChange={setTrainPollutant} />
         </div>
         
-        <div className="space-y-2">
-          <Label htmlFor="frequency">Frequency</Label>
+        <div className="space-y-1">
+          <Label htmlFor="frequency" className="text-xs">Frequency</Label>
           <Select value={trainFrequency} onValueChange={setTrainFrequency}>
             <SelectTrigger id="frequency">
               <SelectValue placeholder="Select frequency" />
@@ -97,16 +96,15 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
           </Select>
         </div>
         
-        <div className="space-y-4">
+        <div className="space-y-2">
           <div className="flex justify-between items-center">
-            <Label htmlFor="periods">Forecast Period</Label>
-            <span className="text-sm text-muted-foreground">
+            <Label htmlFor="periods" className="text-xs">Forecast Period</Label>
+            <span className="text-xs text-muted-foreground">
               {formatPeriodLabel(trainPeriods, trainFrequency)}
             </span>
           </div>
           
           {availableRanges.length > 5 ? (
-            // Use a slider when there are many options
             <Slider
               id="periods" 
               min={Math.min(...availableRanges)}
@@ -114,10 +112,9 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
               step={1}
               value={[trainPeriods]}
               onValueChange={(values) => setTrainPeriods(values[0])}
-              className="py-4"
+              className="py-2"
             />
           ) : (
-            // Use a dropdown for fewer options
             <Select
               value={trainPeriods.toString()}
               onValueChange={(value) => setTrainPeriods(parseInt(value))}
@@ -135,10 +132,10 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
             </Select>
           )}
           
-          <p className="text-sm text-muted-foreground">
-            The model will forecast {trainPeriods} {trainFrequency === "D" ? "days" : 
-                                    trainFrequency === "W" ? "weeks" : 
-                                    trainFrequency === "M" ? "months" : "years"} ahead
+          <p className="text-xs text-muted-foreground">
+            Forecasting {trainPeriods} {trainFrequency === "D" ? "days" : 
+                          trainFrequency === "W" ? "weeks" : 
+                          trainFrequency === "M" ? "months" : "years"} ahead
           </p>
         </div>
       </CardContent>
@@ -147,11 +144,12 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
           className="w-full" 
           disabled={trainLoading}
           onClick={onTrainModel}
+          size="sm"
         >
           {trainLoading ? (
             <>
-              <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-background border-t-transparent"></span>
-              Training Model...
+              <span className="mr-1 h-3 w-3 animate-spin rounded-full border-2 border-background border-t-transparent"></span>
+              Training...
             </>
           ) : "Train Model"}
         </Button>
