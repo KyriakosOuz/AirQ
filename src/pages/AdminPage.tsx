@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,21 +7,27 @@ import { RegionSelector } from "@/components/ui/region-selector";
 import { PollutantSelector } from "@/components/ui/pollutant-selector";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { datasetApi, modelApi } from "@/lib/api";
-import { Alert, Pollutant, Dataset } from "@/lib/types";
+import { Dataset, Pollutant } from "@/lib/types";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Eye, FileSpreadsheet, Trash2 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { TableSkeleton } from "@/components/ui/table-skeleton";
+import { useApiRequest, debounce, measurePerformance } from "@/lib/utils";
+
+// Constants to prevent re-renders
+const INITIAL_REGION = "thessaloniki";
+const INITIAL_YEAR = 2023;
+const INITIAL_POLLUTANT = "NO2" as Pollutant;
 
 const AdminPage: React.FC = () => {
   const [fileInput, setFileInput] = useState<File | null>(null);
-  const [uploadRegion, setUploadRegion] = useState("thessaloniki");
-  const [uploadYear, setUploadYear] = useState<number>(2023);
+  const [uploadRegion, setUploadRegion] = useState(INITIAL_REGION);
+  const [uploadYear, setUploadYear] = useState<number>(INITIAL_YEAR);
   const [uploadLoading, setUploadLoading] = useState(false);
   
-  const [trainRegion, setTrainRegion] = useState("thessaloniki");
-  const [trainPollutant, setTrainPollutant] = useState<Pollutant>("NO2");
+  const [trainRegion, setTrainRegion] = useState(INITIAL_REGION);
+  const [trainPollutant, setTrainPollutant] = useState<Pollutant>(INITIAL_POLLUTANT);
   const [trainLoading, setTrainLoading] = useState(false);
   
   const [datasets, setDatasets] = useState<Dataset[]>([]);
@@ -31,33 +36,51 @@ const AdminPage: React.FC = () => {
   const [dataPreview, setDataPreview] = useState<{columns: string[], rows: Record<string, any>[]} | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   
-  // Load datasets when component mounts
-  useEffect(() => {
-    fetchDatasets();
-  }, []);
+  const { createSignal } = useApiRequest();
   
-  const fetchDatasets = async () => {
-    setDatasetsLoading(true);
-    try {
-      const response = await datasetApi.list();
-      if (response.success && response.data) {
-        setDatasets(response.data);
-      } else {
-        toast.error("Failed to fetch datasets");
-      }
-    } catch (error) {
-      console.error(error);
-      toast.error("Failed to fetch datasets");
-    } finally {
-      setDatasetsLoading(false);
-    }
-  };
-  
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Use memoized functions for event handlers to prevent unnecessary re-renders
+  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       setFileInput(e.target.files[0]);
     }
-  };
+  }, []);
+  
+  // Debounced fetch to prevent multiple rapid calls
+  const debouncedFetchDatasets = useCallback(
+    debounce(() => {
+      fetchDatasets();
+    }, 300),
+    []
+  );
+  
+  const fetchDatasets = useCallback(async () => {
+    if (datasetsLoading) return; // Prevent multiple simultaneous requests
+    
+    setDatasetsLoading(true);
+    try {
+      measurePerformance("fetchDatasets", async () => {
+        const response = await datasetApi.list();
+        if (response.success && response.data) {
+          setDatasets(response.data);
+        } else {
+          console.error("Failed to fetch datasets:", response.error);
+          toast.error("Failed to fetch datasets");
+          // Keep old data on error to prevent UI flickering
+        }
+      });
+    } finally {
+      setDatasetsLoading(false);
+    }
+  }, [datasetsLoading]);
+  
+  // Load datasets when component mounts, but with a slight delay to prioritize UI rendering
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchDatasets();
+    }, 100);
+    
+    return () => clearTimeout(timer);
+  }, [fetchDatasets]);
   
   const uploadDataset = async () => {
     if (!fileInput) {
@@ -89,9 +112,6 @@ const AdminPage: React.FC = () => {
       } else {
         toast.error(response.error || "Failed to upload dataset");
       }
-    } catch (error) {
-      console.error(error);
-      toast.error("Failed to upload dataset");
     } finally {
       setUploadLoading(false);
     }
@@ -110,34 +130,32 @@ const AdminPage: React.FC = () => {
       } else {
         toast.error(response.error || "Failed to train model");
       }
-    } catch (error) {
-      console.error(error);
-      toast.error("Failed to train model");
     } finally {
       setTrainLoading(false);
     }
   };
   
-  const previewDataset = async (datasetId: string) => {
+  const previewDataset = useCallback(async (datasetId: string) => {
+    if (previewLoading) return; // Prevent multiple clicks
+    
     setPreviewLoading(true);
+    setSelectedDataset(datasetId);
+    
     try {
       const response = await datasetApi.preview(datasetId);
       
       if (response.success && response.data) {
-        setSelectedDataset(datasetId);
         setDataPreview(response.data);
       } else {
         toast.error(response.error || "Failed to preview dataset");
+        // Keep previous preview on error
       }
-    } catch (error) {
-      console.error(error);
-      toast.error("Failed to preview dataset");
     } finally {
       setPreviewLoading(false);
     }
-  };
+  }, [previewLoading]);
   
-  const deleteDataset = async (datasetId: string) => {
+  const deleteDataset = useCallback(async (datasetId: string) => {
     try {
       const response = await datasetApi.delete(datasetId);
       
@@ -155,51 +173,54 @@ const AdminPage: React.FC = () => {
         toast.error(response.error || "Failed to delete dataset");
       }
     } catch (error) {
-      console.error(error);
+      console.error("Delete dataset error:", error);
       toast.error("Failed to delete dataset");
     }
-  };
+  }, [selectedDataset]);
   
-  // Format file size helper
-  const formatFileSize = (bytes?: number): string => {
-    if (!bytes) return 'Unknown';
-    if (bytes < 1024) return bytes + ' B';
-    else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
-    else return (bytes / 1048576).toFixed(1) + ' MB';
-  };
-  
-  // Format date helper
-  const formatDate = (dateString?: string): string => {
-    if (!dateString) return 'Unknown';
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-  
-  // Get region label from value
-  const getRegionLabel = (regionValue: string): string => {
-    const regionMap: Record<string, string> = {
-      "thessaloniki": "Thessaloniki Center",
-      "kalamaria": "Kalamaria",
-      "pavlos-melas": "Pavlos Melas",
-      "neapoli-sykies": "Neapoli-Sykies",
-      "ampelokipoi-menemeni": "Ampelokipoi-Menemeni",
-      "panorama": "Panorama",
-      "pylaia-chortiatis": "Pylaia-Chortiatis",
-    };
+  // Memoize helpers to prevent recreating on each render
+  const formatters = useMemo(() => ({
+    // Format file size helper
+    formatFileSize: (bytes?: number): string => {
+      if (!bytes) return 'Unknown';
+      if (bytes < 1024) return bytes + ' B';
+      else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+      else return (bytes / 1048576).toFixed(1) + ' MB';
+    },
     
-    return regionMap[regionValue] || regionValue;
-  };
-
-  // Get dataset name from dataset object
-  const getDatasetName = (dataset: Dataset): string => {
-    return dataset.name || `${getRegionLabel(dataset.region)}-${dataset.year}.csv`;
-  };
-
+    // Format date helper
+    formatDate: (dateString?: string): string => {
+      if (!dateString) return 'Unknown';
+      return new Date(dateString).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    },
+    
+    // Get region label from value
+    getRegionLabel: (regionValue: string): string => {
+      const regionMap: Record<string, string> = {
+        "thessaloniki": "Thessaloniki Center",
+        "kalamaria": "Kalamaria",
+        "pavlos-melas": "Pavlos Melas",
+        "neapoli-sykies": "Neapoli-Sykies",
+        "ampelokipoi-menemeni": "Ampelokipoi-Menemeni",
+        "panorama": "Panorama",
+        "pylaia-chortiatis": "Pylaia-Chortiatis",
+      };
+      
+      return regionMap[regionValue] || regionValue;
+    },
+    
+    // Get dataset name from dataset object
+    getDatasetName: (dataset: Dataset): string => {
+      return dataset.name || `${formatters.getRegionLabel(dataset.region)}-${dataset.year}.csv`;
+    }
+  }), []);
+  
   return (
     <div className="space-y-6">
       <div className="flex flex-col space-y-2">
@@ -261,25 +282,39 @@ const AdminPage: React.FC = () => {
                 disabled={uploadLoading || !fileInput}
                 className="w-full"
               >
-                {uploadLoading ? "Uploading..." : "Upload Dataset"}
+                {uploadLoading ? (
+                  <>
+                    <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-background border-t-transparent"></span>
+                    Uploading...
+                  </>
+                ) : "Upload Dataset"}
               </Button>
             </CardFooter>
           </Card>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Card className="md:col-span-2">
-              <CardHeader>
-                <CardTitle>Available Datasets</CardTitle>
-                <CardDescription>
-                  Select a dataset to preview or manage
-                </CardDescription>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <div>
+                  <CardTitle>Available Datasets</CardTitle>
+                  <CardDescription>
+                    Select a dataset to preview or manage
+                  </CardDescription>
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => fetchDatasets()}
+                  disabled={datasetsLoading}
+                >
+                  {datasetsLoading ? (
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></span>
+                  ) : "Refresh"}
+                </Button>
               </CardHeader>
               <CardContent>
-                {datasetsLoading ? (
-                  <div className="py-8 text-center text-muted-foreground">
-                    <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full mx-auto"></div>
-                    <p className="mt-2">Loading datasets...</p>
-                  </div>
+                {datasetsLoading && datasets.length === 0 ? (
+                  <TableSkeleton columns={6} rows={3} />
                 ) : datasets.length > 0 ? (
                   <div className="overflow-x-auto">
                     <Table>
@@ -296,19 +331,24 @@ const AdminPage: React.FC = () => {
                       <TableBody>
                         {datasets.map((dataset) => (
                           <TableRow key={dataset.id}>
-                            <TableCell className="font-medium">{getDatasetName(dataset)}</TableCell>
-                            <TableCell>{getRegionLabel(dataset.region)}</TableCell>
+                            <TableCell className="font-medium">{formatters.getDatasetName(dataset)}</TableCell>
+                            <TableCell>{formatters.getRegionLabel(dataset.region)}</TableCell>
                             <TableCell>{dataset.year}</TableCell>
-                            <TableCell>{formatFileSize(dataset.size)}</TableCell>
-                            <TableCell>{formatDate(dataset.uploadedAt)}</TableCell>
+                            <TableCell>{formatters.formatFileSize(dataset.size)}</TableCell>
+                            <TableCell>{formatters.formatDate(dataset.uploadedAt)}</TableCell>
                             <TableCell>
                               <div className="flex space-x-2">
                                 <Button 
                                   variant="outline" 
                                   size="icon"
                                   onClick={() => previewDataset(dataset.id)}
+                                  disabled={previewLoading && selectedDataset === dataset.id}
                                 >
-                                  <Eye size={16} />
+                                  {previewLoading && selectedDataset === dataset.id ? (
+                                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></span>
+                                  ) : (
+                                    <Eye size={16} />
+                                  )}
                                 </Button>
                                 <Button 
                                   variant="outline" 
@@ -333,21 +373,20 @@ const AdminPage: React.FC = () => {
               </CardContent>
             </Card>
             
-            {selectedDataset && dataPreview && (
+            {selectedDataset && (
               <Card className="md:col-span-2">
                 <CardHeader>
                   <CardTitle>Data Preview</CardTitle>
                   <CardDescription>
-                    {datasets.find(d => d.id === selectedDataset) ? getDatasetName(datasets.find(d => d.id === selectedDataset)!) : 'Dataset Preview'}
+                    {datasets.find(d => d.id === selectedDataset) ? 
+                      formatters.getDatasetName(datasets.find(d => d.id === selectedDataset)!) : 
+                      'Dataset Preview'}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   {previewLoading ? (
-                    <div className="py-8 text-center text-muted-foreground">
-                      <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full mx-auto"></div>
-                      <p className="mt-2">Loading preview...</p>
-                    </div>
-                  ) : (
+                    <TableSkeleton columns={5} rows={5} />
+                  ) : dataPreview ? (
                     <div className="overflow-x-auto">
                       <Table>
                         <TableHeader>
@@ -368,8 +407,14 @@ const AdminPage: React.FC = () => {
                         </TableBody>
                       </Table>
                     </div>
+                  ) : (
+                    <div className="py-4 text-center text-muted-foreground">
+                      <p>No preview data available</p>
+                    </div>
                   )}
-                  <p className="mt-2 text-right text-xs text-muted-foreground">Showing first 5 rows</p>
+                  {dataPreview && (
+                    <p className="mt-2 text-right text-xs text-muted-foreground">Showing first {dataPreview.rows.length} rows</p>
+                  )}
                 </CardContent>
               </Card>
             )}
@@ -401,7 +446,12 @@ const AdminPage: React.FC = () => {
                   disabled={trainLoading}
                   className="w-full"
                 >
-                  {trainLoading ? "Training..." : "Start Training"}
+                  {trainLoading ? (
+                    <>
+                      <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-background border-t-transparent"></span>
+                      Training...
+                    </>
+                  ) : "Start Training"}
                 </Button>
               </CardFooter>
             </Card>
