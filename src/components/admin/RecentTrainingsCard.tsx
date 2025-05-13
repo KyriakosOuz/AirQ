@@ -11,6 +11,9 @@ export interface TrainingRecord {
   pollutant: string;
   date: string; // ISO string
   status: "complete" | "in-progress" | "failed";
+  frequency?: string; // Optional: frequency used (D, W, M, Y)
+  periods?: number;   // Optional: number of future periods
+  datasetSize?: string; // Optional: size of dataset used for training
 }
 
 interface RecentTrainingsCardProps {
@@ -38,6 +41,34 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
       default:
         return "";
     }
+  };
+
+  // Format frequency display
+  const getFrequencyLabel = (freq?: string) => {
+    if (!freq) return "Daily";
+    
+    const map: Record<string, string> = {
+      "D": "Daily",
+      "W": "Weekly", 
+      "M": "Monthly",
+      "Y": "Yearly"
+    };
+    
+    return map[freq] || freq;
+  };
+
+  // Format forecast range
+  const getForecastRange = (frequency?: string, periods?: number) => {
+    if (!frequency || !periods) return "N/A";
+    
+    const unit = {
+      "D": "days",
+      "W": "weeks",
+      "M": "months",
+      "Y": "years"
+    }[frequency] || "periods";
+    
+    return `Next ${periods} ${unit}`;
   };
 
   return (
@@ -77,6 +108,8 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
                 <TableRow>
                   <TableHead>Region</TableHead>
                   <TableHead>Pollutant</TableHead>
+                  <TableHead>Frequency</TableHead>
+                  <TableHead>Forecast Range</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead>Status</TableHead>
                 </TableRow>
@@ -87,6 +120,8 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
                     <TableRow key={index}>
                       <TableCell>{formatters.getRegionLabel(training.region)}</TableCell>
                       <TableCell>{formatters.getPollutantDisplay(training.pollutant)}</TableCell>
+                      <TableCell>{getFrequencyLabel(training.frequency)}</TableCell>
+                      <TableCell>{getForecastRange(training.frequency, training.periods)}</TableCell>
                       <TableCell>{formatters.formatDate(training.date)}</TableCell>
                       <TableCell>
                         <Badge 
@@ -101,7 +136,7 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center text-muted-foreground py-6">
+                    <TableCell colSpan={6} className="text-center text-muted-foreground py-6">
                       No recent model trainings
                     </TableCell>
                   </TableRow>

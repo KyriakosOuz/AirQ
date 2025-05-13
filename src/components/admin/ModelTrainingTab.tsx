@@ -91,12 +91,18 @@ const ModelTrainingTab: React.FC = () => {
           // Only take the first 6 forecast points for display
           setForecastData(apiResponse.forecast.slice(0, 6));
           
+          // Calculate approximate dataset size for display
+          const datasetSize = estimateDatasetSize(trainRegion);
+          
           // Add training record to the recent trainings list
           const newTraining: TrainingRecord = {
             region: trainRegion,
             pollutant: trainPollutant,
             date: apiResponse.trained_at || new Date().toISOString(),
-            status: "complete"
+            status: "complete",
+            frequency: trainFrequency,
+            periods: trainPeriods,
+            datasetSize: datasetSize
           };
           
           setRecentTrainings(prev => [newTraining, ...prev.slice(0, 4)]);
@@ -110,6 +116,18 @@ const ModelTrainingTab: React.FC = () => {
     } finally {
       setTrainLoading(false);
     }
+  };
+  
+  // Helper function to estimate dataset size (in real app this would come from API)
+  const estimateDatasetSize = (region: string): string => {
+    // This is just a placeholder - in a real app, this would come from the API
+    const regionDataMap: Record<string, string> = {
+      "thessaloniki": "7 years of data",
+      "kalamaria": "5 years of data",
+      "panorama": "3 years of data"
+    };
+    
+    return regionDataMap[region] || "Multiple years of data";
   };
 
   return (
@@ -137,6 +155,7 @@ const ModelTrainingTab: React.FC = () => {
           data={forecastData}
           region={trainRegion}
           pollutant={trainPollutant}
+          frequency={trainFrequency}
           formatters={formatters}
         />
       )}

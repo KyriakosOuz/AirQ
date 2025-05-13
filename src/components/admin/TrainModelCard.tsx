@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useEffect } from "react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -7,8 +7,14 @@ import { Input } from "@/components/ui/input";
 import { RegionSelector } from "@/components/ui/region-selector";
 import { PollutantSelector } from "@/components/ui/pollutant-selector";
 import { Pollutant } from "@/lib/types";
-import { Play, Loader } from "lucide-react";
+import { Play, Loader, Info } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { 
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  TooltipProvider
+} from "@/components/ui/tooltip";
 
 interface TrainModelCardProps {
   trainRegion: string;
@@ -43,6 +49,17 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
     { value: "Y", label: "Yearly" }
   ];
 
+  // Update periods when frequency changes to provide smart defaults
+  useEffect(() => {
+    const defaultPeriods = {
+      "D": 365,  // days in a year
+      "W": 52,   // weeks in a year
+      "M": 12,   // months in a year
+      "Y": 2     // years
+    };
+    setTrainPeriods(defaultPeriods[trainFrequency as keyof typeof defaultPeriods]);
+  }, [trainFrequency, setTrainPeriods]);
+
   return (
     <Card>
       <CardHeader>
@@ -76,7 +93,22 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
           </Select>
         </div>
         <div className="space-y-2">
-          <Label>Number of Future Periods</Label>
+          <div className="flex items-center space-x-2">
+            <Label>Number of Future Periods</Label>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-5 w-5 rounded-full p-0">
+                    <Info className="h-4 w-4 text-muted-foreground" />
+                    <span className="sr-only">Periods info</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  <p>e.g. 365 for days, 52 for weeks, 12 for months, 2 for years</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
           <Input 
             type="number" 
             min={1} 
