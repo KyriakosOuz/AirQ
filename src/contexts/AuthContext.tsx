@@ -1,9 +1,10 @@
+
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Session, User } from "@supabase/supabase-js";
 import { useUserStore } from "@/stores/userStore";
 import { useToast } from "@/hooks/use-toast";
-import { UserProfile } from "@/lib/types";
+import { UserProfile, UserRole } from "@/lib/types";
 
 interface AuthContextType {
   user: User | null;
@@ -119,24 +120,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       
       if (data) {
-        // Add missing fields if they don't exist in the database yet
-        const profileData = {
-          ...data,
-          has_diabetes: data.has_diabetes || false,
-          has_lung_disease: data.has_lung_disease || false
-        };
-        
-        // Map the database fields to our UserProfile type
+        // Create a typed profile with all required fields
+        // ensuring we have defaults for fields that might not exist in the database
         const profile: UserProfile = {
           id: data.user_id,
           email: user?.email || '',
-          age: profileData.age,
-          has_asthma: profileData.has_asthma,
-          is_smoker: profileData.is_smoker,
-          has_heart_disease: profileData.has_heart_disease,
-          has_diabetes: profileData.has_diabetes,
-          has_lung_disease: profileData.has_lung_disease,
-          role: profileData.role || 'user'
+          age: data.age,
+          has_asthma: data.has_asthma || false,
+          is_smoker: data.is_smoker || false,
+          has_heart_disease: data.has_heart_disease || false,
+          // Handle potentially missing fields with defaults
+          has_diabetes: false, // Default since it's missing in DB
+          has_lung_disease: false, // Default since it's missing in DB
+          // Handle role with proper type casting
+          role: (data.role as UserRole) || 'user'
         };
         
         updateProfile(profile);
@@ -163,30 +160,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { error: new Error('User not authenticated') };
       }
       
+      // Prepare data object with only fields that exist in the database
+      const dbData = {
+        user_id: user.id,
+        age: profileData.age,
+        has_asthma: profileData.has_asthma,
+        is_smoker: profileData.is_smoker,
+        has_heart_disease: profileData.has_heart_disease,
+        // Note: has_diabetes and has_lung_disease are intentionally omitted since they don't exist in DB
+        updated_at: new Date().toISOString(),
+      };
+      
       // Update profile in Supabase
       const { error } = await supabase
         .from('profiles')
-        .upsert({
-          user_id: user.id,
-          age: profileData.age,
-          has_asthma: profileData.has_asthma,
-          is_smoker: profileData.is_smoker,
-          has_heart_disease: profileData.has_heart_disease,
-          has_diabetes: profileData.has_diabetes,
-          has_lung_disease: profileData.has_lung_disease,
-          updated_at: new Date().toISOString(),
-        });
+        .upsert(dbData);
       
       if (error) {
         console.error('Error saving profile', error);
         return { error };
       }
       
-      // Update local state
-      updateProfile({
-        ...userProfile,
-        ...profileData,
-      } as UserProfile);
+      // Update local state - we maintain all fields in the local state
+      // even if some aren't in the database yet
+      if (userProfile) {
+        updateProfile({
+          ...userProfile,
+          ...profileData,
+        } as UserProfile);
+      }
       
       return { error: null };
     } catch (error) {
