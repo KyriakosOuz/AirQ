@@ -93,9 +93,12 @@ export type Database = {
           forecast_periods: number | null
           frequency: string | null
           id: string
+          mae: number | null
+          mape: number | null
           model_type: string
           pollutant: string | null
           region: string | null
+          rmse: number | null
           trained_by: string | null
         }
         Insert: {
@@ -105,9 +108,12 @@ export type Database = {
           forecast_periods?: number | null
           frequency?: string | null
           id?: string
+          mae?: number | null
+          mape?: number | null
           model_type: string
           pollutant?: string | null
           region?: string | null
+          rmse?: number | null
           trained_by?: string | null
         }
         Update: {
@@ -117,9 +123,12 @@ export type Database = {
           forecast_periods?: number | null
           frequency?: string | null
           id?: string
+          mae?: number | null
+          mape?: number | null
           model_type?: string
           pollutant?: string | null
           region?: string | null
+          rmse?: number | null
           trained_by?: string | null
         }
         Relationships: [

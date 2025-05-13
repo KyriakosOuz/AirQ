@@ -396,6 +396,13 @@ export const modelApi = {
     return fetchWithAuth(`/models/forecast/${modelId}`);
   },
   
+  // Add model deletion method
+  delete: async (modelId: string) => {
+    return fetchWithAuth(`/models/delete/${modelId}`, {
+      method: "DELETE"
+    });
+  },
+  
   // Add the getForecastRange method
   getForecastRange: async ({
     region,

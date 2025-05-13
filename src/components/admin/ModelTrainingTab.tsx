@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from "react";
 import { toast } from "sonner";
 import { modelApi } from "@/lib/api";
@@ -24,6 +23,8 @@ interface ModelData {
   forecast_periods?: number;
   created_at: string;
   status?: string;
+  accuracy_mae?: number;
+  accuracy_rmse?: number;
 }
 
 // Frequency options with their display labels and available ranges
@@ -119,12 +120,15 @@ const ModelTrainingTab: React.FC = () => {
       if (response.success && response.data) {
         // Convert API model data to TrainingRecord format
         const trainings: TrainingRecord[] = (response.data as ModelData[]).map(model => ({
+          id: model.id,
           region: model.region,
           pollutant: model.pollutant,
           date: model.created_at,
           status: "complete", // Always set to complete as specified
           frequency: model.frequency,
-          periods: model.forecast_periods
+          periods: model.forecast_periods,
+          accuracy_mae: model.accuracy_mae,
+          accuracy_rmse: model.accuracy_rmse
         }));
         
         // Sort by date, most recent first
@@ -242,6 +246,7 @@ const ModelTrainingTab: React.FC = () => {
         recentTrainings={recentTrainings}
         formatters={formatters}
         isLoading={modelsLoading}
+        onModelDeleted={fetchTrainedModels}
       />
       
       {forecastData && forecastData.length > 0 && (

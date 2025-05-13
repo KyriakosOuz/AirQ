@@ -1,13 +1,27 @@
 
-import React from "react";
+import React, { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, AlertCircle, Clock } from "lucide-react";
+import { CheckCircle, AlertCircle, Clock, Trash2 } from "lucide-react";
 import { TableSkeleton } from "@/components/ui/table-skeleton";
+import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
+import { modelApi } from "@/lib/api";
 
 // Interface for a training record
 export interface TrainingRecord {
+  id: string;            // Added model ID for deletion
   region: string;
   pollutant: string;
   date: string; // ISO string
@@ -15,6 +29,8 @@ export interface TrainingRecord {
   frequency?: string; // Optional: frequency used (D, W, M, Y)
   periods?: number;   // Optional: number of future periods
   datasetSize?: string; // Optional: size of dataset used for training
+  accuracy_mae?: number; // Added: Mean Absolute Error
+  accuracy_rmse?: number; // Added: Root Mean Squared Error
 }
 
 interface RecentTrainingsCardProps {
@@ -25,13 +41,19 @@ interface RecentTrainingsCardProps {
     formatDate: (dateString?: string) => string;
   };
   isLoading?: boolean;
+  onModelDeleted?: () => void; // Callback for when a model is deleted
 }
 
 const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
   recentTrainings,
   formatters,
-  isLoading = false
+  isLoading = false,
+  onModelDeleted
 }) => {
+  // State for confirmation dialog
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [modelToDelete, setModelToDelete] = useState<string | null>(null);
+  
   // Helper function for badge styling
   const getBadgeStyle = (status: string) => {
     switch (status) {
@@ -88,61 +110,132 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
     }
   };
 
+  // Handle model deletion
+  const handleDeleteConfirm = async () => {
+    if (!modelToDelete) return;
+    
+    try {
+      const response = await modelApi.delete(modelToDelete);
+      if (response.success) {
+        toast.success("Model deleted successfully");
+        if (onModelDeleted) {
+          onModelDeleted();
+        }
+      } else {
+        toast.error(response.error || "Failed to delete model");
+      }
+    } catch (error) {
+      console.error("Error deleting model:", error);
+      toast.error("An error occurred while deleting the model");
+    }
+    
+    setDeleteDialogOpen(false);
+    setModelToDelete(null);
+  };
+
+  // Handle delete button click
+  const handleDeleteClick = (id: string) => {
+    setModelToDelete(id);
+    setDeleteDialogOpen(true);
+  };
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Recent Model Trainings</CardTitle>
-        <CardDescription>Recently trained forecasting models</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="overflow-x-auto">
-          {isLoading ? (
-            <TableSkeleton columns={6} rows={3} />
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Region</TableHead>
-                  <TableHead>Pollutant</TableHead>
-                  <TableHead>Frequency</TableHead>
-                  <TableHead>Forecast Range</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {recentTrainings.length > 0 ? (
-                  recentTrainings.map((training, index) => (
-                    <TableRow key={index}>
-                      <TableCell>{formatters.getRegionLabel(training.region)}</TableCell>
-                      <TableCell>{formatters.getPollutantDisplay(training.pollutant)}</TableCell>
-                      <TableCell>{getFrequencyLabel(training.frequency)}</TableCell>
-                      <TableCell>{getForecastRange(training.frequency, training.periods)}</TableCell>
-                      <TableCell>{formatters.formatDate(training.date)}</TableCell>
-                      <TableCell>
-                        <Badge 
-                          variant="outline" 
-                          className={getBadgeStyle(training.status)}
-                        >
-                          {getStatusIcon(training.status)}
-                          {training.status.charAt(0).toUpperCase() + training.status.slice(1)}
-                        </Badge>
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Model Trainings</CardTitle>
+          <CardDescription>Recently trained forecasting models</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            {isLoading ? (
+              <TableSkeleton columns={7} rows={3} />
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Region</TableHead>
+                    <TableHead>Pollutant</TableHead>
+                    <TableHead>Frequency</TableHead>
+                    <TableHead>Forecast Range</TableHead>
+                    <TableHead>Accuracy</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="w-[80px]">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {recentTrainings.length > 0 ? (
+                    recentTrainings.map((training, index) => (
+                      <TableRow key={index}>
+                        <TableCell>{formatters.getRegionLabel(training.region)}</TableCell>
+                        <TableCell>{formatters.getPollutantDisplay(training.pollutant)}</TableCell>
+                        <TableCell>{getFrequencyLabel(training.frequency)}</TableCell>
+                        <TableCell>{getForecastRange(training.frequency, training.periods)}</TableCell>
+                        <TableCell>
+                          {training.accuracy_mae !== undefined || training.accuracy_rmse !== undefined ? (
+                            <span className="text-xs">
+                              {training.accuracy_mae !== undefined ? `MAE: ${training.accuracy_mae.toFixed(2)}` : ''}
+                              {training.accuracy_mae !== undefined && training.accuracy_rmse !== undefined ? ', ' : ''}
+                              {training.accuracy_rmse !== undefined ? `RMSE: ${training.accuracy_rmse.toFixed(2)}` : ''}
+                            </span>
+                          ) : (
+                            "N/A"
+                          )}
+                        </TableCell>
+                        <TableCell>{formatters.formatDate(training.date)}</TableCell>
+                        <TableCell>
+                          <Badge 
+                            variant="outline" 
+                            className={getBadgeStyle(training.status)}
+                          >
+                            {getStatusIcon(training.status)}
+                            {training.status.charAt(0).toUpperCase() + training.status.slice(1)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 w-8 p-0"
+                            onClick={() => handleDeleteClick(training.id)}
+                          >
+                            <span className="sr-only">Delete</span>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={8} className="text-center text-muted-foreground py-6">
+                        No recent model trainings
                       </TableCell>
                     </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground py-6">
-                      No recent model trainings
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+                  )}
+                </TableBody>
+              </Table>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Model</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this model? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 };
 
