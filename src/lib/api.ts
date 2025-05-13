@@ -1,4 +1,3 @@
-
 import { toast } from "sonner";
 import { Pollutant, Region, Dataset, HealthTip, TrendChart, SeasonalityChart } from "@/lib/types";
 import { supabase } from "@/integrations/supabase/client";
@@ -136,12 +135,21 @@ export const fetchWithAuth = async <T>(
     const token = getToken();
 
     const headers: HeadersInit = {
-      "Content-Type": "application/json",
       ...options.headers,
     };
 
+    // Only set Content-Type to application/json if we're NOT sending FormData
+    if (!(options.body instanceof FormData)) {
+      headers["Content-Type"] = "application/json";
+    }
+
     if (token) {
       headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    // Add debug logging for FormData uploads
+    if (options.body instanceof FormData) {
+      console.log("Uploading with FormData:", [...(options.body as FormData).entries()]);
     }
 
     // Use fetchWithTimeout to prevent hanging requests
