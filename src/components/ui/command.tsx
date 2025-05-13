@@ -41,12 +41,12 @@ const CommandInput = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof CommandPrimitive.Input> & {
     onValueChange?: (value: string) => void
   }
->(({ className, onValueChange, ...props }, ref) => {
+>(({ className, onValueChange, value = "", ...props }, ref) => {
   // Handle value changes through a controlled input pattern
   const handleValueChange = React.useCallback(
-    (value: string) => {
+    (newValue: string) => {
       if (onValueChange) {
-        onValueChange(value);
+        onValueChange(newValue);
       }
     },
     [onValueChange]
@@ -61,6 +61,7 @@ const CommandInput = React.forwardRef<
           "flex h-11 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50",
           className
         )}
+        value={value}
         onValueChange={handleValueChange}
         {...props}
       />

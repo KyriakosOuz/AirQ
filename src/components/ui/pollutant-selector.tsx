@@ -68,6 +68,7 @@ export function PollutantSelector({
                 key={pollutant.value}
                 value={pollutant.value}
                 onSelect={handleSelect}
+                className="cursor-pointer"
               >
                 <Check
                   className={cn(

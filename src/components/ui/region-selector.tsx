@@ -75,6 +75,7 @@ export function RegionSelector({ value, onValueChange }: RegionSelectorProps) {
                 key={region.value}
                 value={region.value}
                 onSelect={handleSelect}
+                className="cursor-pointer"
               >
                 <Check
                   className={cn(
