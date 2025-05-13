@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,11 +15,29 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Eye, FileSpreadsheet, Trash2 } from "lucide-react";
 import { TableSkeleton } from "@/components/ui/table-skeleton";
 import { useApiRequest, debounce, measurePerformance, getErrorMessage } from "@/lib/utils";
+import ForecastChart from "@/components/ForecastChart";
+import { format } from "date-fns";
 
 // Constants to prevent re-renders
 const INITIAL_REGION = "thessaloniki";
 const INITIAL_YEAR = 2023;
-const INITIAL_POLLUTANT = "NO2" as Pollutant;
+const INITIAL_POLLUTANT = "no2_conc" as Pollutant;
+
+// Interface for forecast data
+interface ForecastDataPoint {
+  ds: string;
+  yhat: number;
+  yhat_lower: number;
+  yhat_upper: number;
+}
+
+// Interface for a training record
+interface TrainingRecord {
+  region: string;
+  pollutant: string;
+  date: string; // ISO string
+  status: "complete" | "in-progress" | "failed";
+}
 
 const AdminPage: React.FC = () => {
   const [fileInput, setFileInput] = useState<File | null>(null);
@@ -33,9 +52,12 @@ const AdminPage: React.FC = () => {
   const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [datasetsLoading, setDatasetsLoading] = useState(false);
   const [selectedDataset, setSelectedDataset] = useState<string | null>(null);
-  // Using the proper DatasetPreviewResponse type from the API
   const [dataPreview, setDataPreview] = useState<DatasetPreviewResponse | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  
+  // State for forecast data and training records
+  const [forecastData, setForecastData] = useState<ForecastDataPoint[]>([]);
+  const [recentTrainings, setRecentTrainings] = useState<TrainingRecord[]>([]);
   
   const { createSignal } = useApiRequest();
   
@@ -143,7 +165,22 @@ const AdminPage: React.FC = () => {
       });
       
       if (response.success) {
-        toast.success(`Model trained for ${trainPollutant} in ${trainRegion}`);
+        toast.success(`Model trained for ${trainRegion} - ${trainPollutant}`);
+        
+        // Handle the forecast data if available in the response
+        if (response.data && response.data.forecast) {
+          setForecastData(response.data.forecast);
+          
+          // Add training record to the recent trainings list
+          const newTraining: TrainingRecord = {
+            region: trainRegion,
+            pollutant: trainPollutant,
+            date: response.data.trained_at || new Date().toISOString(),
+            status: "complete"
+          };
+          
+          setRecentTrainings(prev => [newTraining, ...prev.slice(0, 4)]);
+        }
       } else {
         toast.error(getErrorMessage(response.error));
       }
@@ -235,6 +272,19 @@ const AdminPage: React.FC = () => {
     // Get dataset name from dataset object
     getDatasetName: (dataset: Dataset): string => {
       return dataset.name || `${formatters.getRegionLabel(dataset.region)}-${dataset.year}.csv`;
+    },
+    
+    // Get pollutant display name
+    getPollutantDisplay: (pollutantCode: string): string => {
+      const map: Record<string, string> = {
+        no2_conc: "NO₂",
+        o3_conc: "O₃",
+        so2_conc: "SO₂",
+        pm10_conc: "PM10",
+        pm25_conc: "PM2.5",
+        co_conc: "CO",
+      };
+      return map[pollutantCode] || pollutantCode;
     }
   }), []);
   
@@ -515,32 +565,78 @@ const AdminPage: React.FC = () => {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        <TableRow>
-                          <TableCell>Thessaloniki Center</TableCell>
-                          <TableCell>NO2</TableCell>
-                          <TableCell>May 12, 2024</TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
-                              Complete
-                            </Badge>
-                          </TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell>Kalamaria</TableCell>
-                          <TableCell>O3</TableCell>
-                          <TableCell>May 10, 2024</TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
-                              Complete
-                            </Badge>
-                          </TableCell>
-                        </TableRow>
+                        {recentTrainings.length > 0 ? (
+                          recentTrainings.map((training, index) => (
+                            <TableRow key={index}>
+                              <TableCell>{formatters.getRegionLabel(training.region)}</TableCell>
+                              <TableCell>{formatters.getPollutantDisplay(training.pollutant)}</TableCell>
+                              <TableCell>{formatters.formatDate(training.date)}</TableCell>
+                              <TableCell>
+                                <Badge 
+                                  variant="outline" 
+                                  className={
+                                    training.status === "complete" 
+                                      ? "bg-green-100 text-green-800 border-green-200" 
+                                      : training.status === "in-progress"
+                                      ? "bg-yellow-100 text-yellow-800 border-yellow-200"
+                                      : "bg-red-100 text-red-800 border-red-200"
+                                  }
+                                >
+                                  {training.status.charAt(0).toUpperCase() + training.status.slice(1)}
+                                </Badge>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        ) : (
+                          <TableRow>
+                            <TableCell colSpan={4} className="text-center text-muted-foreground py-6">
+                              No recent model trainings
+                            </TableCell>
+                          </TableRow>
+                        )}
+                        
+                        {/* Always show the example records if there are fewer than 2 recent trainings */}
+                        {recentTrainings.length < 2 && (
+                          <>
+                            {recentTrainings.length < 1 && (
+                              <TableRow>
+                                <TableCell>Thessaloniki Center</TableCell>
+                                <TableCell>NO₂</TableCell>
+                                <TableCell>May 12, 2024</TableCell>
+                                <TableCell>
+                                  <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
+                                    Complete
+                                  </Badge>
+                                </TableCell>
+                              </TableRow>
+                            )}
+                            <TableRow>
+                              <TableCell>Kalamaria</TableCell>
+                              <TableCell>O₃</TableCell>
+                              <TableCell>May 10, 2024</TableCell>
+                              <TableCell>
+                                <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
+                                  Complete
+                                </Badge>
+                              </TableCell>
+                            </TableRow>
+                          </>
+                        )}
                       </TableBody>
                     </Table>
                   </div>
                 </div>
               </CardContent>
             </Card>
+            
+            {/* Display forecast chart if there's data */}
+            {forecastData && forecastData.length > 0 && (
+              <ForecastChart 
+                data={forecastData} 
+                region={trainRegion} 
+                pollutant={trainPollutant} 
+              />
+            )}
           </div>
         </TabsContent>
       </Tabs>

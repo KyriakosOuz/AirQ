@@ -92,6 +92,8 @@ export type Database = {
           file_path: string
           id: string
           model_type: string
+          pollutant: string | null
+          region: string | null
           trained_by: string | null
         }
         Insert: {
@@ -100,6 +102,8 @@ export type Database = {
           file_path: string
           id?: string
           model_type: string
+          pollutant?: string | null
+          region?: string | null
           trained_by?: string | null
         }
         Update: {
@@ -108,6 +112,8 @@ export type Database = {
           file_path?: string
           id?: string
           model_type?: string
+          pollutant?: string | null
+          region?: string | null
           trained_by?: string | null
         }
         Relationships: [
