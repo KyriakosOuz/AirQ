@@ -24,64 +24,8 @@ import {
 } from "@/components/ui/form";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { useUserStore } from "@/stores/userStore";
-import { setToken } from "@/lib/api";
-import { UserRole } from "@/lib/types";
-
-// Mock authentication - in real app would use Supabase
-const mockAuth = {
-  login: async (email: string, password: string) => {
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    
-    // Mock credentials for demo purposes only
-    if (email === "user@example.com" && password === "password") {
-      return {
-        success: true,
-        data: {
-          token: "mock-jwt-token",
-          user: {
-            id: "user-123",
-            email: "user@example.com",
-          },
-          role: "authenticated" as UserRole
-        }
-      };
-    }
-    
-    if (email === "admin@example.com" && password === "password") {
-      return {
-        success: true,
-        data: {
-          token: "mock-admin-jwt-token",
-          user: {
-            id: "admin-123",
-            email: "admin@example.com",
-          },
-          role: "admin" as UserRole
-        }
-      };
-    }
-    
-    return { success: false, error: "Invalid credentials" };
-  },
-  register: async (email: string, password: string) => {
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    // In a real app we would return a proper error if registration fails
-    return { 
-      success: true, 
-      data: { 
-        token: "mock-jwt-token", 
-        user: { 
-          id: "new-user", 
-          email 
-        } 
-      },
-      error: undefined // Adding error field with undefined as default
-    };
-  },
-};
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Invalid email address" }),
@@ -98,7 +42,7 @@ const registerSchema = loginSchema.extend({
 const Auth: React.FC = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
-  const { setUser, setToken: setUserToken, setRole } = useUserStore();
+  const { login } = useAuth();
   
   // Login form
   const loginForm = useForm<z.infer<typeof loginSchema>>({
@@ -122,21 +66,10 @@ const Auth: React.FC = () => {
   const onLogin = async (data: z.infer<typeof loginSchema>) => {
     setIsLoading(true);
     try {
-      const response = await mockAuth.login(data.email, data.password);
-      if (response.success) {
-        setToken(response.data.token);
-        setUserToken(response.data.token);
-        setUser(response.data.user);
-        // Fix: properly cast to UserRole type
-        setRole(response.data.role as UserRole);
-        toast.success("Login successful!");
+      const success = await login(data.email, data.password);
+      if (success) {
         navigate("/");
-      } else {
-        toast.error(response.error || "Login failed");
       }
-    } catch (error) {
-      console.error(error);
-      toast.error("An error occurred during login");
     } finally {
       setIsLoading(false);
     }
@@ -145,13 +78,21 @@ const Auth: React.FC = () => {
   const onRegister = async (data: z.infer<typeof registerSchema>) => {
     setIsLoading(true);
     try {
-      const response = await mockAuth.register(data.email, data.password);
-      if (response.success) {
+      // Register with Supabase
+      const { data: authData, error } = await supabase.auth.signUp({
+        email: data.email,
+        password: data.password,
+      });
+      
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      
+      if (authData.user) {
         toast.success("Registration successful! You can now login.");
         loginForm.setValue("email", data.email);
         loginForm.setValue("password", data.password);
-      } else if (response.error) { // Use optional chaining to safely access error
-        toast.error(response.error || "Registration failed");
       }
     } catch (error) {
       console.error(error);
@@ -213,12 +154,6 @@ const Auth: React.FC = () => {
                   <Button type="submit" className="w-full" disabled={isLoading}>
                     {isLoading ? "Logging in..." : "Login"}
                   </Button>
-                  
-                  <div className="text-sm text-center mt-4">
-                    <p>Demo accounts:</p>
-                    <p>User: user@example.com / password</p>
-                    <p>Admin: admin@example.com / password</p>
-                  </div>
                 </form>
               </Form>
             </TabsContent>

@@ -5,6 +5,8 @@ import { toast } from "sonner";
 import { UserProfile, UserRole } from "@/lib/types";
 import { getToken, removeToken } from "@/lib/api";
 import { useUserStore } from "@/stores/userStore";
+import { supabase } from "@/integrations/supabase/client";
+import { Session, User } from "@supabase/supabase-js";
 
 interface AuthContextType {
   user: UserProfile | null;
@@ -39,53 +41,63 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setRole, 
     logout: storeLogout 
   } = useUserStore();
+  const [session, setSession] = useState<Session | null>(null);
 
-  // Mock authentication function - in real app would use Supabase
+  // Login with Supabase
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       
-      // Mock credentials for demo purposes only
-      if (email === "user@example.com" && password === "password") {
-        const mockUser = {
-          id: "user-123",
-          email: "user@example.com",
+      if (error) {
+        toast.error(error.message);
+        return false;
+      }
+      
+      if (data && data.session) {
+        // Store the token from Supabase
+        setUserToken(data.session.access_token);
+        
+        // Get user profile from profiles table
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', data.user.id)
+          .single();
+          
+        if (profileError) {
+          console.error("Error fetching profile:", profileError);
+        }
+        
+        // Create user profile with Supabase data
+        const userProfile: UserProfile = {
+          id: data.user.id,
+          email: data.user.email || '',
+          // Add profile data if available
+          ...(profileData && {
+            age: profileData.age,
+            hasAsthma: profileData.has_asthma,
+            isSmoker: profileData.is_smoker,
+            hasHeartIssues: profileData.has_heart_disease,
+            hasDiabetes: false, // Not in the current profiles table
+            hasLungDisease: false, // Not in the current profiles table
+          }),
         };
-        const mockToken = "mock-jwt-token";
-        const mockRole = "authenticated" as UserRole;
         
-        setUserToken(mockToken);
-        setUser(mockUser);
-        setRole(mockRole);
+        // Set user profile
+        setUser(userProfile);
         
-        // Store token in localStorage
-        localStorage.setItem("air_quality_token", mockToken);
+        // Set role (assuming a default role for now)
+        // In a real app, you'd fetch this from a specific roles table or user metadata
+        const userRole: UserRole = email.includes('admin') ? 'admin' : 'authenticated';
+        setRole(userRole);
+        
+        // Set session
+        setSession(data.session);
         
         toast.success("Login successful!");
         return true;
       }
       
-      if (email === "admin@example.com" && password === "password") {
-        const mockUser = {
-          id: "admin-123",
-          email: "admin@example.com",
-        };
-        const mockToken = "mock-admin-jwt-token";
-        const mockRole = "admin" as UserRole;
-        
-        setUserToken(mockToken);
-        setUser(mockUser);
-        setRole(mockRole);
-        
-        // Store token in localStorage
-        localStorage.setItem("air_quality_token", mockToken);
-        
-        toast.success("Admin login successful!");
-        return true;
-      }
-      
-      toast.error("Invalid credentials");
       return false;
     } catch (error) {
       console.error(error);
@@ -94,25 +106,123 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const logout = () => {
-    storeLogout();
-    navigate("/auth");
-    toast.success("Logged out successfully");
+  const logout = async () => {
+    try {
+      // Sign out from Supabase
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error("Error signing out:", error);
+      }
+      
+      // Clear local state
+      storeLogout();
+      setSession(null);
+      navigate("/auth");
+      toast.success("Logged out successfully");
+    } catch (error) {
+      console.error("Error during logout:", error);
+      toast.error("Error during logout");
+    }
   };
 
-  // Check for existing auth on mount
+  // Check for existing session on mount
   useEffect(() => {
-    const token = getToken();
-    if (token && !user) {
-      // In a real app, this would verify the token with the backend
-      // For demo purposes, we'll just set some mock data
-      const mockUser = { id: "user-from-storage", email: "user@example.com" };
-      const mockRole: UserRole = "authenticated";
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, currentSession) => {
+        setSession(currentSession);
+        
+        if (currentSession?.user) {
+          setUserToken(currentSession.access_token);
+          
+          // Fetch user profile data in a non-blocking way
+          setTimeout(async () => {
+            try {
+              const { data: profileData } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('user_id', currentSession.user.id)
+                .maybeSingle();
+              
+              // Create user profile
+              const userProfile: UserProfile = {
+                id: currentSession.user.id,
+                email: currentSession.user.email || '',
+                // Add profile data if available
+                ...(profileData && {
+                  age: profileData.age,
+                  hasAsthma: profileData.has_asthma,
+                  isSmoker: profileData.is_smoker,
+                  hasHeartIssues: profileData.has_heart_disease,
+                  hasDiabetes: false,
+                  hasLungDisease: false,
+                }),
+              };
+              
+              setUser(userProfile);
+              
+              // Set role based on email for now
+              const userRole: UserRole = currentSession.user.email?.includes('admin') 
+                ? 'admin' 
+                : 'authenticated';
+              setRole(userRole);
+            } catch (error) {
+              console.error("Error fetching profile on auth state change:", error);
+            }
+          }, 0);
+        } else {
+          // Clear state on sign out
+          storeLogout();
+        }
+      }
+    );
+
+    // Check for existing session
+    supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
+      setSession(initialSession);
       
-      setUserToken(token);
-      setUser(mockUser);
-      setRole(mockRole);
-    }
+      if (initialSession?.user && !user) {
+        setUserToken(initialSession.access_token);
+        
+        // Fetch user profile data
+        supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', initialSession.user.id)
+          .maybeSingle()
+          .then(({ data: profileData }) => {
+            // Create user profile
+            const userProfile: UserProfile = {
+              id: initialSession.user.id,
+              email: initialSession.user.email || '',
+              // Add profile data if available
+              ...(profileData && {
+                age: profileData.age,
+                hasAsthma: profileData.has_asthma,
+                isSmoker: profileData.is_smoker,
+                hasHeartIssues: profileData.has_heart_disease,
+                hasDiabetes: false,
+                hasLungDisease: false,
+              }),
+            };
+            
+            setUser(userProfile);
+            
+            // Set role based on email for now
+            const userRole: UserRole = initialSession.user.email?.includes('admin') 
+              ? 'admin' 
+              : 'authenticated';
+            setRole(userRole);
+          })
+          .catch((error) => {
+            console.error("Error fetching profile on init:", error);
+          });
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   return (

@@ -8,25 +8,24 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { toast } from "sonner";
-import { userApi } from "@/lib/api";
-import { UserProfile } from "@/lib/types";
+import { useUserStore } from "@/stores/userStore";
+import { supabase } from "@/integrations/supabase/client";
 
 const ProfilePage: React.FC = () => {
   const [loading, setLoading] = useState(false);
-  const [profile, setProfile] = useState<UserProfile>({
-    id: "",
-    email: "",
-    age: 35,
-    hasAsthma: false,
-    isSmoker: false,
-    hasHeartIssues: false,
-    hasDiabetes: false,
-    hasLungDisease: false,
+  const { user, updateProfile } = useUserStore();
+  const [profile, setProfile] = useState({
+    age: user?.age || 35,
+    hasAsthma: user?.hasAsthma || false,
+    isSmoker: user?.isSmoker || false,
+    hasHeartIssues: user?.hasHeartIssues || false,
+    hasDiabetes: user?.hasDiabetes || false,
+    hasLungDisease: user?.hasLungDisease || false,
   });
   const [riskData, setRiskData] = useState<any[]>([]);
   const [showingRiskTimeline, setShowingRiskTimeline] = useState(false);
   
-  // Mock data for risk timeline
+  // Mock data for risk timeline - in a real app, this would come from an endpoint
   useEffect(() => {
     const mockRiskData = [
       { month: "Jan 2024", risk: 25 },
@@ -64,44 +63,65 @@ const ProfilePage: React.FC = () => {
     setRiskData(mockRiskData);
   }, []);
 
-  const fetchProfile = async () => {
-    setLoading(true);
-    try {
-      // In real app: const response = await userApi.getProfile();
-      // if (response.success) {
-      //   setProfile(response.data);
-      // }
+  // Fetch profile from Supabase on component mount
+  useEffect(() => {
+    const fetchProfileData = async () => {
+      if (!user?.id) return;
       
-      // For demo, we'll use mock data
-      setProfile({
-        id: "user-123",
-        email: "user@example.com",
-        age: 35,
-        hasAsthma: false,
-        isSmoker: false,
-        hasHeartIssues: false,
-        hasDiabetes: false,
-        hasLungDisease: false,
-      });
-      
-      toast.success("Profile loaded");
-    } catch (error) {
-      console.error(error);
-      toast.error("Failed to load profile");
-    } finally {
-      setLoading(false);
-    }
-  };
+      setLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
+        
+        if (error) {
+          console.error("Error fetching profile:", error);
+          toast.error("Failed to load profile");
+          return;
+        }
+        
+        if (data) {
+          setProfile({
+            age: data.age || 35,
+            hasAsthma: data.has_asthma || false,
+            isSmoker: data.is_smoker || false,
+            hasHeartIssues: data.has_heart_disease || false,
+            hasDiabetes: false, // Not in current profiles table
+            hasLungDisease: false, // Not in current profiles table
+          });
+          
+          toast.success("Profile loaded");
+        }
+      } catch (error) {
+        console.error(error);
+        toast.error("Failed to load profile");
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchProfileData();
+  }, [user]);
   
   const saveProfile = async () => {
     setLoading(true);
     try {
-      // In real app: const response = await userApi.saveProfile(profile);
+      const success = await updateProfile({
+        age: profile.age,
+        hasAsthma: profile.hasAsthma,
+        isSmoker: profile.isSmoker,
+        hasHeartIssues: profile.hasHeartIssues,
+        hasDiabetes: profile.hasDiabetes,
+        hasLungDisease: profile.hasLungDisease
+      });
       
-      // For demo, just simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      toast.success("Profile saved successfully");
+      if (success) {
+        toast.success("Profile saved successfully");
+      } else {
+        toast.error("Failed to save profile");
+      }
     } catch (error) {
       console.error(error);
       toast.error("Failed to save profile");
@@ -113,10 +133,10 @@ const ProfilePage: React.FC = () => {
   const fetchRiskTimeline = async () => {
     setLoading(true);
     try {
-      // In real app: const response = await userApi.getRiskTimeline();
-      // if (response.success) {
-      //   setRiskData(response.data);
-      // }
+      // In a real app, you would fetch this from Supabase or an API endpoint
+      // const { data, error } = await supabase.functions.invoke('get-risk-timeline', {
+      //   body: { user_id: user?.id }
+      // });
       
       // For demo, we'll just show the mock data
       setShowingRiskTimeline(true);
@@ -129,10 +149,18 @@ const ProfilePage: React.FC = () => {
     }
   };
   
-  // Fetch profile on component mount
-  useEffect(() => {
-    fetchProfile();
-  }, []);
+  const resetProfile = () => {
+    if (!user) return;
+    
+    setProfile({
+      age: user.age || 35,
+      hasAsthma: user.hasAsthma || false,
+      isSmoker: user.isSmoker || false,
+      hasHeartIssues: user.hasHeartIssues || false,
+      hasDiabetes: user.hasDiabetes || false,
+      hasLungDisease: user.hasLungDisease || false,
+    });
+  };
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -172,8 +200,7 @@ const ProfilePage: React.FC = () => {
               <Input
                 id="email"
                 name="email"
-                value={profile.email}
-                onChange={handleInputChange}
+                value={user?.email || ''}
                 disabled
               />
             </div>
@@ -248,7 +275,7 @@ const ProfilePage: React.FC = () => {
           </div>
         </CardContent>
         <CardFooter className="flex justify-between">
-          <Button variant="outline" onClick={fetchProfile} disabled={loading}>
+          <Button variant="outline" onClick={resetProfile} disabled={loading}>
             Reset
           </Button>
           <Button onClick={saveProfile} disabled={loading}>
@@ -257,6 +284,7 @@ const ProfilePage: React.FC = () => {
         </CardFooter>
       </Card>
       
+      {/* Risk Analysis Card */}
       <Card>
         <CardHeader>
           <CardTitle>Risk Analysis</CardTitle>
