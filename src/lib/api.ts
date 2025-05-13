@@ -1,3 +1,4 @@
+
 import { toast } from "sonner";
 import { Pollutant, Region, Dataset, HealthTip } from "@/lib/types";
 
@@ -17,6 +18,15 @@ const TOKEN_KEY = "air_quality_token";
 // Default request timeout (in milliseconds)
 export const DEFAULT_TIMEOUT = 5000;
 
+// Circuit breaker configuration
+const CIRCUIT_BREAKER = {
+  maxFailures: 3,
+  resetTimeout: 30000, // 30 seconds
+  failureCount: 0,
+  tripped: false,
+  lastFailure: 0
+};
+
 // Helper to get the stored token
 export const getToken = (): string | null => {
   return localStorage.getItem(TOKEN_KEY);
@@ -30,6 +40,33 @@ export const setToken = (token: string): void => {
 // Helper to remove the token
 export const removeToken = (): void => {
   localStorage.removeItem(TOKEN_KEY);
+};
+
+// Check if circuit breaker is tripped
+const isCircuitBreakerTripped = () => {
+  // Reset circuit breaker after timeout
+  if (CIRCUIT_BREAKER.tripped && 
+      Date.now() - CIRCUIT_BREAKER.lastFailure > CIRCUIT_BREAKER.resetTimeout) {
+    console.log("Circuit breaker reset after timeout");
+    CIRCUIT_BREAKER.tripped = false;
+    CIRCUIT_BREAKER.failureCount = 0;
+  }
+  return CIRCUIT_BREAKER.tripped;
+};
+
+// Trip the circuit breaker
+const tripCircuitBreaker = () => {
+  CIRCUIT_BREAKER.failureCount++;
+  CIRCUIT_BREAKER.lastFailure = Date.now();
+  
+  if (CIRCUIT_BREAKER.failureCount >= CIRCUIT_BREAKER.maxFailures) {
+    console.warn("Circuit breaker tripped! Too many API failures");
+    CIRCUIT_BREAKER.tripped = true;
+    toast.error("API is currently unavailable. Using offline mode.", {
+      id: "circuit-breaker",
+      duration: 5000,
+    });
+  }
 };
 
 // Function to create a request with timeout
@@ -57,6 +94,12 @@ export const fetchWithAuth = async <T>(
   timeout: number = DEFAULT_TIMEOUT
 ): Promise<ApiResponse<T>> => {
   try {
+    // Check if circuit breaker is tripped
+    if (isCircuitBreakerTripped()) {
+      console.log(`Circuit breaker active, skipping API call to: ${API_URL}${endpoint}`);
+      return { success: false, error: "API is currently unavailable. Using offline mode." };
+    }
+    
     console.log(`API Request to: ${API_URL}${endpoint}`);
     const token = getToken();
 
@@ -79,6 +122,7 @@ export const fetchWithAuth = async <T>(
     const contentType = response.headers.get("content-type");
     if (!contentType || !contentType.includes("application/json")) {
       console.error("Non-JSON response received:", await response.text());
+      tripCircuitBreaker();
       return { 
         success: false, 
         error: "Invalid response format from server" 
@@ -91,6 +135,7 @@ export const fetchWithAuth = async <T>(
       data = await response.json();
     } catch (e) {
       console.error("Error parsing JSON response:", e);
+      tripCircuitBreaker();
       return { 
         success: false, 
         error: "Failed to parse server response" 
@@ -100,22 +145,25 @@ export const fetchWithAuth = async <T>(
     if (!response.ok) {
       // Handle error response
       console.error("API Error Response:", data);
-      toast.error(data.detail || "An error occurred");
+      tripCircuitBreaker();
       return { success: false, error: data.detail || "API Error" };
     }
 
+    // Reset failure count on success
+    CIRCUIT_BREAKER.failureCount = 0;
     return { success: true, data };
   } catch (error) {
+    // Trip circuit breaker on failure
+    tripCircuitBreaker();
+    
     // Specific error handling for timeout (AbortError)
     if (error instanceof Error && error.name === "AbortError") {
       console.error("API Request timeout:", endpoint);
-      toast.error("Request timed out. Please try again.");
-      return { success: false, error: "Request timed out" };
+      return { success: false, error: "Request timed out. Using offline data." };
     }
     
     console.error("API Error:", error);
-    toast.error("Network error. Please try again.");
-    return { success: false, error: "Network error. Please try again." };
+    return { success: false, error: "Network error. Using offline data." };
   }
 };
 
