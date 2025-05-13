@@ -48,7 +48,8 @@ export function PollutantSelector({
           }));
           setPollutantOptions(typedData);
         } else {
-          console.error("Failed to fetch pollutants:", response.success ? "No data" : response.error);
+          // Safely handle the error without directly accessing the error property
+          console.error("Failed to fetch pollutants:", response.success ? "No data" : "API error");
           toast.error("Failed to load pollutant options");
         }
       } catch (error) {
