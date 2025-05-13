@@ -35,6 +35,12 @@ export function PollutantSelector({
     setOpen(false);
   }, [onValueChange]);
 
+  // Get pollutant label from value
+  const selectedPollutantLabel = React.useMemo(() => {
+    if (!value) return "";
+    return POLLUTANT_OPTIONS.find(pollutant => pollutant.value === value)?.label || "";
+  }, [value]);
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -44,9 +50,7 @@ export function PollutantSelector({
           aria-expanded={open}
           className="w-full justify-between"
         >
-          {value
-            ? POLLUTANT_OPTIONS.find((pollutant) => pollutant.value === value)?.label
-            : "Select pollutant..."}
+          {selectedPollutantLabel || "Select pollutant..."}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>

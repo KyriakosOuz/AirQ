@@ -41,7 +41,17 @@ const CommandInput = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof CommandPrimitive.Input> & {
     onValueChange?: (value: string) => void
   }
->(({ className, value, onValueChange, ...props }, ref) => {
+>(({ className, onValueChange, ...props }, ref) => {
+  // Handle value changes through a controlled input pattern
+  const handleValueChange = React.useCallback(
+    (value: string) => {
+      if (onValueChange) {
+        onValueChange(value);
+      }
+    },
+    [onValueChange]
+  );
+
   return (
     <div className="flex items-center border-b px-3" cmdk-input-wrapper="">
       <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
@@ -51,8 +61,7 @@ const CommandInput = React.forwardRef<
           "flex h-11 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50",
           className
         )}
-        value={value || ""}
-        onValueChange={onValueChange}
+        onValueChange={handleValueChange}
         {...props}
       />
     </div>

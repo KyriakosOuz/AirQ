@@ -42,6 +42,12 @@ export function RegionSelector({ value, onValueChange }: RegionSelectorProps) {
     setOpen(false);
   }, [onValueChange]);
 
+  // Get region label from value
+  const selectedRegionLabel = React.useMemo(() => {
+    if (!value) return "";
+    return regions.find(region => region.value === value)?.label || "";
+  }, [value]);
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -51,9 +57,7 @@ export function RegionSelector({ value, onValueChange }: RegionSelectorProps) {
           aria-expanded={open}
           className="w-full justify-between"
         >
-          {value
-            ? regions.find((region) => region.value === value)?.label
-            : "Select region..."}
+          {selectedRegionLabel || "Select region..."}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
