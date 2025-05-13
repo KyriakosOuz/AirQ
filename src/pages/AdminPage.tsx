@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -206,14 +205,6 @@ const AdminPage: React.FC = () => {
   
   // Memoize helpers to prevent recreating on each render
   const formatters = useMemo(() => ({
-    // Format file size helper
-    formatFileSize: (bytes?: number): string => {
-      if (!bytes) return 'Unknown';
-      if (bytes < 1024) return bytes + ' B';
-      else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
-      else return (bytes / 1048576).toFixed(1) + ' MB';
-    },
-    
     // Format date helper
     formatDate: (dateString?: string): string => {
       if (!dateString) return 'Unknown';
@@ -340,7 +331,7 @@ const AdminPage: React.FC = () => {
               </CardHeader>
               <CardContent>
                 {datasetsLoading && datasets.length === 0 ? (
-                  <TableSkeleton columns={6} rows={3} />
+                  <TableSkeleton columns={5} rows={3} />
                 ) : datasets.length > 0 ? (
                   <div className="overflow-x-auto">
                     <Table>
@@ -349,7 +340,6 @@ const AdminPage: React.FC = () => {
                           <TableHead>Name</TableHead>
                           <TableHead>Region</TableHead>
                           <TableHead>Year</TableHead>
-                          <TableHead>Size</TableHead>
                           <TableHead>Uploaded</TableHead>
                           <TableHead className="w-[100px]">Actions</TableHead>
                         </TableRow>
@@ -360,7 +350,6 @@ const AdminPage: React.FC = () => {
                             <TableCell className="font-medium">{formatters.getDatasetName(dataset)}</TableCell>
                             <TableCell>{formatters.getRegionLabel(dataset.region)}</TableCell>
                             <TableCell>{dataset.year}</TableCell>
-                            <TableCell>{formatters.formatFileSize(dataset.size)}</TableCell>
                             <TableCell>{formatters.formatDate(dataset.uploadedAt)}</TableCell>
                             <TableCell>
                               <div className="flex space-x-2">
