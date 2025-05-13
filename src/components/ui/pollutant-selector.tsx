@@ -1,0 +1,75 @@
+
+import * as React from "react";
+import { Check, ChevronsUpDown } from "lucide-react";
+
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { POLLUTANT_OPTIONS, Pollutant } from "@/lib/types";
+
+interface PollutantSelectorProps {
+  value: Pollutant | "";
+  onValueChange: (value: Pollutant) => void;
+}
+
+export function PollutantSelector({
+  value,
+  onValueChange,
+}: PollutantSelectorProps) {
+  const [open, setOpen] = React.useState(false);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="w-full justify-between"
+        >
+          {value
+            ? POLLUTANT_OPTIONS.find((pollutant) => pollutant.value === value)?.label
+            : "Select pollutant..."}
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-full p-0">
+        <Command>
+          <CommandInput placeholder="Search pollutants..." />
+          <CommandEmpty>No pollutant found.</CommandEmpty>
+          <CommandGroup>
+            {POLLUTANT_OPTIONS.map((pollutant) => (
+              <CommandItem
+                key={pollutant.value}
+                value={pollutant.value}
+                onSelect={(currentValue) => {
+                  onValueChange(currentValue as Pollutant);
+                  setOpen(false);
+                }}
+              >
+                <Check
+                  className={cn(
+                    "mr-2 h-4 w-4",
+                    value === pollutant.value ? "opacity-100" : "opacity-0"
+                  )}
+                />
+                {pollutant.label}
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}

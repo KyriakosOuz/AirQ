@@ -1,0 +1,272 @@
+
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { z } from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { toast } from "sonner";
+import { useUserStore } from "@/stores/userStore";
+import { setToken } from "@/lib/api";
+
+// Mock authentication - in real app would use Supabase
+const mockAuth = {
+  login: async (email: string, password: string) => {
+    // Simulate API call
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    
+    // Mock credentials for demo purposes only
+    if (email === "user@example.com" && password === "password") {
+      return {
+        success: true,
+        data: {
+          token: "mock-jwt-token",
+          user: {
+            id: "user-123",
+            email: "user@example.com",
+          },
+          role: "authenticated"
+        }
+      };
+    }
+    
+    if (email === "admin@example.com" && password === "password") {
+      return {
+        success: true,
+        data: {
+          token: "mock-admin-jwt-token",
+          user: {
+            id: "admin-123",
+            email: "admin@example.com",
+          },
+          role: "admin"
+        }
+      };
+    }
+    
+    return { success: false, error: "Invalid credentials" };
+  },
+  register: async (email: string, password: string) => {
+    // Simulate API call
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    return { success: true, data: { token: "mock-jwt-token", user: { id: "new-user", email } } };
+  },
+};
+
+const loginSchema = z.object({
+  email: z.string().email({ message: "Invalid email address" }),
+  password: z.string().min(6, { message: "Password must be at least 6 characters" }),
+});
+
+const registerSchema = loginSchema.extend({
+  confirmPassword: z.string(),
+}).refine(data => data.password === data.confirmPassword, {
+  message: "Passwords do not match",
+  path: ["confirmPassword"],
+});
+
+const Auth: React.FC = () => {
+  const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(false);
+  const { setUser, setToken: setUserToken, setRole } = useUserStore();
+  
+  // Login form
+  const loginForm = useForm<z.infer<typeof loginSchema>>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
+
+  // Register form
+  const registerForm = useForm<z.infer<typeof registerSchema>>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+      confirmPassword: "",
+    },
+  });
+
+  const onLogin = async (data: z.infer<typeof loginSchema>) => {
+    setIsLoading(true);
+    try {
+      const response = await mockAuth.login(data.email, data.password);
+      if (response.success) {
+        setToken(response.data.token);
+        setUserToken(response.data.token);
+        setUser(response.data.user);
+        setRole(response.data.role);
+        toast.success("Login successful!");
+        navigate("/");
+      } else {
+        toast.error(response.error || "Login failed");
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("An error occurred during login");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const onRegister = async (data: z.infer<typeof registerSchema>) => {
+    setIsLoading(true);
+    try {
+      const response = await mockAuth.register(data.email, data.password);
+      if (response.success) {
+        toast.success("Registration successful! You can now login.");
+        loginForm.setValue("email", data.email);
+        loginForm.setValue("password", data.password);
+      } else {
+        toast.error(response.error || "Registration failed");
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("An error occurred during registration");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex items-center justify-center min-h-screen bg-muted/40">
+      <Card className="w-full max-w-md">
+        <CardHeader className="space-y-1">
+          <div className="flex items-center justify-center mb-2">
+            <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center">
+              <span className="text-white font-bold text-lg">AQ</span>
+            </div>
+          </div>
+          <CardTitle className="text-2xl font-bold text-center">ThessAir</CardTitle>
+          <CardDescription className="text-center">
+            Air Quality Monitoring for Thessaloniki
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Tabs defaultValue="login">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="login">Login</TabsTrigger>
+              <TabsTrigger value="register">Register</TabsTrigger>
+            </TabsList>
+            <TabsContent value="login">
+              <Form {...loginForm}>
+                <form onSubmit={loginForm.handleSubmit(onLogin)} className="space-y-4">
+                  <FormField
+                    control={loginForm.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email</FormLabel>
+                        <FormControl>
+                          <Input placeholder="you@example.com" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={loginForm.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Password</FormLabel>
+                        <FormControl>
+                          <Input type="password" placeholder="••••••" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <Button type="submit" className="w-full" disabled={isLoading}>
+                    {isLoading ? "Logging in..." : "Login"}
+                  </Button>
+                  
+                  <div className="text-sm text-center mt-4">
+                    <p>Demo accounts:</p>
+                    <p>User: user@example.com / password</p>
+                    <p>Admin: admin@example.com / password</p>
+                  </div>
+                </form>
+              </Form>
+            </TabsContent>
+            <TabsContent value="register">
+              <Form {...registerForm}>
+                <form onSubmit={registerForm.handleSubmit(onRegister)} className="space-y-4">
+                  <FormField
+                    control={registerForm.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email</FormLabel>
+                        <FormControl>
+                          <Input placeholder="you@example.com" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={registerForm.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Password</FormLabel>
+                        <FormControl>
+                          <Input type="password" placeholder="••••••" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={registerForm.control}
+                    name="confirmPassword"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Confirm Password</FormLabel>
+                        <FormControl>
+                          <Input type="password" placeholder="••••••" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <Button type="submit" className="w-full" disabled={isLoading}>
+                    {isLoading ? "Registering..." : "Register"}
+                  </Button>
+                </form>
+              </Form>
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+        <CardFooter className="flex justify-center">
+          <p className="text-sm text-muted-foreground">
+            Monitoring air quality for a healthier Thessaloniki
+          </p>
+        </CardFooter>
+      </Card>
+    </div>
+  );
+};
+
+export default Auth;

@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -61,7 +62,14 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
-				}
+				},
+				// Environmental theme colors
+				"aqi-good": "#8CD663",
+				"aqi-moderate": "#FACF39",
+				"aqi-unhealthy-sensitive": "#F99049",
+				"aqi-unhealthy": "#F65E5F",
+				"aqi-very-unhealthy": "#A97ABC",
+				"aqi-hazardous": "#A87383",
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
