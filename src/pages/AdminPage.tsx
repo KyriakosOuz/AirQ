@@ -145,10 +145,20 @@ const AdminPage: React.FC = () => {
       const response = await datasetApi.preview(datasetId);
       
       if (response.success && response.data) {
-        setDataPreview(response.data);
+        // Add validation to ensure data has the expected structure
+        if (response.data.columns && response.data.rows && 
+            Array.isArray(response.data.columns) && Array.isArray(response.data.rows)) {
+          setDataPreview(response.data);
+        } else {
+          console.error("Invalid preview data format:", response.data);
+          toast.error("Preview data has invalid format");
+          // Keep previous preview on error or set to null
+          setDataPreview(null);
+        }
       } else {
         toast.error(response.error || "Failed to preview dataset");
-        // Keep previous preview on error
+        // Keep previous preview on error or set to null
+        setDataPreview(null);
       }
     } finally {
       setPreviewLoading(false);
@@ -386,7 +396,8 @@ const AdminPage: React.FC = () => {
                 <CardContent>
                   {previewLoading ? (
                     <TableSkeleton columns={5} rows={5} />
-                  ) : dataPreview ? (
+                  ) : dataPreview && dataPreview.columns && dataPreview.rows && 
+                      Array.isArray(dataPreview.columns) && Array.isArray(dataPreview.rows) ? (
                     <div className="overflow-x-auto">
                       <Table>
                         <TableHeader>
@@ -412,7 +423,7 @@ const AdminPage: React.FC = () => {
                       <p>No preview data available</p>
                     </div>
                   )}
-                  {dataPreview && (
+                  {dataPreview && dataPreview.rows && Array.isArray(dataPreview.rows) && (
                     <p className="mt-2 text-right text-xs text-muted-foreground">Showing first {dataPreview.rows.length} rows</p>
                   )}
                 </CardContent>
