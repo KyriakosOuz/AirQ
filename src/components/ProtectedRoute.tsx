@@ -15,6 +15,16 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   const location = useLocation();
   const { isAuthenticated, isAdmin, isLoading } = useAuth();
 
+  // TEMPORARY: Bypass authentication checks
+  console.log("Auth checks temporarily disabled. Original auth state:", { 
+    isAuthenticated, isAdmin, isLoading, path: location.pathname 
+  });
+  
+  // Return children directly without authentication checks
+  return <>{children}</>;
+  
+  // COMMENTED OUT AUTHENTICATION LOGIC:
+  /*
   // Show loading indicator while auth state is being determined
   if (isLoading) {
     return (
@@ -38,7 +48,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   // User is authenticated (and has admin access if required)
-  return <>{children}</>;
+  */
+  
 };
 
 export default ProtectedRoute;

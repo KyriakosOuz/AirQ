@@ -32,24 +32,14 @@ const App = () => (
             {/* Auth route - accessible when not logged in */}
             <Route path="/auth" element={<Auth />} />
             
-            {/* Protected routes - only accessible when logged in */}
-            <Route element={
-              <ProtectedRoute>
-                <AppLayout />
-              </ProtectedRoute>
-            }>
+            {/* Protected routes - temporarily not requiring authentication */}
+            <Route element={<AppLayout />}>
               <Route path="/" element={<Dashboard />} />
               <Route path="/insights" element={<Insights />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/forecasts" element={<ForecastPage />} />
               <Route path="/alerts" element={<AlertsPage />} />
-              
-              {/* Admin route - requires admin role */}
-              <Route path="/admin" element={
-                <ProtectedRoute requireAdmin={true}>
-                  <AdminPage />
-                </ProtectedRoute>
-              } />
+              <Route path="/admin" element={<AdminPage />} />
             </Route>
             
             {/* Catch-all route */}
