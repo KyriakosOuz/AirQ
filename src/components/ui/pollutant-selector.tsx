@@ -19,6 +19,7 @@ import {
 import { Pollutant } from "@/lib/types";
 import { metadataApi } from "@/lib/api";
 import { toast } from "sonner";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 interface PollutantSelectorProps {
   value: Pollutant | "";
@@ -87,65 +88,78 @@ export function PollutantSelector({
     return pollutantOptions.find(pollutant => pollutant.value === value)?.label || "";
   }, [value, pollutantOptions]);
 
+  // Filter pollutants based on search input with safety checks
+  const filteredPollutantOptions = React.useMemo(() => {
+    if (!Array.isArray(pollutantOptions)) return [];
+    if (!searchValue) return pollutantOptions;
+    
+    return pollutantOptions.filter(pollutant => 
+      pollutant.label.toLowerCase().includes(searchValue.toLowerCase())
+    );
+  }, [pollutantOptions, searchValue]);
+
   // Filter function for the Command component - returns a number for ranking
-  // 1 = match, 0 = no match (could use different numbers for better/worse matches)
   const filterFn = React.useCallback((item: string, search: string) => {
     if (!search) return 1;
+    if (!Array.isArray(pollutantOptions)) return 0;
+    
     const pollutant = pollutantOptions.find(p => p.value === item);
     if (!pollutant) return 0;
     return pollutant.label.toLowerCase().includes(search.toLowerCase()) ? 1 : 0;
   }, [pollutantOptions]);
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          className="w-full justify-between"
-          disabled={isLoading || pollutantOptions.length === 0}
-        >
-          {isLoading ? "Loading..." : (selectedPollutantLabel || "Select pollutant...")}
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-full p-0">
-        <Command value={searchValue} filter={filterFn}>
-          <CommandInput 
-            placeholder="Search pollutants..."
-            value={searchValue}
-            onValueChange={setSearchValue}
-          />
-          {isLoading ? (
-            <div className="py-6 text-center text-sm text-muted-foreground">
-              Loading pollutant options...
-            </div>
-          ) : (
-            <>
-              <CommandEmpty>No pollutant found.</CommandEmpty>
-              <CommandGroup>
-                {pollutantOptions.map((pollutant) => (
-                  <CommandItem
-                    key={pollutant.value}
-                    value={pollutant.value}
-                    onSelect={handleSelect}
-                    className="cursor-pointer"
-                  >
-                    <Check
-                      className={cn(
-                        "mr-2 h-4 w-4",
-                        value === pollutant.value ? "opacity-100" : "opacity-0"
-                      )}
-                    />
-                    {pollutant.label}
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            </>
-          )}
-        </Command>
-      </PopoverContent>
-    </Popover>
+    <ErrorBoundary>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            className="w-full justify-between"
+            disabled={isLoading || pollutantOptions.length === 0}
+          >
+            {isLoading ? "Loading..." : (selectedPollutantLabel || "Select pollutant...")}
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-full p-0">
+          <Command value={searchValue} filter={filterFn}>
+            <CommandInput 
+              placeholder="Search pollutants..."
+              value={searchValue}
+              onValueChange={setSearchValue}
+            />
+            {isLoading ? (
+              <div className="py-6 text-center text-sm text-muted-foreground">
+                Loading pollutant options...
+              </div>
+            ) : (
+              <>
+                <CommandEmpty>No pollutant found.</CommandEmpty>
+                <CommandGroup>
+                  {filteredPollutantOptions.map((pollutant) => (
+                    <CommandItem
+                      key={pollutant.value}
+                      value={pollutant.value}
+                      onSelect={() => handleSelect(pollutant.value)}
+                      className="cursor-pointer"
+                    >
+                      <Check
+                        className={cn(
+                          "mr-2 h-4 w-4",
+                          value === pollutant.value ? "opacity-100" : "opacity-0"
+                        )}
+                      />
+                      {pollutant.label}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </>
+            )}
+          </Command>
+        </PopoverContent>
+      </Popover>
+    </ErrorBoundary>
   );
 }
