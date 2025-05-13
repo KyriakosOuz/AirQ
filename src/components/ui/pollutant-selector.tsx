@@ -10,7 +10,6 @@ import {
   CommandGroup,
   CommandInput,
   CommandItem,
-  CommandLoading
 } from "@/components/ui/command";
 import {
   Popover,
@@ -109,7 +108,9 @@ export function PollutantSelector({
             onValueChange={setSearchValue}
           />
           {isLoading ? (
-            <CommandLoading>Loading pollutant options...</CommandLoading>
+            <div className="py-6 text-center text-sm text-muted-foreground">
+              Loading pollutant options...
+            </div>
           ) : (
             <>
               <CommandEmpty>No pollutant found.</CommandEmpty>
