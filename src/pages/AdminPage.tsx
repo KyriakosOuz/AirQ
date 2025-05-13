@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -34,7 +33,7 @@ const AdminPage: React.FC = () => {
   const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [datasetsLoading, setDatasetsLoading] = useState(false);
   const [selectedDataset, setSelectedDataset] = useState<string | null>(null);
-  // Updated the type to match the expected API response structure
+  // Updated to define the type correctly with 'preview' property
   const [dataPreview, setDataPreview] = useState<{columns: string[], preview: Record<string, any>[]} | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   
@@ -147,19 +146,17 @@ const AdminPage: React.FC = () => {
       const response = await datasetApi.preview(datasetId);
       
       if (response.success && response.data) {
-        // Update here: expecting columns and preview properties instead of columns and rows
+        // Now we can safely access preview property since we transformed it in the API
         if (response.data.columns && response.data.preview && 
             Array.isArray(response.data.columns) && Array.isArray(response.data.preview)) {
           setDataPreview(response.data);
         } else {
           console.error("Invalid preview data format:", response.data);
           toast.error("Preview data has invalid format");
-          // Keep previous preview on error or set to null
           setDataPreview(null);
         }
       } else {
         toast.error(response.error || "Failed to preview dataset");
-        // Keep previous preview on error or set to null
         setDataPreview(null);
       }
     } finally {

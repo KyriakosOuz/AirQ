@@ -261,10 +261,23 @@ export const datasetApi = {
     return fetchWithAuth<Dataset[]>("/datasets/list/");
   },
   preview: async (datasetId: string) => {
-    return fetchWithAuth<{
+    // Make the request to the API
+    const response = await fetchWithAuth<{
       columns: string[],
       rows: Record<string, any>[]
     }>(`/datasets/preview/${datasetId}`);
+
+    // If response is successful, transform the data to match our expected format
+    if (response.success && response.data) {
+      // Transform the 'rows' property to 'preview' to match the expected format in AdminPage
+      const transformedData = {
+        columns: response.data.columns,
+        preview: response.data.rows
+      };
+      return { success: true, data: transformedData };
+    }
+    
+    return response;
   },
   delete: async (datasetId: string) => {
     return fetchWithAuth(`/datasets/${datasetId}`, {
