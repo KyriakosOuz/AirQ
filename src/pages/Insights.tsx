@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,72 +24,51 @@ const Insights: React.FC = () => {
   const years = Array.from({ length: 9 }, (_, i) => 2015 + i);
 
   useEffect(() => {
-    // Initialize with mock data
-    const mockTrendData = [
-      { year: 2015, value: 120 },
-      { year: 2016, value: 118 },
-      { year: 2017, value: 115 },
-      { year: 2018, value: 112 },
-      { year: 2019, value: 109 },
-      { year: 2020, value: 80 }, // COVID lockdowns
-      { year: 2021, value: 95 },
-      { year: 2022, value: 100 },
-      { year: 2023, value: 105 },
-    ];
-    
-    const mockSeasonalData = [
-      { month: "Jan", value: 115 },
-      { month: "Feb", value: 110 },
-      { month: "Mar", value: 105 },
-      { month: "Apr", value: 95 },
-      { month: "May", value: 85 },
-      { month: "Jun", value: 80 },
-      { month: "Jul", value: 75 },
-      { month: "Aug", value: 70 },
-      { month: "Sep", value: 85 },
-      { month: "Oct", value: 95 },
-      { month: "Nov", value: 105 },
-      { month: "Dec", value: 115 },
-    ];
-    
-    const mockTopPollutedData = [
-      { name: "Thessaloniki Center", value: 105 },
-      { name: "Ampelokipoi-Menemeni", value: 95 },
-      { name: "Neapoli-Sykies", value: 90 },
-      { name: "Kalamaria", value: 75 },
-      { name: "Pavlos Melas", value: 70 },
-      { name: "Pylaia-Chortiatis", value: 60 },
-      { name: "Panorama", value: 55 },
-    ];
-    
-    setTrendData(mockTrendData);
-    setSeasonalData(mockSeasonalData);
-    setTopPollutedData(mockTopPollutedData);
+    // Initial data loading
+    fetchInsights();
   }, []);
 
   const fetchInsights = async () => {
     setLoading(true);
     try {
-      // These would be actual API calls in the complete app
-      // const trendResponse = await insightApi.getTrend({ pollutant, region });
-      // const seasonalResponse = await insightApi.getSeasonality({ pollutant, region });
-      // const topPollutedResponse = await insightApi.getTopPolluted({ pollutant, year });
+      // Fetch trend data
+      const trendResponse = await insightApi.getTrend({ 
+        pollutant, 
+        region 
+      });
       
-      // For demo, we'll use mock data with slight variations
-      setTrendData(prev => prev.map(item => ({
-        ...item,
-        value: item.value * (0.9 + Math.random() * 0.2)
-      })));
+      if (trendResponse.success && trendResponse.data) {
+        setTrendData(trendResponse.data);
+      } else {
+        console.error("Failed to fetch trend data:", trendResponse.error);
+        toast.error("Failed to load trend data");
+      }
       
-      setSeasonalData(prev => prev.map(item => ({
-        ...item,
-        value: item.value * (0.9 + Math.random() * 0.2)
-      })));
+      // Fetch seasonal data
+      const seasonalResponse = await insightApi.getSeasonality({ 
+        pollutant, 
+        region 
+      });
       
-      setTopPollutedData(prev => prev.map(item => ({
-        ...item,
-        value: item.value * (0.9 + Math.random() * 0.2)
-      })));
+      if (seasonalResponse.success && seasonalResponse.data) {
+        setSeasonalData(seasonalResponse.data);
+      } else {
+        console.error("Failed to fetch seasonality data:", seasonalResponse.error);
+        toast.error("Failed to load seasonal data");
+      }
+      
+      // Fetch top polluted data
+      const topPollutedResponse = await insightApi.getTopPolluted({
+        pollutant,
+        year
+      });
+      
+      if (topPollutedResponse.success && topPollutedResponse.data) {
+        setTopPollutedData(topPollutedResponse.data);
+      } else {
+        console.error("Failed to fetch top polluted data:", topPollutedResponse.error);
+        toast.error("Failed to load top polluted data");
+      }
       
       toast.success(`Insights updated for ${pollutant}`);
     } catch (error) {

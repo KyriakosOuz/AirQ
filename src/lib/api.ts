@@ -1,4 +1,3 @@
-
 import { toast } from "sonner";
 
 // Define the base URL for API requests
@@ -66,8 +65,6 @@ export const fetchWithAuth = async <T>(
     return { success: false, error: "Network error. Please try again." };
   }
 };
-
-// API functions for each endpoint
 
 // Auth endpoints - will use Supabase directly in their respective components
 export const authApi = {
@@ -164,15 +161,15 @@ export const healthApi = {
 export const insightApi = {
   getTrend: async (params: { pollutant: string; region: string }) => {
     const queryParams = new URLSearchParams(params as any).toString();
-    return fetchWithAuth(`/insights/trend/?${queryParams}`);
+    return fetchWithAuth<Array<{ year: number; value: number }>>(`/insights/trend/?${queryParams}`);
   },
   getTopPolluted: async (params: { pollutant: string; year: number }) => {
     const queryParams = new URLSearchParams(params as any).toString();
-    return fetchWithAuth(`/insights/top-polluted/?${queryParams}`);
+    return fetchWithAuth<Array<{ name: string; value: number }>>(`/insights/top-polluted/?${queryParams}`);
   },
   getSeasonality: async (params: { pollutant: string; region: string }) => {
     const queryParams = new URLSearchParams(params as any).toString();
-    return fetchWithAuth(`/insights/seasonality/?${queryParams}`);
+    return fetchWithAuth<Array<{ month: string; value: number }>>(`/insights/seasonality/?${queryParams}`);
   },
   getSummary: async (params: { pollutant: string; region: string; year: number }) => {
     const queryParams = new URLSearchParams(params as any).toString();

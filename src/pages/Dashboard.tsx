@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,74 +24,81 @@ const Dashboard: React.FC = () => {
   const [forecastData, setForecastData] = useState<any[]>([]);
   const [currentAqi, setCurrentAqi] = useState<AqiLevel>("moderate");
   
-  // Mock data for initial render
-  useEffect(() => {
-    // Initialize with demo data
-    const mockTrendData = [
-      { year: 2015, value: 120 },
-      { year: 2016, value: 118 },
-      { year: 2017, value: 115 },
-      { year: 2018, value: 112 },
-      { year: 2019, value: 109 },
-      { year: 2020, value: 80 }, // COVID lockdowns
-      { year: 2021, value: 95 },
-      { year: 2022, value: 100 },
-      { year: 2023, value: 105 },
-    ];
-    
-    const mockSeasonalData = [
-      { name: "Jan", value: 115 },
-      { name: "Feb", value: 110 },
-      { name: "Mar", value: 105 },
-      { name: "Apr", value: 95 },
-      { name: "May", value: 85 },
-      { name: "Jun", value: 80 },
-      { name: "Jul", value: 75 },
-      { name: "Aug", value: 70 },
-      { name: "Sep", value: 85 },
-      { name: "Oct", value: 95 },
-      { name: "Nov", value: 105 },
-      { name: "Dec", value: 115 },
-    ];
-    
-    const mockForecastData = [
-      { month: "Jan 2024", value: 110, lower: 100, upper: 120 },
-      { month: "Feb 2024", value: 108, lower: 98, upper: 118 },
-      { month: "Mar 2024", value: 105, lower: 95, upper: 115 },
-      { month: "Apr 2024", value: 102, lower: 92, upper: 112 },
-      { month: "May 2024", value: 98, lower: 88, upper: 108 },
-      { month: "Jun 2024", value: 95, lower: 85, upper: 105 },
-    ];
-    
-    setTrendData(mockTrendData);
-    setSeasonalData(mockSeasonalData);
-    setForecastData(mockForecastData);
-    
-    // Mock health tip
-    setHealthTip({
-      tip: "Today's nitrogen dioxide levels are moderate. If you have respiratory conditions, consider limiting extended outdoor activity.",
-      riskLevel: "moderate",
-      personalized: true
-    });
-    
-    // Set current AQI level
-    setCurrentAqi("moderate");
-  }, []);
-  
   // Update app state when region or pollutant changes
   useEffect(() => {
     setSelectedRegion(region);
     setSelectedPollutant(pollutant);
   }, [region, pollutant, setSelectedRegion, setSelectedPollutant]);
   
-  // In a real app, this would fetch data from the API
+  // Fetch real trend and seasonality data from API
+  useEffect(() => {
+    const fetchInsightData = async () => {
+      setLoading(true);
+      try {
+        // Fetch trend data
+        const trendResponse = await insightApi.getTrend({ 
+          pollutant, 
+          region 
+        });
+        
+        if (trendResponse.success && trendResponse.data) {
+          setTrendData(trendResponse.data);
+        } else {
+          console.error("Failed to fetch trend data:", trendResponse.error);
+          toast.error("Failed to load trend data");
+        }
+        
+        // Fetch seasonal data
+        const seasonalResponse = await insightApi.getSeasonality({ 
+          pollutant, 
+          region 
+        });
+        
+        if (seasonalResponse.success && seasonalResponse.data) {
+          setSeasonalData(seasonalResponse.data);
+        } else {
+          console.error("Failed to fetch seasonality data:", seasonalResponse.error);
+          toast.error("Failed to load seasonal data");
+        }
+
+        // Mock forecast data for now - this would be replaced with real API call in the future
+        const mockForecastData = [
+          { month: "Jan 2024", value: 110, lower: 100, upper: 120 },
+          { month: "Feb 2024", value: 108, lower: 98, upper: 118 },
+          { month: "Mar 2024", value: 105, lower: 95, upper: 115 },
+          { month: "Apr 2024", value: 102, lower: 92, upper: 112 },
+          { month: "May 2024", value: 98, lower: 88, upper: 108 },
+          { month: "Jun 2024", value: 95, lower: 85, upper: 105 },
+        ];
+        setForecastData(mockForecastData);
+        
+        toast.success(`Data updated for ${pollutant} in ${region}`);
+      } catch (error) {
+        console.error("Error fetching insight data:", error);
+        toast.error("Failed to load dashboard data");
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchInsightData();
+  }, [region, pollutant]); // Refetch when region or pollutant changes
+  
+  // This function now just refreshes the data
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
-      // These would be actual API calls in the complete app
-      // const trendResponse = await insightApi.getTrend({ pollutant, region });
-      // const seasonalResponse = await insightApi.getSeasonality({ pollutant, region });
-      // const forecastResponse = await predictionApi.forecast({ pollutant, region });
+      // Re-fetch trend data
+      const trendResponse = await insightApi.getTrend({ pollutant, region });
+      if (trendResponse.success && trendResponse.data) {
+        setTrendData(trendResponse.data);
+      }
+      
+      // Re-fetch seasonal data
+      const seasonalResponse = await insightApi.getSeasonality({ pollutant, region });
+      if (seasonalResponse.success && seasonalResponse.data) {
+        setSeasonalData(seasonalResponse.data);
+      }
       
       toast.success(`Data updated for ${pollutant} in ${region}`);
     } catch (error) {
@@ -136,12 +142,10 @@ const Dashboard: React.FC = () => {
   
   const handleRegionChange = (value: string) => {
     setRegion(value);
-    fetchDashboardData();
   };
   
   const handlePollutantChange = (value: Pollutant) => {
     setPollutant(value);
-    fetchDashboardData();
   };
   
   return (
