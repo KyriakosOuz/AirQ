@@ -90,6 +90,8 @@ export type Database = {
           created_at: string | null
           dataset_id: string | null
           file_path: string
+          forecast_periods: number | null
+          frequency: string | null
           id: string
           model_type: string
           pollutant: string | null
@@ -100,6 +102,8 @@ export type Database = {
           created_at?: string | null
           dataset_id?: string | null
           file_path: string
+          forecast_periods?: number | null
+          frequency?: string | null
           id?: string
           model_type: string
           pollutant?: string | null
@@ -110,6 +114,8 @@ export type Database = {
           created_at?: string | null
           dataset_id?: string | null
           file_path?: string
+          forecast_periods?: number | null
+          frequency?: string | null
           id?: string
           model_type?: string
           pollutant?: string | null

@@ -3,7 +3,7 @@ import React from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle } from "lucide-react";
+import { CheckCircle, AlertCircle, Clock } from "lucide-react";
 
 // Interface for a training record
 export interface TrainingRecord {
@@ -71,79 +71,68 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
     return `Next ${periods} ${unit}`;
   };
 
+  // Helper function for status icon
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case "complete":
+        return <CheckCircle size={14} className="mr-1" />;
+      case "in-progress":
+        return <Clock size={14} className="mr-1" />;
+      case "failed":
+        return <AlertCircle size={14} className="mr-1" />;
+      default:
+        return null;
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Training Information</CardTitle>
-        <CardDescription>Details about the model training process</CardDescription>
+        <CardTitle>Recent Model Trainings</CardTitle>
+        <CardDescription>Recently trained forecasting models</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="rounded-md bg-muted p-4 space-y-3">
-          <div>
-            <h4 className="text-sm font-medium">Model Type</h4>
-            <p className="text-sm text-muted-foreground">
-              Prophet (Facebook) time series forecasting model
-            </p>
-          </div>
-          <div>
-            <h4 className="text-sm font-medium">Training Process</h4>
-            <p className="text-sm text-muted-foreground">
-              The model will be trained on all available data for the selected region and pollutant.
-              Training typically takes 1-2 minutes depending on data volume.
-            </p>
-          </div>
-          <div>
-            <h4 className="text-sm font-medium">Requirements</h4>
-            <p className="text-sm text-muted-foreground">
-              At least 2 years of monthly data is recommended for accurate forecasts.
-            </p>
-          </div>
-        </div>
-
-        <div>
-          <h4 className="text-sm font-medium mb-2">Recent Model Trainings</h4>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Region</TableHead>
-                  <TableHead>Pollutant</TableHead>
-                  <TableHead>Frequency</TableHead>
-                  <TableHead>Forecast Range</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {recentTrainings.length > 0 ? (
-                  recentTrainings.map((training, index) => (
-                    <TableRow key={index}>
-                      <TableCell>{formatters.getRegionLabel(training.region)}</TableCell>
-                      <TableCell>{formatters.getPollutantDisplay(training.pollutant)}</TableCell>
-                      <TableCell>{getFrequencyLabel(training.frequency)}</TableCell>
-                      <TableCell>{getForecastRange(training.frequency, training.periods)}</TableCell>
-                      <TableCell>{formatters.formatDate(training.date)}</TableCell>
-                      <TableCell>
-                        <Badge 
-                          variant="outline" 
-                          className={getBadgeStyle(training.status)}
-                        >
-                          {training.status === "complete" && <CheckCircle size={14} className="mr-1" />}
-                          {training.status.charAt(0).toUpperCase() + training.status.slice(1)}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground py-6">
-                      No recent model trainings
+      <CardContent>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Region</TableHead>
+                <TableHead>Pollutant</TableHead>
+                <TableHead>Frequency</TableHead>
+                <TableHead>Forecast Range</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead>Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {recentTrainings.length > 0 ? (
+                recentTrainings.map((training, index) => (
+                  <TableRow key={index}>
+                    <TableCell>{formatters.getRegionLabel(training.region)}</TableCell>
+                    <TableCell>{formatters.getPollutantDisplay(training.pollutant)}</TableCell>
+                    <TableCell>{getFrequencyLabel(training.frequency)}</TableCell>
+                    <TableCell>{getForecastRange(training.frequency, training.periods)}</TableCell>
+                    <TableCell>{formatters.formatDate(training.date)}</TableCell>
+                    <TableCell>
+                      <Badge 
+                        variant="outline" 
+                        className={getBadgeStyle(training.status)}
+                      >
+                        {getStatusIcon(training.status)}
+                        {training.status.charAt(0).toUpperCase() + training.status.slice(1)}
+                      </Badge>
                     </TableCell>
                   </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center text-muted-foreground py-6">
+                    No recent model trainings
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
         </div>
       </CardContent>
     </Card>
