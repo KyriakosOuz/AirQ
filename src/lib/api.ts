@@ -1,3 +1,4 @@
+
 import { toast } from "sonner";
 import { Pollutant, Region, Dataset, HealthTip, TrendChart, SeasonalityChart } from "@/lib/types";
 import { supabase } from "@/integrations/supabase/client";
@@ -248,6 +249,12 @@ export const userApi = {
   }
 };
 
+// Define the dataset preview response type for consistency
+export type DatasetPreviewResponse = {
+  columns: string[];
+  preview: Record<string, any>[];
+};
+
 // Dataset endpoints
 export const datasetApi = {
   upload: async (formData: FormData) => {
@@ -269,12 +276,12 @@ export const datasetApi = {
 
     // If response is successful, transform the data to match our expected format
     if (response.success && response.data) {
-      // Transform the 'rows' property to 'preview' to match the expected format in AdminPage
-      const transformedData = {
+      // Transform the 'rows' property to 'preview' to match the expected format
+      const transformedData: DatasetPreviewResponse = {
         columns: response.data.columns,
         preview: response.data.rows
       };
-      return { success: true, data: transformedData };
+      return { success: true, data: transformedData, error: response.error };
     }
     
     return response;

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { RegionSelector } from "@/components/ui/region-selector";
 import { PollutantSelector } from "@/components/ui/pollutant-selector";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { datasetApi, modelApi } from "@/lib/api";
+import { datasetApi, modelApi, DatasetPreviewResponse } from "@/lib/api";
 import { Dataset, Pollutant } from "@/lib/types";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -33,8 +34,8 @@ const AdminPage: React.FC = () => {
   const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [datasetsLoading, setDatasetsLoading] = useState(false);
   const [selectedDataset, setSelectedDataset] = useState<string | null>(null);
-  // Updated to define the type correctly with 'preview' property
-  const [dataPreview, setDataPreview] = useState<{columns: string[], preview: Record<string, any>[]} | null>(null);
+  // Now using the proper type from the API
+  const [dataPreview, setDataPreview] = useState<DatasetPreviewResponse | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   
   const { createSignal } = useApiRequest();
@@ -146,7 +147,6 @@ const AdminPage: React.FC = () => {
       const response = await datasetApi.preview(datasetId);
       
       if (response.success && response.data) {
-        // Now we can safely access preview property since we transformed it in the API
         if (response.data.columns && response.data.preview && 
             Array.isArray(response.data.columns) && Array.isArray(response.data.preview)) {
           setDataPreview(response.data);
