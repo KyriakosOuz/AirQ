@@ -28,6 +28,7 @@ export function PollutantSelector({
   onValueChange,
 }: PollutantSelectorProps) {
   const [open, setOpen] = React.useState(false);
+  const [searchValue, setSearchValue] = React.useState("");
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -46,7 +47,11 @@ export function PollutantSelector({
       </PopoverTrigger>
       <PopoverContent className="w-full p-0">
         <Command>
-          <CommandInput placeholder="Search pollutants..." />
+          <CommandInput 
+            placeholder="Search pollutants..." 
+            value={searchValue}
+            onValueChange={setSearchValue}
+          />
           <CommandEmpty>No pollutant found.</CommandEmpty>
           <CommandGroup>
             {POLLUTANT_OPTIONS.map((pollutant) => (
@@ -56,6 +61,7 @@ export function PollutantSelector({
                 onSelect={(currentValue) => {
                   onValueChange(currentValue as Pollutant);
                   setOpen(false);
+                  setSearchValue("");
                 }}
               >
                 <Check

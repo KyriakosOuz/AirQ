@@ -35,6 +35,7 @@ interface RegionSelectorProps {
 
 export function RegionSelector({ value, onValueChange }: RegionSelectorProps) {
   const [open, setOpen] = React.useState(false);
+  const [searchValue, setSearchValue] = React.useState("");
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -53,7 +54,11 @@ export function RegionSelector({ value, onValueChange }: RegionSelectorProps) {
       </PopoverTrigger>
       <PopoverContent className="w-full p-0">
         <Command>
-          <CommandInput placeholder="Search regions..." />
+          <CommandInput 
+            placeholder="Search regions..." 
+            value={searchValue}
+            onValueChange={setSearchValue}
+          />
           <CommandEmpty>No region found.</CommandEmpty>
           <CommandGroup>
             {regions.map((region) => (
@@ -63,6 +68,7 @@ export function RegionSelector({ value, onValueChange }: RegionSelectorProps) {
                 onSelect={(currentValue) => {
                   onValueChange(currentValue);
                   setOpen(false);
+                  setSearchValue("");
                 }}
               >
                 <Check
