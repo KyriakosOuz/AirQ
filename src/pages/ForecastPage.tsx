@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { RegionSelector } from "@/components/ui/region-selector";
@@ -12,7 +11,6 @@ import { toast } from "sonner";
 import { AqiBadge } from "@/components/ui/aqi-badge";
 import { format } from "date-fns";
 
-// Update the component
 const ForecastPage: React.FC = () => {
   const [region, setRegion] = useState("thessaloniki");
   const [pollutant, setPollutant] = useState<Pollutant>("NO2");
@@ -31,7 +29,7 @@ const ForecastPage: React.FC = () => {
         region
       });
 
-      if (response.success && response.data) {
+      if (response.success && Array.isArray(response.data)) {
         // Process the forecast data to include derived properties
         const processedForecasts = response.data.map((item) => {
           // Make a variance of about 10-15% for lower and upper bounds to display error bands
@@ -50,22 +48,22 @@ const ForecastPage: React.FC = () => {
       } else {
         console.error("Failed to load forecasts:", response.error);
         toast.error("Failed to load forecast data");
-        setForecasts([]);
+        setForecasts([]); // Ensure forecasts is always an array
       }
     } catch (error) {
       console.error("Error loading forecasts:", error);
       toast.error("Failed to load forecast data");
-      setForecasts([]);
+      setForecasts([]); // Ensure forecasts is always an array
     } finally {
       setLoading(false);
     }
   };
 
-  // Get the next 7 days of forecasts
-  const next7DaysForecasts = forecasts.slice(0, 7);
+  // Get the next 7 days of forecasts, ensuring we have an array
+  const next7DaysForecasts = Array.isArray(forecasts) ? forecasts.slice(0, 7) : [];
 
-  // Get the latest forecast for displaying current AQI
-  const latestForecast = forecasts[0];
+  // Get the latest forecast for displaying current AQI, with null check
+  const latestForecast = next7DaysForecasts[0] || null;
 
   // Handler for region change
   const handleRegionChange = (value: string) => {
@@ -79,7 +77,7 @@ const ForecastPage: React.FC = () => {
     loadForecasts();
   };
 
-  // Format date for display
+  // Format date for display with error handling
   const formatForecastDate = (dateStr: string) => {
     try {
       const date = new Date(dateStr);
@@ -139,7 +137,6 @@ const ForecastPage: React.FC = () => {
           </CardHeader>
           <CardContent className="flex flex-col md:flex-row items-center gap-6">
             <div className="flex flex-col items-center justify-center">
-              {/* Fix: Remove size prop from AqiBadge */}
               <AqiBadge level={stringToAqiLevel(latestForecast.category)} className="h-20 w-20" />
               <span className="text-xl font-bold mt-2">{aqiLevelLabels[stringToAqiLevel(latestForecast.category)]}</span>
               <span className="text-sm text-muted-foreground">{latestForecast.yhat.toFixed(1)} µg/m³</span>
@@ -247,7 +244,6 @@ const ForecastPage: React.FC = () => {
               {next7DaysForecasts.map((forecast, index) => (
                 <div key={index} className="flex flex-col items-center p-3 border rounded-lg">
                   <div className="text-sm font-medium">{formatForecastDate(forecast.ds)}</div>
-                  {/* Fix: Remove size prop from AqiBadge */}
                   <AqiBadge level={stringToAqiLevel(forecast.category)} className="my-3 h-10 w-10" />
                   <div className="font-bold text-center">{aqiLevelLabels[stringToAqiLevel(forecast.category)]}</div>
                   <div className="text-xs text-muted-foreground text-center">{forecast.yhat.toFixed(1)} µg/m³</div>
