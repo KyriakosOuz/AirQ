@@ -272,24 +272,26 @@ export const datasetApi = {
     // Make the request to the API
     const response = await fetchWithAuth<{
       columns: string[],
-      rows: Record<string, any>[]
+      preview?: Record<string, any>[],
+      rows?: Record<string, any>[]
     }>(`/datasets/preview/${datasetId}`);
 
     // If response is successful, transform the data to match our expected format
     if (response.success && response.data) {
-      // Transform the 'rows' property to 'preview' to match the expected format
+      // Create a consistent DatasetPreviewResponse structure
       const transformedData: DatasetPreviewResponse = {
         columns: response.data.columns,
-        preview: response.data.rows
+        // Use preview if it exists, otherwise use rows
+        preview: response.data.preview || response.data.rows || []
       };
-      return { success: true, data: transformedData, error: response.error };
+      return { success: true, data: transformedData };
     }
     
-    // If there was an error, maintain the error information but with our expected type
+    // If there was an error, return it
     return { 
       success: response.success, 
       error: response.error,
-      data: response.data as unknown as DatasetPreviewResponse
+      data: undefined
     };
   },
   
