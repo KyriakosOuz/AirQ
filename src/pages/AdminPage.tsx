@@ -39,6 +39,13 @@ interface TrainingRecord {
   status: "complete" | "in-progress" | "failed";
 }
 
+// Interface for model training API response
+interface ModelTrainingResponse {
+  message?: string;
+  trained_at?: string;
+  forecast?: ForecastDataPoint[];
+}
+
 const AdminPage: React.FC = () => {
   const [fileInput, setFileInput] = useState<File | null>(null);
   const [uploadRegion, setUploadRegion] = useState(INITIAL_REGION);
@@ -168,14 +175,16 @@ const AdminPage: React.FC = () => {
         toast.success(`Model trained for ${trainRegion} - ${trainPollutant}`);
         
         // Handle the forecast data if available in the response
-        if (response.data && response.data.forecast) {
-          setForecastData(response.data.forecast);
+        const apiResponse = response.data as ModelTrainingResponse;
+        
+        if (apiResponse && apiResponse.forecast) {
+          setForecastData(apiResponse.forecast);
           
           // Add training record to the recent trainings list
           const newTraining: TrainingRecord = {
             region: trainRegion,
             pollutant: trainPollutant,
-            date: response.data.trained_at || new Date().toISOString(),
+            date: apiResponse.trained_at || new Date().toISOString(),
             status: "complete"
           };
           
