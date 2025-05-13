@@ -1,3 +1,4 @@
+
 import { toast } from "sonner";
 import { Pollutant, Region, Dataset, HealthTip, TrendChart, SeasonalityChart } from "@/lib/types";
 import { supabase } from "@/integrations/supabase/client";
@@ -315,6 +316,9 @@ export const userApi = {
 // Dataset endpoints
 export const datasetApi = {
   upload: async (formData: FormData) => {
+    // Debug log to see what's being sent
+    console.log("Uploading with FormData:", [...formData.entries()]);
+    
     // Important: Do not set Content-Type header - browser will set it correctly with boundary
     return fetchWithAuth<{ dataset_id: string, file_url: string }>("/datasets/upload/", {
       method: "POST",

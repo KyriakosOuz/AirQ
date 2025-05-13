@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -332,7 +331,7 @@ const AdminPage: React.FC = () => {
               </CardHeader>
               <CardContent>
                 {datasetsLoading && datasets.length === 0 ? (
-                  <TableSkeleton columns={5} rows={3} />
+                  <TableSkeleton columns={4} rows={3} />
                 ) : datasets.length > 0 ? (
                   <div className="overflow-x-auto">
                     <Table>
