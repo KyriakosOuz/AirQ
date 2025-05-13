@@ -1,20 +1,20 @@
 
-import React, { useEffect } from "react";
+import React from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { RegionSelector } from "@/components/ui/region-selector";
 import { PollutantSelector } from "@/components/ui/pollutant-selector";
-import { Pollutant } from "@/lib/types";
-import { Play, Loader, Info } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { 
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-  TooltipProvider
-} from "@/components/ui/tooltip";
+import { Slider } from "@/components/ui/slider";
+import { Pollutant } from "@/lib/types";
+import { Clock } from "lucide-react";
+
+interface FrequencyOption {
+  value: string;
+  label: string;
+  ranges: number[];
+}
 
 interface TrainModelCardProps {
   trainRegion: string;
@@ -27,6 +27,8 @@ interface TrainModelCardProps {
   setTrainPeriods: (value: number) => void;
   trainLoading: boolean;
   onTrainModel: () => void;
+  frequencyOptions: FrequencyOption[];
+  availableRanges: number[];
 }
 
 const TrainModelCard: React.FC<TrainModelCardProps> = ({
@@ -40,101 +42,118 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
   setTrainPeriods,
   trainLoading,
   onTrainModel,
+  frequencyOptions,
+  availableRanges
 }) => {
-  // Frequency options mapping
-  const frequencyOptions = [
-    { value: "D", label: "Daily" },
-    { value: "W", label: "Weekly" },
-    { value: "M", label: "Monthly" },
-    { value: "Y", label: "Yearly" }
-  ];
+  // Helper to get the frequency display label
+  const getFrequencyLabel = (value: string): string => {
+    const option = frequencyOptions.find(opt => opt.value === value);
+    return option ? option.label : value;
+  };
 
-  // Update periods when frequency changes to provide smart defaults
-  useEffect(() => {
-    const defaultPeriods = {
-      "D": 365,  // days in a year
-      "W": 52,   // weeks in a year
-      "M": 12,   // months in a year
-      "Y": 2     // years
-    };
-    setTrainPeriods(defaultPeriods[trainFrequency as keyof typeof defaultPeriods]);
-  }, [trainFrequency, setTrainPeriods]);
-
+  // Format period label based on frequency
+  const formatPeriodLabel = (period: number, frequency: string): string => {
+    const freqOption = frequencyOptions.find(f => f.value === frequency);
+    if (!freqOption) return `${period}`;
+    
+    return `${period} ${freqOption.label.toLowerCase()}${period !== 1 ? 's' : ''}`;
+  };
+  
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Train Forecast Model</CardTitle>
+        <CardTitle className="flex items-center">
+          <Clock className="mr-2 h-5 w-5" />
+          Train Forecast Model
+        </CardTitle>
         <CardDescription>
-          Start model training for a specific pollutant in a region
+          Create a new forecasting model for pollution data
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
-          <Label>Region</Label>
+          <Label htmlFor="region">Region</Label>
           <RegionSelector value={trainRegion} onValueChange={setTrainRegion} />
         </div>
+        
         <div className="space-y-2">
-          <Label>Pollutant</Label>
+          <Label htmlFor="pollutant">Pollutant</Label>
           <PollutantSelector value={trainPollutant} onValueChange={setTrainPollutant} />
         </div>
+        
         <div className="space-y-2">
-          <Label>Forecast Frequency</Label>
+          <Label htmlFor="frequency">Frequency</Label>
           <Select value={trainFrequency} onValueChange={setTrainFrequency}>
-            <SelectTrigger>
+            <SelectTrigger id="frequency">
               <SelectValue placeholder="Select frequency" />
             </SelectTrigger>
             <SelectContent>
               {frequencyOptions.map((option) => (
                 <SelectItem key={option.value} value={option.value}>
-                  {option.label}
+                  {option.label} ({option.value})
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
-        <div className="space-y-2">
-          <div className="flex items-center space-x-2">
-            <Label>Number of Future Periods</Label>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-5 w-5 rounded-full p-0">
-                    <Info className="h-4 w-4 text-muted-foreground" />
-                    <span className="sr-only">Periods info</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent className="max-w-xs">
-                  <p>e.g. 365 for days, 52 for weeks, 12 for months, 2 for years</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+        
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <Label htmlFor="periods">Forecast Period</Label>
+            <span className="text-sm text-muted-foreground">
+              {formatPeriodLabel(trainPeriods, trainFrequency)}
+            </span>
           </div>
-          <Input 
-            type="number" 
-            min={1} 
-            max={1000} 
-            value={trainPeriods} 
-            onChange={(e) => setTrainPeriods(parseInt(e.target.value) || 365)} 
-          />
+          
+          {availableRanges.length > 5 ? (
+            // Use a slider when there are many options
+            <Slider
+              id="periods" 
+              min={Math.min(...availableRanges)}
+              max={Math.max(...availableRanges)}
+              step={1}
+              value={[trainPeriods]}
+              onValueChange={(values) => setTrainPeriods(values[0])}
+              className="py-4"
+            />
+          ) : (
+            // Use a dropdown for fewer options
+            <Select
+              value={trainPeriods.toString()}
+              onValueChange={(value) => setTrainPeriods(parseInt(value))}
+            >
+              <SelectTrigger id="period-range">
+                <SelectValue placeholder="Select period" />
+              </SelectTrigger>
+              <SelectContent>
+                {availableRanges.map((range) => (
+                  <SelectItem key={range} value={range.toString()}>
+                    {formatPeriodLabel(range, trainFrequency)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          
+          <p className="text-sm text-muted-foreground">
+            The model will forecast {trainPeriods} {trainFrequency === "D" ? "days" : 
+                                    trainFrequency === "W" ? "weeks" : 
+                                    trainFrequency === "M" ? "months" : "years"} ahead
+          </p>
         </div>
       </CardContent>
       <CardFooter>
         <Button 
-          onClick={onTrainModel} 
+          className="w-full" 
           disabled={trainLoading}
-          className="w-full"
+          onClick={onTrainModel}
         >
           {trainLoading ? (
             <>
-              <Loader size={20} className="mr-2 animate-spin" />
-              Training...
+              <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-background border-t-transparent"></span>
+              Training Model...
             </>
-          ) : (
-            <>
-              <Play size={20} className="mr-2" />
-              Start Training
-            </>
-          )}
+          ) : "Train Model"}
         </Button>
       </CardFooter>
     </Card>

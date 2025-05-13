@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { toast } from "sonner";
 import { modelApi } from "@/lib/api";
 import { Pollutant } from "@/lib/types";
@@ -14,6 +14,14 @@ interface ModelTrainingResponse {
   forecast?: ForecastDataPoint[];
 }
 
+// Frequency options with their display labels and available ranges
+const FREQUENCY_OPTIONS = [
+  { value: "D", label: "Daily", ranges: [7, 14, 30, 60, 90, 180, 365] },
+  { value: "W", label: "Weekly", ranges: [4, 12, 26, 52] },
+  { value: "M", label: "Monthly", ranges: [3, 6, 12, 24] },
+  { value: "Y", label: "Yearly", ranges: [1, 2, 3, 5] },
+];
+
 const ModelTrainingTab: React.FC = () => {
   // State for the training form
   const [trainRegion, setTrainRegion] = useState("thessaloniki");
@@ -25,6 +33,19 @@ const ModelTrainingTab: React.FC = () => {
   // State for forecast data and training records
   const [forecastData, setForecastData] = useState<ForecastDataPoint[]>([]);
   const [recentTrainings, setRecentTrainings] = useState<TrainingRecord[]>([]);
+  
+  // Get available ranges for the selected frequency
+  const availableRanges = useMemo(() => {
+    const selectedFreq = FREQUENCY_OPTIONS.find(opt => opt.value === trainFrequency);
+    return selectedFreq ? selectedFreq.ranges : [365];
+  }, [trainFrequency]);
+  
+  // Update periods when frequency changes to use the first available range
+  useEffect(() => {
+    if (availableRanges.length > 0) {
+      setTrainPeriods(availableRanges[0]);
+    }
+  }, [trainFrequency, availableRanges]);
   
   // Formatters for display values
   const formatters = useMemo(() => ({
@@ -67,6 +88,12 @@ const ModelTrainingTab: React.FC = () => {
         "no_conc": "NO",
       };
       return map[pollutantCode] || pollutantCode;
+    },
+
+    // Get frequency display name
+    getFrequencyDisplay: (freqCode: string): string => {
+      const freq = FREQUENCY_OPTIONS.find(f => f.value === freqCode);
+      return freq ? freq.label : freqCode;
     }
   }), []);
 
@@ -130,6 +157,44 @@ const ModelTrainingTab: React.FC = () => {
     return regionDataMap[region] || "Multiple years of data";
   };
 
+  // When either frequency or range changes, fetch new forecast range
+  const fetchForecastRange = async () => {
+    if (!trainRegion || !trainPollutant || !trainFrequency || !trainPeriods) {
+      return;
+    }
+
+    try {
+      // Clear previous forecast data
+      setForecastData([]);
+      
+      // Call the forecast-range endpoint
+      const response = await modelApi.getForecastRange({
+        region: trainRegion,
+        pollutant: trainPollutant,
+        frequency: trainFrequency,
+        limit: trainPeriods
+      });
+      
+      if (response.success && response.data) {
+        setForecastData(response.data.forecast || []);
+      } else {
+        console.error("Failed to get forecast range:", response.error);
+      }
+    } catch (error) {
+      console.error("Error fetching forecast range:", error);
+    }
+  };
+
+  // Fetch forecast data when parameters change
+  useEffect(() => {
+    // Debounce the request to avoid too many calls when changing parameters quickly
+    const timer = setTimeout(() => {
+      fetchForecastRange();
+    }, 500);
+    
+    return () => clearTimeout(timer);
+  }, [trainRegion, trainPollutant, trainFrequency, trainPeriods]);
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       <TrainModelCard
@@ -143,6 +208,8 @@ const ModelTrainingTab: React.FC = () => {
         setTrainPeriods={setTrainPeriods}
         trainLoading={trainLoading}
         onTrainModel={trainModel}
+        frequencyOptions={FREQUENCY_OPTIONS}
+        availableRanges={availableRanges}
       />
       
       <RecentTrainingsCard

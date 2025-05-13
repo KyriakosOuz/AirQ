@@ -392,7 +392,49 @@ export const modelApi = {
   },
   getForecast: async (modelId: string) => {
     return fetchWithAuth(`/models/forecast/${modelId}`);
-  }
+  },
+  // Add the getForecastRange method
+  getForecastRange: async ({
+    region,
+    pollutant,
+    frequency,
+    limit
+  }: {
+    region: string;
+    pollutant: string;
+    frequency: string;
+    limit: number;
+  }) => {
+    try {
+      const response = await fetch(
+        `${API_URL}/models/forecast-range/?region=${region}&pollutant=${pollutant}&frequency=${frequency}&limit=${limit}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${getToken()}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        return {
+          success: false,
+          error: errorData.detail || "Failed to get forecast range",
+        };
+      }
+
+      const data = await response.json();
+      return { success: true, data };
+    } catch (error) {
+      console.error("API error in getForecastRange:", error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error occurred",
+      };
+    }
+  },
 };
 
 // Prediction endpoints with improved error handling
