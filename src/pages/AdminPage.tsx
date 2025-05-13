@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -33,7 +34,8 @@ const AdminPage: React.FC = () => {
   const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [datasetsLoading, setDatasetsLoading] = useState(false);
   const [selectedDataset, setSelectedDataset] = useState<string | null>(null);
-  const [dataPreview, setDataPreview] = useState<{columns: string[], rows: Record<string, any>[]} | null>(null);
+  // Updated the type to match the expected API response structure
+  const [dataPreview, setDataPreview] = useState<{columns: string[], preview: Record<string, any>[]} | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   
   const { createSignal } = useApiRequest();
@@ -145,9 +147,9 @@ const AdminPage: React.FC = () => {
       const response = await datasetApi.preview(datasetId);
       
       if (response.success && response.data) {
-        // Add validation to ensure data has the expected structure
-        if (response.data.columns && response.data.rows && 
-            Array.isArray(response.data.columns) && Array.isArray(response.data.rows)) {
+        // Update here: expecting columns and preview properties instead of columns and rows
+        if (response.data.columns && response.data.preview && 
+            Array.isArray(response.data.columns) && Array.isArray(response.data.preview)) {
           setDataPreview(response.data);
         } else {
           console.error("Invalid preview data format:", response.data);
@@ -396,8 +398,8 @@ const AdminPage: React.FC = () => {
                 <CardContent>
                   {previewLoading ? (
                     <TableSkeleton columns={5} rows={5} />
-                  ) : dataPreview && dataPreview.columns && dataPreview.rows && 
-                      Array.isArray(dataPreview.columns) && Array.isArray(dataPreview.rows) ? (
+                  ) : dataPreview && dataPreview.columns && dataPreview.preview && 
+                      Array.isArray(dataPreview.columns) && Array.isArray(dataPreview.preview) ? (
                     <div className="overflow-x-auto">
                       <Table>
                         <TableHeader>
@@ -408,7 +410,7 @@ const AdminPage: React.FC = () => {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {dataPreview.rows.map((row, idx) => (
+                          {dataPreview.preview.map((row, idx) => (
                             <TableRow key={idx}>
                               {dataPreview.columns.map((column) => (
                                 <TableCell key={`${idx}-${column}`}>{row[column]}</TableCell>
@@ -423,8 +425,8 @@ const AdminPage: React.FC = () => {
                       <p>No preview data available</p>
                     </div>
                   )}
-                  {dataPreview && dataPreview.rows && Array.isArray(dataPreview.rows) && (
-                    <p className="mt-2 text-right text-xs text-muted-foreground">Showing first {dataPreview.rows.length} rows</p>
+                  {dataPreview && dataPreview.preview && Array.isArray(dataPreview.preview) && (
+                    <p className="mt-2 text-right text-xs text-muted-foreground">Showing first {dataPreview.preview.length} rows</p>
                   )}
                 </CardContent>
               </Card>
