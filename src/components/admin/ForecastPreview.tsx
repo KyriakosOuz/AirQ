@@ -5,7 +5,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { format, parseISO } from "date-fns";
 import { Pollutant } from "@/lib/types";
 import { Button } from "@/components/ui/button";
-import { Download, Compare } from "lucide-react";
+import { Download, GitCompare } from "lucide-react";
 import { 
   DropdownMenu,
   DropdownMenuContent,
@@ -129,7 +129,7 @@ const ForecastPreview: React.FC<ForecastPreviewProps> = ({
               <span>Download CSV</span>
             </DropdownMenuItem>
             <DropdownMenuItem onClick={initiateComparison}>
-              <Compare className="mr-2 h-4 w-4" />
+              <GitCompare className="mr-2 h-4 w-4" />
               <span>Compare Forecast</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
