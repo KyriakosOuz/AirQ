@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -13,7 +14,6 @@ export interface TrainingRecord {
   frequency?: string; // Optional: frequency used (D, W, M, Y)
   periods?: number;   // Optional: number of future periods
   datasetSize?: string; // Optional: size of dataset used for training
-  yearRange?: string;  // Optional: year range used for training (e.g. "2018-2023")
 }
 
 interface RecentTrainingsCardProps {

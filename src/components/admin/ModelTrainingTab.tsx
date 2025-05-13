@@ -15,20 +15,12 @@ interface ModelTrainingResponse {
 }
 
 const ModelTrainingTab: React.FC = () => {
-  // Current year for defaults
-  const currentYear = new Date().getFullYear();
-
   // State for the training form
   const [trainRegion, setTrainRegion] = useState("thessaloniki");
   const [trainPollutant, setTrainPollutant] = useState<Pollutant>("no2_conc");
   const [trainFrequency, setTrainFrequency] = useState("D"); // Default: Daily
   const [trainPeriods, setTrainPeriods] = useState(365); // Default: 365 periods
   const [trainLoading, setTrainLoading] = useState(false);
-  
-  // New state for year range override
-  const [overrideYears, setOverrideYears] = useState(false);
-  const [startYear, setStartYear] = useState(currentYear - 5); // Default: 5 years ago
-  const [endYear, setEndYear] = useState(currentYear); // Default: current year
   
   // State for forecast data and training records
   const [forecastData, setForecastData] = useState<ForecastDataPoint[]>([]);
@@ -82,28 +74,12 @@ const ModelTrainingTab: React.FC = () => {
   const trainModel = async () => {
     setTrainLoading(true);
     try {
-      // Prepare API request parameters
-      const params: {
-        pollutant: Pollutant;
-        region: string;
-        frequency: string;
-        periods: number;
-        start_year?: number;
-        end_year?: number;
-      } = {
+      const response = await modelApi.train({
         pollutant: trainPollutant,
         region: trainRegion,
         frequency: trainFrequency,
         periods: trainPeriods,
-      };
-      
-      // Only add year parameters if override is enabled
-      if (overrideYears) {
-        params.start_year = startYear;
-        params.end_year = endYear;
-      }
-      
-      const response = await modelApi.train(params);
+      });
       
       if (response.success) {
         toast.success(`Model trained for ${trainRegion} - ${trainPollutant}`);
@@ -116,9 +92,7 @@ const ModelTrainingTab: React.FC = () => {
           setForecastData(apiResponse.forecast.slice(0, 6));
           
           // Calculate approximate dataset size for display
-          const datasetSize = overrideYears 
-            ? `Data from ${startYear} to ${endYear}` 
-            : estimateDatasetSize(trainRegion);
+          const datasetSize = estimateDatasetSize(trainRegion);
           
           // Add training record to the recent trainings list
           const newTraining: TrainingRecord = {
@@ -128,8 +102,7 @@ const ModelTrainingTab: React.FC = () => {
             status: "complete",
             frequency: trainFrequency,
             periods: trainPeriods,
-            datasetSize: datasetSize,
-            yearRange: overrideYears ? `${startYear}-${endYear}` : undefined
+            datasetSize: datasetSize
           };
           
           setRecentTrainings(prev => [newTraining, ...prev.slice(0, 4)]);
@@ -170,12 +143,6 @@ const ModelTrainingTab: React.FC = () => {
         setTrainPeriods={setTrainPeriods}
         trainLoading={trainLoading}
         onTrainModel={trainModel}
-        overrideYears={overrideYears}
-        setOverrideYears={setOverrideYears}
-        startYear={startYear}
-        setStartYear={setStartYear}
-        endYear={endYear}
-        setEndYear={setEndYear}
       />
       
       <RecentTrainingsCard

@@ -9,7 +9,6 @@ import { PollutantSelector } from "@/components/ui/pollutant-selector";
 import { Pollutant } from "@/lib/types";
 import { Play, Loader, Info } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import { 
   Tooltip,
   TooltipContent,
@@ -28,12 +27,6 @@ interface TrainModelCardProps {
   setTrainPeriods: (value: number) => void;
   trainLoading: boolean;
   onTrainModel: () => void;
-  overrideYears: boolean;
-  setOverrideYears: (value: boolean) => void;
-  startYear: number;
-  setStartYear: (value: number) => void;
-  endYear: number;
-  setEndYear: (value: number) => void;
 }
 
 const TrainModelCard: React.FC<TrainModelCardProps> = ({
@@ -47,12 +40,6 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
   setTrainPeriods,
   trainLoading,
   onTrainModel,
-  overrideYears,
-  setOverrideYears,
-  startYear,
-  setStartYear,
-  endYear,
-  setEndYear,
 }) => {
   // Frequency options mapping
   const frequencyOptions = [
@@ -72,10 +59,6 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
     };
     setTrainPeriods(defaultPeriods[trainFrequency as keyof typeof defaultPeriods]);
   }, [trainFrequency, setTrainPeriods]);
-
-  // Generate year options for dropdowns
-  const currentYear = new Date().getFullYear();
-  const yearOptions = Array.from({ length: 25 }, (_, i) => currentYear - 24 + i);
 
   return (
     <Card>
@@ -133,68 +116,6 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
             value={trainPeriods} 
             onChange={(e) => setTrainPeriods(parseInt(e.target.value) || 365)} 
           />
-        </div>
-        
-        {/* Override Training Years Section */}
-        <div className="space-y-3 pt-2 border-t">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <Label htmlFor="override-years" className="cursor-pointer">Override Training Years</Label>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-5 w-5 rounded-full p-0">
-                      <Info className="h-4 w-4 text-muted-foreground" />
-                      <span className="sr-only">Override years info</span>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-xs">
-                    <p>Limit the data used for training to a specific year range</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-            <Switch 
-              id="override-years" 
-              checked={overrideYears} 
-              onCheckedChange={setOverrideYears}
-            />
-          </div>
-          
-          {overrideYears && (
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="start-year">Start Year</Label>
-                <Select value={startYear.toString()} onValueChange={(value) => setStartYear(parseInt(value))}>
-                  <SelectTrigger id="start-year">
-                    <SelectValue placeholder="Select start year" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {yearOptions.map((year) => (
-                      <SelectItem key={`start-${year}`} value={year.toString()}>
-                        {year}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="end-year">End Year</Label>
-                <Select value={endYear.toString()} onValueChange={(value) => setEndYear(parseInt(value))}>
-                  <SelectTrigger id="end-year">
-                    <SelectValue placeholder="Select end year" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {yearOptions.filter(year => year >= startYear).map((year) => (
-                      <SelectItem key={`end-${year}`} value={year.toString()}>
-                        {year}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          )}
         </div>
       </CardContent>
       <CardFooter>
