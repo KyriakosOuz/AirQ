@@ -376,7 +376,12 @@ export const datasetApi = {
 
 // Model training endpoints with improved error handling
 export const modelApi = {
-  train: async (trainData: { pollutant: string; region: string }) => {
+  train: async (trainData: { 
+    pollutant: string; 
+    region: string; 
+    frequency?: string; 
+    periods?: number; 
+  }) => {
     const queryParams = new URLSearchParams(trainData as any).toString();
     return fetchWithAuth(`/models/train/?${queryParams}`, {
       method: "POST"

@@ -18,6 +18,8 @@ const ModelTrainingTab: React.FC = () => {
   // State for the training form
   const [trainRegion, setTrainRegion] = useState("thessaloniki");
   const [trainPollutant, setTrainPollutant] = useState<Pollutant>("no2_conc");
+  const [trainFrequency, setTrainFrequency] = useState("D"); // Default: Daily
+  const [trainPeriods, setTrainPeriods] = useState(365); // Default: 365 periods
   const [trainLoading, setTrainLoading] = useState(false);
   
   // State for forecast data and training records
@@ -75,6 +77,8 @@ const ModelTrainingTab: React.FC = () => {
       const response = await modelApi.train({
         pollutant: trainPollutant,
         region: trainRegion,
+        frequency: trainFrequency,
+        periods: trainPeriods,
       });
       
       if (response.success) {
@@ -84,7 +88,8 @@ const ModelTrainingTab: React.FC = () => {
         const apiResponse = response.data as ModelTrainingResponse;
         
         if (apiResponse && apiResponse.forecast) {
-          setForecastData(apiResponse.forecast);
+          // Only take the first 6 forecast points for display
+          setForecastData(apiResponse.forecast.slice(0, 6));
           
           // Add training record to the recent trainings list
           const newTraining: TrainingRecord = {
@@ -114,6 +119,10 @@ const ModelTrainingTab: React.FC = () => {
         setTrainRegion={setTrainRegion}
         trainPollutant={trainPollutant}
         setTrainPollutant={setTrainPollutant}
+        trainFrequency={trainFrequency}
+        setTrainFrequency={setTrainFrequency}
+        trainPeriods={trainPeriods}
+        setTrainPeriods={setTrainPeriods}
         trainLoading={trainLoading}
         onTrainModel={trainModel}
       />
