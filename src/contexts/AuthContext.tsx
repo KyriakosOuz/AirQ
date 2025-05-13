@@ -221,6 +221,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             console.error("Error fetching profile on init:", error);
           });
       }
+    }).catch(error => {
+      console.error("Error getting session:", error);
     });
 
     return () => {
