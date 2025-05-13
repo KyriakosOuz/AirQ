@@ -235,6 +235,7 @@ export type Database = {
           full_name: string | null
           health_profile: Json | null
           id: string
+          role: string | null
         }
         Insert: {
           created_at?: string | null
@@ -242,6 +243,7 @@ export type Database = {
           full_name?: string | null
           health_profile?: Json | null
           id?: string
+          role?: string | null
         }
         Update: {
           created_at?: string | null
@@ -249,6 +251,7 @@ export type Database = {
           full_name?: string | null
           health_profile?: Json | null
           id?: string
+          role?: string | null
         }
         Relationships: []
       }
