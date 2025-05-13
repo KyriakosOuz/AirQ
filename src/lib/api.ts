@@ -387,12 +387,15 @@ export const modelApi = {
       method: "POST"
     }, 10000); // Longer timeout for training requests
   },
+  
   list: async () => {
     return fetchWithAuth("/models/list/");
   },
+  
   getForecast: async (modelId: string) => {
     return fetchWithAuth(`/models/forecast/${modelId}`);
   },
+  
   // Add the getForecastRange method
   getForecastRange: async ({
     region,

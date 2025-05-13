@@ -14,6 +14,18 @@ interface ModelTrainingResponse {
   forecast?: ForecastDataPoint[];
 }
 
+// Interface for model data from API
+interface ModelData {
+  id: string;
+  region: string;
+  pollutant: string;
+  model_type?: string;
+  frequency?: string;
+  forecast_periods?: number;
+  created_at: string;
+  status?: string;
+}
+
 // Frequency options with their display labels and available ranges
 const FREQUENCY_OPTIONS = [
   { value: "D", label: "Daily", ranges: [7, 14, 30, 60, 90, 180, 365] },
@@ -33,6 +45,7 @@ const ModelTrainingTab: React.FC = () => {
   // State for forecast data and training records
   const [forecastData, setForecastData] = useState<ForecastDataPoint[]>([]);
   const [recentTrainings, setRecentTrainings] = useState<TrainingRecord[]>([]);
+  const [modelsLoading, setModelsLoading] = useState(false);
   
   // Get available ranges for the selected frequency
   const availableRanges = useMemo(() => {
@@ -97,6 +110,44 @@ const ModelTrainingTab: React.FC = () => {
     }
   }), []);
 
+  // Fetch trained models from API
+  const fetchTrainedModels = async () => {
+    setModelsLoading(true);
+    try {
+      const response = await modelApi.list();
+      
+      if (response.success && response.data) {
+        // Convert API model data to TrainingRecord format
+        const trainings: TrainingRecord[] = (response.data as ModelData[]).map(model => ({
+          region: model.region,
+          pollutant: model.pollutant,
+          date: model.created_at,
+          status: "complete", // Always set to complete as specified
+          frequency: model.frequency,
+          periods: model.forecast_periods
+        }));
+        
+        // Sort by date, most recent first
+        trainings.sort((a, b) => {
+          return new Date(b.date).getTime() - new Date(a.date).getTime();
+        });
+        
+        setRecentTrainings(trainings);
+      } else {
+        console.error("Failed to fetch trained models:", response.error);
+      }
+    } catch (error) {
+      console.error("Error fetching trained models:", error);
+    } finally {
+      setModelsLoading(false);
+    }
+  };
+  
+  // Fetch trained models on component mount and after training
+  useEffect(() => {
+    fetchTrainedModels();
+  }, []);
+
   // Handle model training
   const trainModel = async () => {
     setTrainLoading(true);
@@ -117,23 +168,10 @@ const ModelTrainingTab: React.FC = () => {
         if (apiResponse && apiResponse.forecast) {
           // Only take the first 6 forecast points for display
           setForecastData(apiResponse.forecast.slice(0, 6));
-          
-          // Calculate approximate dataset size for display
-          const datasetSize = estimateDatasetSize(trainRegion);
-          
-          // Add training record to the recent trainings list
-          const newTraining: TrainingRecord = {
-            region: trainRegion,
-            pollutant: trainPollutant,
-            date: apiResponse.trained_at || new Date().toISOString(),
-            status: "complete",
-            frequency: trainFrequency,
-            periods: trainPeriods,
-            datasetSize: datasetSize
-          };
-          
-          setRecentTrainings(prev => [newTraining, ...prev.slice(0, 4)]);
         }
+        
+        // Refresh the list of trained models
+        fetchTrainedModels();
       } else {
         toast.error(response.error || "Training failed");
       }
@@ -143,18 +181,6 @@ const ModelTrainingTab: React.FC = () => {
     } finally {
       setTrainLoading(false);
     }
-  };
-  
-  // Helper function to estimate dataset size (in real app this would come from API)
-  const estimateDatasetSize = (region: string): string => {
-    // This is just a placeholder - in a real app, this would come from the API
-    const regionDataMap: Record<string, string> = {
-      "thessaloniki": "7 years of data",
-      "kalamaria": "5 years of data",
-      "panorama": "3 years of data"
-    };
-    
-    return regionDataMap[region] || "Multiple years of data";
   };
 
   // When either frequency or range changes, fetch new forecast range
@@ -215,6 +241,7 @@ const ModelTrainingTab: React.FC = () => {
       <RecentTrainingsCard
         recentTrainings={recentTrainings}
         formatters={formatters}
+        isLoading={modelsLoading}
       />
       
       {forecastData && forecastData.length > 0 && (

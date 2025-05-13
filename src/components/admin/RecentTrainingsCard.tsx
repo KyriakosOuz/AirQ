@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle, AlertCircle, Clock } from "lucide-react";
+import { TableSkeleton } from "@/components/ui/table-skeleton";
 
 // Interface for a training record
 export interface TrainingRecord {
@@ -23,11 +24,13 @@ interface RecentTrainingsCardProps {
     getPollutantDisplay: (pollutantCode: string) => string;
     formatDate: (dateString?: string) => string;
   };
+  isLoading?: boolean;
 }
 
 const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
   recentTrainings,
   formatters,
+  isLoading = false
 }) => {
   // Helper function for badge styling
   const getBadgeStyle = (status: string) => {
@@ -93,46 +96,50 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
       </CardHeader>
       <CardContent>
         <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Region</TableHead>
-                <TableHead>Pollutant</TableHead>
-                <TableHead>Frequency</TableHead>
-                <TableHead>Forecast Range</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {recentTrainings.length > 0 ? (
-                recentTrainings.map((training, index) => (
-                  <TableRow key={index}>
-                    <TableCell>{formatters.getRegionLabel(training.region)}</TableCell>
-                    <TableCell>{formatters.getPollutantDisplay(training.pollutant)}</TableCell>
-                    <TableCell>{getFrequencyLabel(training.frequency)}</TableCell>
-                    <TableCell>{getForecastRange(training.frequency, training.periods)}</TableCell>
-                    <TableCell>{formatters.formatDate(training.date)}</TableCell>
-                    <TableCell>
-                      <Badge 
-                        variant="outline" 
-                        className={getBadgeStyle(training.status)}
-                      >
-                        {getStatusIcon(training.status)}
-                        {training.status.charAt(0).toUpperCase() + training.status.slice(1)}
-                      </Badge>
+          {isLoading ? (
+            <TableSkeleton columns={6} rows={3} />
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Region</TableHead>
+                  <TableHead>Pollutant</TableHead>
+                  <TableHead>Frequency</TableHead>
+                  <TableHead>Forecast Range</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {recentTrainings.length > 0 ? (
+                  recentTrainings.map((training, index) => (
+                    <TableRow key={index}>
+                      <TableCell>{formatters.getRegionLabel(training.region)}</TableCell>
+                      <TableCell>{formatters.getPollutantDisplay(training.pollutant)}</TableCell>
+                      <TableCell>{getFrequencyLabel(training.frequency)}</TableCell>
+                      <TableCell>{getForecastRange(training.frequency, training.periods)}</TableCell>
+                      <TableCell>{formatters.formatDate(training.date)}</TableCell>
+                      <TableCell>
+                        <Badge 
+                          variant="outline" 
+                          className={getBadgeStyle(training.status)}
+                        >
+                          {getStatusIcon(training.status)}
+                          {training.status.charAt(0).toUpperCase() + training.status.slice(1)}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center text-muted-foreground py-6">
+                      No recent model trainings
                     </TableCell>
                   </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground py-6">
-                    No recent model trainings
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+                )}
+              </TableBody>
+            </Table>
+          )}
         </div>
       </CardContent>
     </Card>
