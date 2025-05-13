@@ -1,4 +1,3 @@
-
 import { toast } from "sonner";
 import { Pollutant, Region, Dataset, HealthTip, TrendChart, SeasonalityChart } from "@/lib/types";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,6 +10,12 @@ export type ApiResponse<T> = {
   success: boolean;
   data?: T;
   error?: string;
+};
+
+// Define the dataset preview response type for consistency
+export type DatasetPreviewResponse = {
+  columns: string[];
+  preview: Record<string, any>[];
 };
 
 // Storage key for the auth token
@@ -249,12 +254,6 @@ export const userApi = {
   }
 };
 
-// Define the dataset preview response type for consistency
-export type DatasetPreviewResponse = {
-  columns: string[];
-  preview: Record<string, any>[];
-};
-
 // Dataset endpoints
 export const datasetApi = {
   upload: async (formData: FormData) => {
@@ -264,9 +263,11 @@ export const datasetApi = {
       headers: {}, // Let browser set content-type with boundary for FormData
     });
   },
+  
   list: async () => {
     return fetchWithAuth<Dataset[]>("/datasets/list/");
   },
+  
   preview: async (datasetId: string) => {
     // Make the request to the API
     const response = await fetchWithAuth<{
@@ -284,8 +285,14 @@ export const datasetApi = {
       return { success: true, data: transformedData, error: response.error };
     }
     
-    return response;
+    // If there was an error, maintain the error information but with our expected type
+    return { 
+      success: response.success, 
+      error: response.error,
+      data: response.data as unknown as DatasetPreviewResponse
+    };
   },
+  
   delete: async (datasetId: string) => {
     return fetchWithAuth(`/datasets/${datasetId}`, {
       method: "DELETE",

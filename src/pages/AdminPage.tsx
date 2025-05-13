@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -34,7 +33,7 @@ const AdminPage: React.FC = () => {
   const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [datasetsLoading, setDatasetsLoading] = useState(false);
   const [selectedDataset, setSelectedDataset] = useState<string | null>(null);
-  // Now using the proper type from the API
+  // Using the proper DatasetPreviewResponse type from the API
   const [dataPreview, setDataPreview] = useState<DatasetPreviewResponse | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   
@@ -147,6 +146,7 @@ const AdminPage: React.FC = () => {
       const response = await datasetApi.preview(datasetId);
       
       if (response.success && response.data) {
+        // Check if both columns and preview exist and are arrays
         if (response.data.columns && response.data.preview && 
             Array.isArray(response.data.columns) && Array.isArray(response.data.preview)) {
           setDataPreview(response.data);
