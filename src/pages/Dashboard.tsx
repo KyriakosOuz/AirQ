@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,7 @@ const Dashboard: React.FC = () => {
   
   // Update app state when region or pollutant changes
   useEffect(() => {
+    // Fix: Use region string directly as the value instead of trying to pass it as a Region object
     setSelectedRegion(region);
     setSelectedPollutant(pollutant);
   }, [region, pollutant, setSelectedRegion, setSelectedPollutant]);
@@ -191,10 +193,10 @@ const Dashboard: React.FC = () => {
         console.error("Failed to fetch health tip:", response.error);
         toast.error(getErrorMessage(response.error));
         
-        // Fallback to generic tip if API fails
+        // Fix: use correct property name 'severity' instead of 'riskLevel'
         setHealthTip({
           tip: "Unable to fetch personalized health advice. Please try again later.",
-          riskLevel: "moderate",
+          severity: "moderate",
           personalized: false
         });
       }
@@ -202,10 +204,10 @@ const Dashboard: React.FC = () => {
       console.error("Error fetching health tip:", error);
       toast.error(getErrorMessage(error));
       
-      // Fallback to generic tip on error
+      // Fix: use correct property name 'severity' instead of 'riskLevel'
       setHealthTip({
         tip: "Unable to fetch personalized health advice. Please try again later.",
-        riskLevel: "moderate",
+        severity: "moderate",
         personalized: false
       });
     } finally {
@@ -292,7 +294,8 @@ const Dashboard: React.FC = () => {
           </Card>
           
           {healthTip && (
-            <Card className={`border-l-4 border-l-aqi-${healthTip.riskLevel}`}>
+            // Fix: Updated to use the correct property 'severity' instead of 'riskLevel'
+            <Card className={`border-l-4 border-l-aqi-${healthTip.severity}`}>
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg">Health Recommendation</CardTitle>
               </CardHeader>

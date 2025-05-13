@@ -90,4 +90,3 @@ export interface Forecast {
   yhat: number;
   category: string;
 }
-

@@ -3,10 +3,10 @@ import { create } from 'zustand';
 import { Pollutant, Region } from '@/lib/types';
 
 type RegionState = {
-  selectedRegion: Region | null;
+  selectedRegion: string | null;
   selectedPollutant: Pollutant | null;
   availableRegions: Region[];
-  setSelectedRegion: (region: Region) => void;
+  setSelectedRegion: (region: string) => void;
   setSelectedPollutant: (pollutant: Pollutant) => void;
   setAvailableRegions: (regions: Region[]) => void;
 };
