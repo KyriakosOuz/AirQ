@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Session, User } from "@supabase/supabase-js";
@@ -23,6 +22,10 @@ interface AuthContextType {
   loading: boolean;
   saveProfile: (profile: Partial<UserProfile>) => Promise<{ error: Error | null }>;
   userProfile: UserProfile | null;
+  isAuthenticated: boolean;
+  isAdmin: boolean;
+  isLoading: boolean;
+  login: (email: string, password: string) => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -34,6 +37,10 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   saveProfile: async () => ({ error: null }),
   userProfile: null,
+  isAuthenticated: false,
+  isAdmin: false,
+  isLoading: true,
+  login: async () => false,
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -49,6 +56,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const updateUser = useUserStore(state => state.updateUser);
   const updateProfile = useUserStore(state => state.updateProfile);
   const userProfile = useUserStore(state => state.profile);
+  
+  // Add state for auth status
+  const [isAdmin, setIsAdmin] = useState(false);
   
   useEffect(() => {
     // Set up auth state listener FIRST
@@ -84,6 +94,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Cleanup subscription
     return () => subscription.unsubscribe();
   }, [updateUser]);
+
+  // Check if user is admin when profile changes
+  useEffect(() => {
+    if (userProfile) {
+      setIsAdmin(userProfile.role === 'admin');
+    } else {
+      setIsAdmin(false);
+    }
+  }, [userProfile]);
   
   // Fetch user profile from profiles table
   const fetchUserProfile = async (userId: string) => {
@@ -100,22 +119,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       
       if (data) {
+        // Add missing fields if they don't exist in the database yet
+        const profileData = {
+          ...data,
+          has_diabetes: data.has_diabetes || false,
+          has_lung_disease: data.has_lung_disease || false
+        };
+        
         // Map the database fields to our UserProfile type
         const profile: UserProfile = {
           id: data.user_id,
           email: user?.email || '',
-          age: data.age,
-          has_asthma: data.has_asthma,
-          is_smoker: data.is_smoker,
-          has_heart_disease: data.has_heart_disease,
-          has_diabetes: data.has_diabetes,
-          has_lung_disease: data.has_lung_disease,
+          age: profileData.age,
+          has_asthma: profileData.has_asthma,
+          is_smoker: profileData.is_smoker,
+          has_heart_disease: profileData.has_heart_disease,
+          has_diabetes: profileData.has_diabetes,
+          has_lung_disease: profileData.has_lung_disease,
+          role: profileData.role || 'user'
         };
         
         updateProfile(profile);
       }
     } catch (error) {
       console.error('Error in profile fetch', error);
+    }
+  };
+  
+  // Add login function for Auth.tsx
+  const login = async (email: string, password: string) => {
+    try {
+      const { error } = await signIn(email, password);
+      return !error;
+    } catch (error) {
+      console.error('Login error:', error);
+      return false;
     }
   };
   
@@ -243,6 +281,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loading: loading || initialLoad,
         saveProfile,
         userProfile,
+        isAuthenticated: !!session,
+        isAdmin,
+        isLoading: loading || initialLoad,
+        login
       }}
     >
       {children}

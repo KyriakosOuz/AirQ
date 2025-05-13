@@ -44,7 +44,7 @@ const Auth: React.FC = () => {
   const location = useLocation();
   const [isLoading, setIsLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
-  const { login, isAuthenticated } = useAuth();
+  const { signIn, isAuthenticated } = useAuth();
   
   // Check if already authenticated, redirect to home if so
   useEffect(() => {
@@ -78,8 +78,9 @@ const Auth: React.FC = () => {
     setAuthError(null);
     try {
       console.log("Attempting login with:", data.email);
-      const success = await login(data.email, data.password);
-      if (success) {
+      const { error } = await signIn(data.email, data.password);
+      
+      if (!error) {
         toast.success("Login successful!");
         const from = location.state?.from?.pathname || "/";
         navigate(from, { replace: true });

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,7 +5,7 @@ import { AqiBadge } from "@/components/ui/aqi-badge";
 import { RegionSelector } from "@/components/ui/region-selector";
 import { PollutantSelector } from "@/components/ui/pollutant-selector";
 import { healthApi, insightApi, predictionApi } from "@/lib/api";
-import { AqiLevel, HealthTip, Pollutant } from "@/lib/types";
+import { AqiLevel, HealthTip, Pollutant, TrendChart, SeasonalityChart } from "@/lib/types";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { useRegionStore } from "@/stores/regionStore";
 import { toast } from "sonner";
@@ -43,7 +42,13 @@ const Dashboard: React.FC = () => {
         });
         
         if (trendResponse.success && trendResponse.data) {
-          setTrendData(trendResponse.data);
+          // Convert TrendChart to array format expected by charts
+          const chartData = trendResponse.data.labels.map((label, index) => ({
+            year: label,
+            value: trendResponse.data.values[index],
+            delta: trendResponse.data.deltas[index]
+          }));
+          setTrendData(chartData);
         } else {
           console.error("Failed to fetch trend data:", trendResponse.error);
           toast.error("Failed to load trend data");
@@ -56,7 +61,12 @@ const Dashboard: React.FC = () => {
         });
         
         if (seasonalResponse.success && seasonalResponse.data) {
-          setSeasonalData(seasonalResponse.data);
+          // Convert SeasonalityChart to array format expected by charts
+          const chartData = seasonalResponse.data.labels.map((label, index) => ({
+            name: label,
+            value: seasonalResponse.data.values[index]
+          }));
+          setSeasonalData(chartData);
         } else {
           console.error("Failed to fetch seasonality data:", seasonalResponse.error);
           toast.error("Failed to load seasonal data");
@@ -123,13 +133,24 @@ const Dashboard: React.FC = () => {
       // Re-fetch trend data
       const trendResponse = await insightApi.getTrend({ pollutant, region });
       if (trendResponse.success && trendResponse.data) {
-        setTrendData(trendResponse.data);
+        // Convert TrendChart to array format expected by charts
+        const chartData = trendResponse.data.labels.map((label, index) => ({
+          year: label,
+          value: trendResponse.data.values[index],
+          delta: trendResponse.data.deltas[index]
+        }));
+        setTrendData(chartData);
       }
       
       // Re-fetch seasonal data
       const seasonalResponse = await insightApi.getSeasonality({ pollutant, region });
       if (seasonalResponse.success && seasonalResponse.data) {
-        setSeasonalData(seasonalResponse.data);
+        // Convert SeasonalityChart to array format expected by charts
+        const chartData = seasonalResponse.data.labels.map((label, index) => ({
+          name: label,
+          value: seasonalResponse.data.values[index]
+        }));
+        setSeasonalData(chartData);
       }
       
       // Re-fetch forecast data with updated endpoint

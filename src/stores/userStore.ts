@@ -4,6 +4,7 @@ import { User } from '@supabase/supabase-js';
 import { UserProfile } from '@/lib/types';
 import { persist } from 'zustand/middleware';
 import { aqiLevelLabels } from '@/lib/types';
+import { supabase } from '@/integrations/supabase/client';
 
 interface UserState {
   user: User | null;
@@ -16,6 +17,9 @@ interface UserState {
   updateRiskLevel: (riskLevel: string | null) => void;
   getSensitiveStatus: () => boolean;
   getPersonalization: () => string;
+  // Add missing functions
+  isAdmin: boolean;
+  logout: () => Promise<void>;
 }
 
 export const useUserStore = create<UserState>()(
@@ -25,10 +29,29 @@ export const useUserStore = create<UserState>()(
       profile: null,
       recommendations: [],
       riskLevel: null,
-      updateUser: (user) => set({ user }),
-      updateProfile: (profile) => set({ profile }),
+      isAdmin: false, // Add isAdmin property
+      updateUser: (user) => set({ 
+        user,
+        // Update isAdmin when user changes
+        isAdmin: get().profile?.role === 'admin' || false
+      }),
+      updateProfile: (profile) => set({ 
+        profile,
+        // Update isAdmin when profile changes
+        isAdmin: profile?.role === 'admin' || false
+      }),
       updateRecommendations: (recommendations) => set({ recommendations }),
       updateRiskLevel: (riskLevel) => set({ riskLevel }),
+      
+      // Add logout function
+      logout: async () => {
+        try {
+          await supabase.auth.signOut();
+          set({ user: null, profile: null, recommendations: [], riskLevel: null });
+        } catch (error) {
+          console.error('Logout error:', error);
+        }
+      },
       
       // Check if user has any health conditions that make them sensitive to air pollution
       getSensitiveStatus: () => {

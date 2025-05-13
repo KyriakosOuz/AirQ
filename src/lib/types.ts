@@ -1,4 +1,3 @@
-
 // Core data types
 export type Pollutant = "NO2" | "O3" | "SO2";
 
@@ -12,7 +11,7 @@ export type AqiLevel =
   | "very-unhealthy"
   | "hazardous";
 
-export type UserRole = "authenticated" | "admin";
+export type UserRole = "authenticated" | "admin" | "user";
 
 // Data models
 export interface UserProfile {
@@ -24,6 +23,20 @@ export interface UserProfile {
   has_heart_disease?: boolean;
   has_diabetes?: boolean;
   has_lung_disease?: boolean;
+  role?: UserRole; // Add role field to support isAdmin
+}
+
+// Update trend chart interface to match API response
+export interface TrendChart {
+  labels: string[];
+  values: number[];
+  deltas: number[];
+}
+
+// Update seasonality chart interface to match API response
+export interface SeasonalityChart {
+  labels: string[];
+  values: number[];
 }
 
 export interface Dataset {
@@ -58,6 +71,7 @@ export interface PollutantData {
   data: DataPoint[];
 }
 
+// Update Forecast to include derived properties
 export interface Forecast {
   ds: string; // date
   yhat: number; // predicted value

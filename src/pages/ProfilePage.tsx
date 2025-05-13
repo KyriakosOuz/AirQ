@@ -74,9 +74,17 @@ const ProfilePage: React.FC = () => {
       const response = await userApi.saveProfile(profileData);
       
       if (response.success) {
-        // Update local state
-        updateProfile(profileData);
-        toast.success("Profile saved successfully");
+        // Update local state with complete profile
+        if (profile) {
+          const updatedProfile: UserProfile = {
+            ...profile,
+            ...profileData,
+          };
+          updateProfile(updatedProfile);
+          toast.success("Profile saved successfully");
+        } else {
+          toast.error("Could not update profile: Profile not initialized");
+        }
       } else {
         toast.error("Failed to save profile");
       }
