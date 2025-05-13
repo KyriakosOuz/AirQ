@@ -1,4 +1,5 @@
 import { toast } from "sonner";
+import { Pollutant, Region } from "@/lib/types";
 
 // Define the base URL for API requests
 export const API_URL = "http://localhost:8000"; // Should be configurable
@@ -191,5 +192,15 @@ export const alertApi = {
   },
   list: async () => {
     return fetchWithAuth("/alerts/list/");
+  }
+};
+
+// Metadata endpoints
+export const metadataApi = {
+  getPollutants: async () => {
+    return fetchWithAuth<Array<{label: string, value: Pollutant}>>("/metadata/pollutants");
+  },
+  getRegions: async () => {
+    return fetchWithAuth<Array<{label: string, value: string}>>("/metadata/regions");
   }
 };

@@ -10,13 +10,16 @@ import {
   CommandGroup,
   CommandInput,
   CommandItem,
+  CommandLoading
 } from "@/components/ui/command";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { POLLUTANT_OPTIONS, Pollutant } from "@/lib/types";
+import { Pollutant } from "@/lib/types";
+import { metadataApi } from "@/lib/api";
+import { toast } from "sonner";
 
 interface PollutantSelectorProps {
   value: Pollutant | "";
@@ -29,6 +32,31 @@ export function PollutantSelector({
 }: PollutantSelectorProps) {
   const [open, setOpen] = React.useState(false);
   const [searchValue, setSearchValue] = React.useState("");
+  const [pollutantOptions, setPollutantOptions] = React.useState<Array<{label: string, value: Pollutant}>>([]);
+  const [isLoading, setIsLoading] = React.useState(false);
+
+  // Fetch pollutant options from API
+  React.useEffect(() => {
+    const fetchPollutants = async () => {
+      setIsLoading(true);
+      try {
+        const response = await metadataApi.getPollutants();
+        if (response.success && response.data) {
+          setPollutantOptions(response.data);
+        } else {
+          console.error("Failed to fetch pollutants:", response.error);
+          toast.error("Failed to load pollutant options");
+        }
+      } catch (error) {
+        console.error("Error fetching pollutants:", error);
+        toast.error("Failed to load pollutant options");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchPollutants();
+  }, []);
 
   // Reset search when popup closes
   React.useEffect(() => {
@@ -47,17 +75,17 @@ export function PollutantSelector({
   // Get pollutant label from value
   const selectedPollutantLabel = React.useMemo(() => {
     if (!value) return "";
-    return POLLUTANT_OPTIONS.find(pollutant => pollutant.value === value)?.label || "";
-  }, [value]);
+    return pollutantOptions.find(pollutant => pollutant.value === value)?.label || "";
+  }, [value, pollutantOptions]);
 
   // Filter function for the Command component - returns a number for ranking
   // 1 = match, 0 = no match (could use different numbers for better/worse matches)
   const filterFn = React.useCallback((item: string, search: string) => {
     if (!search) return 1;
-    const pollutant = POLLUTANT_OPTIONS.find(p => p.value === item);
+    const pollutant = pollutantOptions.find(p => p.value === item);
     if (!pollutant) return 0;
     return pollutant.label.toLowerCase().includes(search.toLowerCase()) ? 1 : 0;
-  }, []);
+  }, [pollutantOptions]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -67,8 +95,9 @@ export function PollutantSelector({
           role="combobox"
           aria-expanded={open}
           className="w-full justify-between"
+          disabled={isLoading || pollutantOptions.length === 0}
         >
-          {selectedPollutantLabel || "Select pollutant..."}
+          {isLoading ? "Loading..." : (selectedPollutantLabel || "Select pollutant...")}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
@@ -79,25 +108,31 @@ export function PollutantSelector({
             value={searchValue}
             onValueChange={setSearchValue}
           />
-          <CommandEmpty>No pollutant found.</CommandEmpty>
-          <CommandGroup>
-            {POLLUTANT_OPTIONS.map((pollutant) => (
-              <CommandItem
-                key={pollutant.value}
-                value={pollutant.value}
-                onSelect={handleSelect}
-                className="cursor-pointer"
-              >
-                <Check
-                  className={cn(
-                    "mr-2 h-4 w-4",
-                    value === pollutant.value ? "opacity-100" : "opacity-0"
-                  )}
-                />
-                {pollutant.label}
-              </CommandItem>
-            ))}
-          </CommandGroup>
+          {isLoading ? (
+            <CommandLoading>Loading pollutant options...</CommandLoading>
+          ) : (
+            <>
+              <CommandEmpty>No pollutant found.</CommandEmpty>
+              <CommandGroup>
+                {pollutantOptions.map((pollutant) => (
+                  <CommandItem
+                    key={pollutant.value}
+                    value={pollutant.value}
+                    onSelect={handleSelect}
+                    className="cursor-pointer"
+                  >
+                    <Check
+                      className={cn(
+                        "mr-2 h-4 w-4",
+                        value === pollutant.value ? "opacity-100" : "opacity-0"
+                      )}
+                    />
+                    {pollutant.label}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </>
+          )}
         </Command>
       </PopoverContent>
     </Popover>
