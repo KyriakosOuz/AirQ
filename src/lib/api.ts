@@ -263,22 +263,27 @@ export const metadataApi = {
       return { success: true, data: metadataApi._pollutantsCache };
     }
     
-    const response = await fetchWithAuth<Array<{label: string, value: Pollutant}>>("/metadata/pollutants");
+    const response = await fetchWithAuth<Array<{label: string, value: string}>>("/metadata/pollutants");
     
     // If API succeeds, cache the result
     if (response.success && response.data) {
-      metadataApi._pollutantsCache = response.data;
+      // Cast the data to ensure it matches the expected Pollutant type
+      const typedData = response.data.map(item => ({
+        label: item.label,
+        value: item.value as Pollutant
+      }));
+      metadataApi._pollutantsCache = typedData;
     }
     
     // If API fails, return mock data
     if (!response.success) {
       console.log("Using mock pollutant data due to API failure");
       const mockData = [
-        { value: "NO2", label: "Nitrogen Dioxide (NO₂)" },
-        { value: "O3", label: "Ozone (O₃)" },
-        { value: "PM10", label: "Particulate Matter 10 (PM₁₀)" },
-        { value: "PM25", label: "Particulate Matter 2.5 (PM₂.₅)" },
-        { value: "SO2", label: "Sulfur Dioxide (SO₂)" }
+        { value: "NO2" as Pollutant, label: "Nitrogen Dioxide (NO₂)" },
+        { value: "O3" as Pollutant, label: "Ozone (O₃)" },
+        { value: "PM10" as Pollutant, label: "Particulate Matter 10 (PM₁₀)" },
+        { value: "PM25" as Pollutant, label: "Particulate Matter 2.5 (PM₂.₅)" },
+        { value: "SO2" as Pollutant, label: "Sulfur Dioxide (SO₂)" }
       ];
       // Cache mock data too
       metadataApi._pollutantsCache = mockData;
