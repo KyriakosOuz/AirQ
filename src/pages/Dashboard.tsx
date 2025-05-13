@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -30,7 +31,7 @@ const Dashboard: React.FC = () => {
     setSelectedPollutant(pollutant);
   }, [region, pollutant, setSelectedRegion, setSelectedPollutant]);
   
-  // Fetch real trend and seasonality data from API
+  // Fetch real trend, seasonality, and forecast data from API
   useEffect(() => {
     const fetchInsightData = async () => {
       setLoading(true);
@@ -61,16 +62,29 @@ const Dashboard: React.FC = () => {
           toast.error("Failed to load seasonal data");
         }
 
-        // Mock forecast data for now - this would be replaced with real API call in the future
-        const mockForecastData = [
-          { month: "Jan 2024", value: 110, lower: 100, upper: 120 },
-          { month: "Feb 2024", value: 108, lower: 98, upper: 118 },
-          { month: "Mar 2024", value: 105, lower: 95, upper: 115 },
-          { month: "Apr 2024", value: 102, lower: 92, upper: 112 },
-          { month: "May 2024", value: 98, lower: 88, upper: 108 },
-          { month: "Jun 2024", value: 95, lower: 85, upper: 105 },
-        ];
-        setForecastData(mockForecastData);
+        // Fetch real forecast data
+        const forecastResponse = await predictionApi.forecast({ 
+          pollutant, 
+          region 
+        });
+        
+        if (forecastResponse.success && forecastResponse.data) {
+          // Transform the API response data to a format suitable for our chart
+          const transformedForecastData = forecastResponse.data.map(item => ({
+            month: new Date(item.ds).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+            value: item.yhat,
+            lower: item.yhat_lower,
+            upper: item.yhat_upper
+          }));
+          
+          setForecastData(transformedForecastData);
+        } else {
+          console.error("Failed to fetch forecast data:", forecastResponse.error);
+          toast.error("Failed to load forecast data");
+          
+          // Fallback to empty array if API fails
+          setForecastData([]);
+        }
         
         toast.success(`Data updated for ${pollutant} in ${region}`);
       } catch (error) {
@@ -98,6 +112,19 @@ const Dashboard: React.FC = () => {
       const seasonalResponse = await insightApi.getSeasonality({ pollutant, region });
       if (seasonalResponse.success && seasonalResponse.data) {
         setSeasonalData(seasonalResponse.data);
+      }
+      
+      // Re-fetch forecast data
+      const forecastResponse = await predictionApi.forecast({ pollutant, region });
+      if (forecastResponse.success && forecastResponse.data) {
+        const transformedForecastData = forecastResponse.data.map(item => ({
+          month: new Date(item.ds).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+          value: item.yhat,
+          lower: item.yhat_lower,
+          upper: item.yhat_upper
+        }));
+        
+        setForecastData(transformedForecastData);
       }
       
       toast.success(`Data updated for ${pollutant} in ${region}`);

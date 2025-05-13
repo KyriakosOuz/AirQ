@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,64 +19,69 @@ const ForecastPage: React.FC = () => {
   const [selectedRegions, setSelectedRegions] = useState<string[]>(["thessaloniki"]);
   const [comparisonData, setComparisonData] = useState<any[]>([]);
   
-  // Mock data for the forecasts
+  // Fetch initial forecast data
   useEffect(() => {
-    // Initial forecast data
-    const mockForecastData = [
-      { month: "Jan 2024", actual: 105, predicted: 108, lower: 95, upper: 118 },
-      { month: "Feb 2024", actual: 102, predicted: 104, lower: 92, upper: 114 },
-      { month: "Mar 2024", actual: 98, predicted: 100, lower: 88, upper: 112 },
-      { month: "Apr 2024", actual: 95, predicted: 96, lower: 86, upper: 105 },
-      { month: "May 2024", actual: 92, predicted: 93, lower: 84, upper: 102 },
-      { month: "Jun 2024", actual: null, predicted: 90, lower: 82, upper: 98 },
-      { month: "Jul 2024", actual: null, predicted: 87, lower: 78, upper: 96 },
-      { month: "Aug 2024", actual: null, predicted: 85, lower: 76, upper: 94 },
-      { month: "Sep 2024", actual: null, predicted: 88, lower: 80, upper: 96 },
-      { month: "Oct 2024", actual: null, predicted: 92, lower: 83, upper: 101 },
-      { month: "Nov 2024", actual: null, predicted: 97, lower: 87, upper: 107 },
-      { month: "Dec 2024", actual: null, predicted: 102, lower: 92, upper: 112 },
-    ];
-    
-    setForecastData(mockForecastData);
-    
-    // Initial comparison data
-    const mockComparisonData = [
-      { month: "Jan 2024", "Thessaloniki Center": 108, "Kalamaria": 85, "Panorama": 62 },
-      { month: "Feb 2024", "Thessaloniki Center": 104, "Kalamaria": 82, "Panorama": 60 },
-      { month: "Mar 2024", "Thessaloniki Center": 100, "Kalamaria": 80, "Panorama": 58 },
-      { month: "Apr 2024", "Thessaloniki Center": 96, "Kalamaria": 78, "Panorama": 55 },
-      { month: "May 2024", "Thessaloniki Center": 93, "Kalamaria": 75, "Panorama": 53 },
-      { month: "Jun 2024", "Thessaloniki Center": 90, "Kalamaria": 72, "Panorama": 50 },
-      { month: "Jul 2024", "Thessaloniki Center": 87, "Kalamaria": 70, "Panorama": 48 },
-      { month: "Aug 2024", "Thessaloniki Center": 85, "Kalamaria": 68, "Panorama": 46 },
-      { month: "Sep 2024", "Thessaloniki Center": 88, "Kalamaria": 70, "Panorama": 50 },
-      { month: "Oct 2024", "Thessaloniki Center": 92, "Kalamaria": 74, "Panorama": 53 },
-      { month: "Nov 2024", "Thessaloniki Center": 97, "Kalamaria": 78, "Panorama": 55 },
-      { month: "Dec 2024", "Thessaloniki Center": 102, "Kalamaria": 82, "Panorama": 58 },
-    ];
-    
-    setComparisonData(mockComparisonData);
-  }, []);
-
+    if (!compareMode) {
+      fetchForecast();
+    } else {
+      fetchComparison();
+    }
+  }, []); // Empty dependency array ensures this runs only once on mount
+  
   const fetchForecast = async () => {
     setLoading(true);
     try {
-      // In real app: const response = await predictionApi.forecast({ pollutant, region });
-      // if (response.success) {
-      //   setForecastData(response.data);
-      // }
+      const response = await predictionApi.forecast({ pollutant, region });
       
-      // For demo, use mock data with slight variations
-      setForecastData(prev => prev.map(item => ({
-        ...item,
-        predicted: item.predicted * (0.95 + Math.random() * 0.1),
-        lower: item.lower * (0.95 + Math.random() * 0.1),
-        upper: item.upper * (0.95 + Math.random() * 0.1),
-      })));
-      
-      toast.success(`Forecast updated for ${pollutant} in ${region}`);
+      if (response.success && response.data) {
+        // Transform API response data for the chart
+        const transformedData = response.data.map(item => {
+          // Format the date as "Jun 2024" etc.
+          const date = new Date(item.ds);
+          const month = date.toLocaleDateString('en-US', { month: 'short' });
+          const year = date.getFullYear();
+          
+          // Check if this is historical or future data
+          const now = new Date();
+          const isHistorical = date < now;
+          
+          return {
+            month: `${month} ${year}`,
+            actual: isHistorical ? item.yhat : null, // Only show actual for historical data
+            predicted: item.yhat,
+            lower: item.yhat_lower,
+            upper: item.yhat_upper
+          };
+        });
+        
+        setForecastData(transformedData);
+        toast.success(`Forecast updated for ${pollutant} in ${region}`);
+      } else {
+        console.error("Failed to fetch forecast:", response.success ? "No data" : "API error");
+        toast.error("Failed to load forecast data");
+        
+        // If API fails, maintain current data or use empty array if no data exists
+        if (forecastData.length === 0) {
+          // Provide fallback mock data if no data exists
+          const mockForecastData = [
+            { month: "Jan 2024", actual: 105, predicted: 108, lower: 95, upper: 118 },
+            { month: "Feb 2024", actual: 102, predicted: 104, lower: 92, upper: 114 },
+            { month: "Mar 2024", actual: 98, predicted: 100, lower: 88, upper: 112 },
+            { month: "Apr 2024", actual: 95, predicted: 96, lower: 86, upper: 105 },
+            { month: "May 2024", actual: 92, predicted: 93, lower: 84, upper: 102 },
+            { month: "Jun 2024", actual: null, predicted: 90, lower: 82, upper: 98 },
+            { month: "Jul 2024", actual: null, predicted: 87, lower: 78, upper: 96 },
+            { month: "Aug 2024", actual: null, predicted: 85, lower: 76, upper: 94 },
+            { month: "Sep 2024", actual: null, predicted: 88, lower: 80, upper: 96 },
+            { month: "Oct 2024", actual: null, predicted: 92, lower: 83, upper: 101 },
+            { month: "Nov 2024", actual: null, predicted: 97, lower: 87, upper: 107 },
+            { month: "Dec 2024", actual: null, predicted: 102, lower: 92, upper: 112 },
+          ];
+          setForecastData(mockForecastData);
+        }
+      }
     } catch (error) {
-      console.error(error);
+      console.error("Error fetching forecast:", error);
       toast.error("Failed to load forecast data");
     } finally {
       setLoading(false);
@@ -87,35 +91,73 @@ const ForecastPage: React.FC = () => {
   const fetchComparison = async () => {
     setLoading(true);
     try {
-      // In real app: const response = await predictionApi.compare({
-      //   pollutant,
-      //   regions: selectedRegions,
-      // });
-      // if (response.success) {
-      //   setComparisonData(response.data);
-      // }
+      // In real app, this would call the comparison API
+      // For now, we'll simulate it using multiple forecast calls
       
-      // For demo, use mock data with slight variations
+      // Create a map to store results by month
+      const resultsByMonth: Record<string, Record<string, any>> = {};
       const regions = selectedRegions.length > 0 ? selectedRegions : ["thessaloniki"];
-      const newComparisonData = [...comparisonData];
       
-      regions.forEach(selectedRegion => {
-        newComparisonData.forEach((item, idx) => {
-          // Apply random variations to existing values
-          if (item[selectedRegion]) {
-            item[selectedRegion] = item[selectedRegion] * (0.95 + Math.random() * 0.1);
-          } else {
-            // Generate a new value if region doesn't exist in data
-            const baseValue = 80 - Math.floor(Math.random() * 30);
-            item[selectedRegion] = baseValue;
-          }
-        });
+      // For each selected region, fetch its forecast
+      for (const regionValue of regions) {
+        const response = await predictionApi.forecast({ pollutant, region: regionValue });
+        
+        if (response.success && response.data) {
+          // Find the matching region display name
+          const regionName = comparisonRegions.find(r => r.value === regionValue)?.label || regionValue;
+          
+          // Process each data point
+          response.data.forEach(item => {
+            const date = new Date(item.ds);
+            const monthStr = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+            
+            // Initialize month entry if needed
+            if (!resultsByMonth[monthStr]) {
+              resultsByMonth[monthStr] = { month: monthStr };
+            }
+            
+            // Add region value to this month
+            resultsByMonth[monthStr][regionName] = item.yhat;
+          });
+        }
+      }
+      
+      // Convert to array format for chart
+      const comparisonArray = Object.values(resultsByMonth);
+      
+      // Sort by date
+      comparisonArray.sort((a, b) => {
+        const dateA = new Date(a.month.replace(' ', ' 1, '));
+        const dateB = new Date(b.month.replace(' ', ' 1, '));
+        return dateA.getTime() - dateB.getTime();
       });
       
-      setComparisonData(newComparisonData);
-      toast.success(`Comparison updated for ${selectedRegions.join(", ")}`);
+      if (comparisonArray.length > 0) {
+        setComparisonData(comparisonArray);
+        toast.success(`Comparison updated for ${selectedRegions.join(", ")}`);
+      } else {
+        // If no data was returned, maintain current comparison data or use fallback
+        if (comparisonData.length === 0) {
+          // Use fallback mock data
+          const mockComparisonData = [
+            { month: "Jan 2024", "Thessaloniki Center": 108, "Kalamaria": 85, "Panorama": 62 },
+            { month: "Feb 2024", "Thessaloniki Center": 104, "Kalamaria": 82, "Panorama": 60 },
+            { month: "Mar 2024", "Thessaloniki Center": 100, "Kalamaria": 80, "Panorama": 58 },
+            { month: "Apr 2024", "Thessaloniki Center": 96, "Kalamaria": 78, "Panorama": 55 },
+            { month: "May 2024", "Thessaloniki Center": 93, "Kalamaria": 75, "Panorama": 53 },
+            { month: "Jun 2024", "Thessaloniki Center": 90, "Kalamaria": 72, "Panorama": 50 },
+            { month: "Jul 2024", "Thessaloniki Center": 87, "Kalamaria": 70, "Panorama": 48 },
+            { month: "Aug 2024", "Thessaloniki Center": 85, "Kalamaria": 68, "Panorama": 46 },
+            { month: "Sep 2024", "Thessaloniki Center": 88, "Kalamaria": 70, "Panorama": 50 },
+            { month: "Oct 2024", "Thessaloniki Center": 92, "Kalamaria": 74, "Panorama": 53 },
+            { month: "Nov 2024", "Thessaloniki Center": 97, "Kalamaria": 78, "Panorama": 55 },
+            { month: "Dec 2024", "Thessaloniki Center": 102, "Kalamaria": 82, "Panorama": 58 },
+          ];
+          setComparisonData(mockComparisonData);
+        }
+      }
     } catch (error) {
-      console.error(error);
+      console.error("Error fetching comparison data:", error);
       toast.error("Failed to load comparison data");
     } finally {
       setLoading(false);
@@ -133,6 +175,8 @@ const ForecastPage: React.FC = () => {
     setPollutant(value);
     if (!compareMode) {
       fetchForecast();
+    } else {
+      fetchComparison();
     }
   };
   

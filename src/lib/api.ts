@@ -166,7 +166,7 @@ export const modelApi = {
 export const predictionApi = {
   forecast: async (params: { pollutant: string; region: string }) => {
     const queryParams = new URLSearchParams(params as any).toString();
-    return fetchWithAuth(`/predictions/forecast/?${queryParams}`);
+    return fetchWithAuth<Array<{ ds: string; yhat: number; yhat_lower: number; yhat_upper: number }>>(`/prediction/forecast/?${queryParams}`);
   },
   compare: async (compareData: { pollutant: string; regions: string[] }) => {
     return fetchWithAuth("/predictions/compare/", {
