@@ -1,50 +1,23 @@
-
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RegionSelector } from "@/components/ui/region-selector";
-import { PollutantSelector } from "@/components/ui/pollutant-selector";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { datasetApi, modelApi, DatasetPreviewResponse } from "@/lib/api";
-import { Dataset, Pollutant } from "@/lib/types";
+import { datasetApi, DatasetPreviewResponse } from "@/lib/api";
+import { Dataset } from "@/lib/types";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Eye, FileSpreadsheet, Trash2 } from "lucide-react";
 import { TableSkeleton } from "@/components/ui/table-skeleton";
 import { useApiRequest, debounce, measurePerformance, getErrorMessage } from "@/lib/utils";
-import ForecastChart from "@/components/ForecastChart";
-import { format } from "date-fns";
+import ModelTrainingTab from "@/components/admin/ModelTrainingTab";
 
 // Constants to prevent re-renders
 const INITIAL_REGION = "thessaloniki";
 const INITIAL_YEAR = 2023;
-const INITIAL_POLLUTANT = "no2_conc" as Pollutant;
-
-// Interface for forecast data
-interface ForecastDataPoint {
-  ds: string;
-  yhat: number;
-  yhat_lower: number;
-  yhat_upper: number;
-}
-
-// Interface for a training record
-interface TrainingRecord {
-  region: string;
-  pollutant: string;
-  date: string; // ISO string
-  status: "complete" | "in-progress" | "failed";
-}
-
-// Interface for model training API response
-interface ModelTrainingResponse {
-  message?: string;
-  trained_at?: string;
-  forecast?: ForecastDataPoint[];
-}
 
 const AdminPage: React.FC = () => {
   const [fileInput, setFileInput] = useState<File | null>(null);
@@ -52,19 +25,11 @@ const AdminPage: React.FC = () => {
   const [uploadYear, setUploadYear] = useState<number>(INITIAL_YEAR);
   const [uploadLoading, setUploadLoading] = useState(false);
   
-  const [trainRegion, setTrainRegion] = useState(INITIAL_REGION);
-  const [trainPollutant, setTrainPollutant] = useState<Pollutant>(INITIAL_POLLUTANT);
-  const [trainLoading, setTrainLoading] = useState(false);
-  
   const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [datasetsLoading, setDatasetsLoading] = useState(false);
   const [selectedDataset, setSelectedDataset] = useState<string | null>(null);
   const [dataPreview, setDataPreview] = useState<DatasetPreviewResponse | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
-  
-  // State for forecast data and training records
-  const [forecastData, setForecastData] = useState<ForecastDataPoint[]>([]);
-  const [recentTrainings, setRecentTrainings] = useState<TrainingRecord[]>([]);
   
   const { createSignal } = useApiRequest();
   
@@ -160,41 +125,6 @@ const AdminPage: React.FC = () => {
       toast.error(getErrorMessage(error));
     } finally {
       setUploadLoading(false);
-    }
-  };
-  
-  const trainModel = async () => {
-    setTrainLoading(true);
-    try {
-      const response = await modelApi.train({
-        pollutant: trainPollutant,
-        region: trainRegion,
-      });
-      
-      if (response.success) {
-        toast.success(`Model trained for ${trainRegion} - ${trainPollutant}`);
-        
-        // Handle the forecast data if available in the response
-        const apiResponse = response.data as ModelTrainingResponse;
-        
-        if (apiResponse && apiResponse.forecast) {
-          setForecastData(apiResponse.forecast);
-          
-          // Add training record to the recent trainings list
-          const newTraining: TrainingRecord = {
-            region: trainRegion,
-            pollutant: trainPollutant,
-            date: apiResponse.trained_at || new Date().toISOString(),
-            status: "complete"
-          };
-          
-          setRecentTrainings(prev => [newTraining, ...prev.slice(0, 4)]);
-        }
-      } else {
-        toast.error(getErrorMessage(response.error));
-      }
-    } finally {
-      setTrainLoading(false);
     }
   };
   
@@ -497,156 +427,7 @@ const AdminPage: React.FC = () => {
         </TabsContent>
         
         <TabsContent value="training">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Train Forecast Model</CardTitle>
-                <CardDescription>
-                  Start model training for a specific pollutant in a region
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Region</Label>
-                  <RegionSelector value={trainRegion} onValueChange={setTrainRegion} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Pollutant</Label>
-                  <PollutantSelector value={trainPollutant} onValueChange={setTrainPollutant} />
-                </div>
-              </CardContent>
-              <CardFooter>
-                <Button 
-                  onClick={trainModel} 
-                  disabled={trainLoading}
-                  className="w-full"
-                >
-                  {trainLoading ? (
-                    <>
-                      <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-background border-t-transparent"></span>
-                      Training...
-                    </>
-                  ) : "Start Training"}
-                </Button>
-              </CardFooter>
-            </Card>
-            
-            <Card>
-              <CardHeader>
-                <CardTitle>Training Information</CardTitle>
-                <CardDescription>
-                  Details about the model training process
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="rounded-md bg-muted p-4 space-y-3">
-                  <div>
-                    <h4 className="text-sm font-medium">Model Type</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Prophet (Facebook) time series forecasting model
-                    </p>
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-medium">Training Process</h4>
-                    <p className="text-sm text-muted-foreground">
-                      The model will be trained on all available data for the selected region and pollutant.
-                      Training typically takes 1-2 minutes depending on data volume.
-                    </p>
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-medium">Requirements</h4>
-                    <p className="text-sm text-muted-foreground">
-                      At least 2 years of monthly data is recommended for accurate forecasts.
-                    </p>
-                  </div>
-                </div>
-                
-                <div>
-                  <h4 className="text-sm font-medium mb-2">Recent Model Trainings</h4>
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Region</TableHead>
-                          <TableHead>Pollutant</TableHead>
-                          <TableHead>Date</TableHead>
-                          <TableHead>Status</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {recentTrainings.length > 0 ? (
-                          recentTrainings.map((training, index) => (
-                            <TableRow key={index}>
-                              <TableCell>{formatters.getRegionLabel(training.region)}</TableCell>
-                              <TableCell>{formatters.getPollutantDisplay(training.pollutant)}</TableCell>
-                              <TableCell>{formatters.formatDate(training.date)}</TableCell>
-                              <TableCell>
-                                <Badge 
-                                  variant="outline" 
-                                  className={
-                                    training.status === "complete" 
-                                      ? "bg-green-100 text-green-800 border-green-200" 
-                                      : training.status === "in-progress"
-                                      ? "bg-yellow-100 text-yellow-800 border-yellow-200"
-                                      : "bg-red-100 text-red-800 border-red-200"
-                                  }
-                                >
-                                  {training.status.charAt(0).toUpperCase() + training.status.slice(1)}
-                                </Badge>
-                              </TableCell>
-                            </TableRow>
-                          ))
-                        ) : (
-                          <TableRow>
-                            <TableCell colSpan={4} className="text-center text-muted-foreground py-6">
-                              No recent model trainings
-                            </TableCell>
-                          </TableRow>
-                        )}
-                        
-                        {/* Always show the example records if there are fewer than 2 recent trainings */}
-                        {recentTrainings.length < 2 && (
-                          <>
-                            {recentTrainings.length < 1 && (
-                              <TableRow>
-                                <TableCell>Thessaloniki Center</TableCell>
-                                <TableCell>NO₂</TableCell>
-                                <TableCell>May 12, 2024</TableCell>
-                                <TableCell>
-                                  <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
-                                    Complete
-                                  </Badge>
-                                </TableCell>
-                              </TableRow>
-                            )}
-                            <TableRow>
-                              <TableCell>Kalamaria</TableCell>
-                              <TableCell>O₃</TableCell>
-                              <TableCell>May 10, 2024</TableCell>
-                              <TableCell>
-                                <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
-                                  Complete
-                                </Badge>
-                              </TableCell>
-                            </TableRow>
-                          </>
-                        )}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            {/* Display forecast chart if there's data */}
-            {forecastData && forecastData.length > 0 && (
-              <ForecastChart 
-                data={forecastData} 
-                region={trainRegion} 
-                pollutant={trainPollutant} 
-              />
-            )}
-          </div>
+          <ModelTrainingTab />
         </TabsContent>
       </Tabs>
     </div>

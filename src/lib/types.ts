@@ -90,3 +90,11 @@ export interface Forecast {
   yhat: number;
   category: string;
 }
+
+// Forecast data point with confidence intervals
+export interface ForecastDataPoint {
+  ds: string;
+  yhat: number;
+  yhat_lower: number;
+  yhat_upper: number;
+}
