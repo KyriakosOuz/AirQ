@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { RegionSelector } from "@/components/ui/region-selector";
@@ -13,7 +14,7 @@ import { format } from "date-fns";
 
 const ForecastPage: React.FC = () => {
   const [region, setRegion] = useState("thessaloniki");
-  const [pollutant, setPollutant] = useState<Pollutant>("NO2");
+  const [pollutant, setPollutant] = useState<Pollutant>("no2_conc");
   const [forecasts, setForecasts] = useState<Forecast[]>([]);
   const [loading, setLoading] = useState(false);
 

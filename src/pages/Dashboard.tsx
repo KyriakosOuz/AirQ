@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,7 +15,7 @@ import { getErrorMessage } from "@/lib/utils";
 const Dashboard: React.FC = () => {
   const isMobile = useIsMobile();
   const [region, setRegion] = useState("thessaloniki");
-  const [pollutant, setPollutant] = useState<Pollutant>("NO2");
+  const [pollutant, setPollutant] = useState<Pollutant>("no2_conc");
   const { setSelectedRegion, setSelectedPollutant } = useRegionStore();
   
   const [loading, setLoading] = useState(false);

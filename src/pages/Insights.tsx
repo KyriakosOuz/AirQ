@@ -13,7 +13,7 @@ import { toast } from "sonner";
 
 const Insights: React.FC = () => {
   const [region, setRegion] = useState("thessaloniki");
-  const [pollutant, setPollutant] = useState<Pollutant>("NO2");
+  const [pollutant, setPollutant] = useState<Pollutant>("no2_conc");
   const [year, setYear] = useState<number>(2023);
   const [loading, setLoading] = useState(false);
   
