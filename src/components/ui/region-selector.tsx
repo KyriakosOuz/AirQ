@@ -35,7 +35,13 @@ interface RegionSelectorProps {
 
 export function RegionSelector({ value, onValueChange }: RegionSelectorProps) {
   const [open, setOpen] = React.useState(false);
-  const [searchValue, setSearchValue] = React.useState("");
+  const [inputValue, setInputValue] = React.useState("");
+
+  const handleSelect = React.useCallback((currentValue: string) => {
+    onValueChange(currentValue);
+    setOpen(false);
+    setInputValue("");
+  }, [onValueChange]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -55,9 +61,9 @@ export function RegionSelector({ value, onValueChange }: RegionSelectorProps) {
       <PopoverContent className="w-full p-0">
         <Command>
           <CommandInput 
-            placeholder="Search regions..." 
-            value={searchValue}
-            onValueChange={setSearchValue}
+            placeholder="Search regions..."
+            value={inputValue}
+            onValueChange={setInputValue}
           />
           <CommandEmpty>No region found.</CommandEmpty>
           <CommandGroup>
@@ -65,11 +71,7 @@ export function RegionSelector({ value, onValueChange }: RegionSelectorProps) {
               <CommandItem
                 key={region.value}
                 value={region.value}
-                onSelect={(currentValue) => {
-                  onValueChange(currentValue);
-                  setOpen(false);
-                  setSearchValue("");
-                }}
+                onSelect={handleSelect}
               >
                 <Check
                   className={cn(

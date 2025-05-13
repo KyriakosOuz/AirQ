@@ -28,7 +28,13 @@ export function PollutantSelector({
   onValueChange,
 }: PollutantSelectorProps) {
   const [open, setOpen] = React.useState(false);
-  const [searchValue, setSearchValue] = React.useState("");
+  const [inputValue, setInputValue] = React.useState("");
+
+  const handleSelect = React.useCallback((currentValue: string) => {
+    onValueChange(currentValue as Pollutant);
+    setOpen(false);
+    setInputValue("");
+  }, [onValueChange]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -48,9 +54,9 @@ export function PollutantSelector({
       <PopoverContent className="w-full p-0">
         <Command>
           <CommandInput 
-            placeholder="Search pollutants..." 
-            value={searchValue}
-            onValueChange={setSearchValue}
+            placeholder="Search pollutants..."
+            value={inputValue}
+            onValueChange={setInputValue}
           />
           <CommandEmpty>No pollutant found.</CommandEmpty>
           <CommandGroup>
@@ -58,11 +64,7 @@ export function PollutantSelector({
               <CommandItem
                 key={pollutant.value}
                 value={pollutant.value}
-                onSelect={(currentValue) => {
-                  onValueChange(currentValue as Pollutant);
-                  setOpen(false);
-                  setSearchValue("");
-                }}
+                onSelect={handleSelect}
               >
                 <Check
                   className={cn(
