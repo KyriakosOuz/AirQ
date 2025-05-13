@@ -109,16 +109,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     try {
       // Sign out from Supabase
-      const { error } = await supabase.auth.signOut();
-      if (error) {
+      await supabase.auth.signOut().then(() => {
+        // Clear local state
+        storeLogout();
+        setSession(null);
+        navigate("/auth");
+        toast.success("Logged out successfully");
+      }).catch((error) => {
+        // Handle the error here instead of using .catch()
         console.error("Error signing out:", error);
-      }
-      
-      // Clear local state
-      storeLogout();
-      setSession(null);
-      navigate("/auth");
-      toast.success("Logged out successfully");
+        toast.error("Error during logout");
+      });
     } catch (error) {
       console.error("Error during logout:", error);
       toast.error("Error during logout");
