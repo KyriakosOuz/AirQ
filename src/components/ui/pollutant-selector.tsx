@@ -30,9 +30,18 @@ export function PollutantSelector({
   const [open, setOpen] = React.useState(false);
   const [searchValue, setSearchValue] = React.useState("");
 
+  // Reset search when popup closes
+  React.useEffect(() => {
+    if (!open) {
+      setSearchValue("");
+    }
+  }, [open]);
+
   const handleSelect = React.useCallback((currentValue: string) => {
-    onValueChange(currentValue as Pollutant);
-    setOpen(false);
+    if (currentValue) {
+      onValueChange(currentValue as Pollutant);
+      setOpen(false);
+    }
   }, [onValueChange]);
 
   // Get pollutant label from value

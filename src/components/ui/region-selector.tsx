@@ -37,9 +37,18 @@ export function RegionSelector({ value, onValueChange }: RegionSelectorProps) {
   const [open, setOpen] = React.useState(false);
   const [searchValue, setSearchValue] = React.useState("");
 
+  // Reset search when popup closes
+  React.useEffect(() => {
+    if (!open) {
+      setSearchValue("");
+    }
+  }, [open]);
+
   const handleSelect = React.useCallback((currentValue: string) => {
-    onValueChange(currentValue);
-    setOpen(false);
+    if (currentValue) {
+      onValueChange(currentValue);
+      setOpen(false);
+    }
   }, [onValueChange]);
 
   // Get region label from value
