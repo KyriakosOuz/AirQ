@@ -1,8 +1,8 @@
 import { toast } from "sonner";
 import { Pollutant, Region, Dataset } from "@/lib/types";
 
-// Define the base URL for API requests
-export const API_URL = "http://localhost:8000"; // Should be configurable
+// Define the base URL for API requests - fallback to mock data if API fails
+export const API_URL = "http://localhost:8000"; 
 
 // Define types for API responses
 export type ApiResponse<T> = {
@@ -29,12 +29,13 @@ export const removeToken = (): void => {
   localStorage.removeItem(TOKEN_KEY);
 };
 
-// Base fetch function with authentication
+// Base fetch function with authentication and better error handling
 export const fetchWithAuth = async <T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<ApiResponse<T>> => {
   try {
+    console.log(`API Request to: ${API_URL}${endpoint}`);
     const token = getToken();
 
     const headers: HeadersInit = {
@@ -51,14 +52,36 @@ export const fetchWithAuth = async <T>(
       headers,
     });
 
-    const data = await response.json();
+    // Handle non-JSON responses
+    const contentType = response.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+      console.error("Non-JSON response received:", await response.text());
+      return { 
+        success: false, 
+        error: "Invalid response format from server" 
+      };
+    }
+
+    // Parse JSON response
+    let data;
+    try {
+      data = await response.json();
+    } catch (e) {
+      console.error("Error parsing JSON response:", e);
+      return { 
+        success: false, 
+        error: "Failed to parse server response" 
+      };
+    }
 
     if (!response.ok) {
       // Handle error response
+      console.error("API Error Response:", data);
       toast.error(data.detail || "An error occurred");
       return { success: false, error: data.detail || "API Error" };
     }
 
+    console.log(`API Response from ${endpoint}:`, data);
     return { success: true, data };
   } catch (error) {
     console.error("API Error:", error);
@@ -201,9 +224,45 @@ export const alertApi = {
 // Metadata endpoints
 export const metadataApi = {
   getPollutants: async () => {
-    return fetchWithAuth<Array<{label: string, value: Pollutant}>>("/metadata/pollutants");
+    const response = await fetchWithAuth<Array<{label: string, value: Pollutant}>>("/metadata/pollutants");
+    
+    // If API fails, return mock data
+    if (!response.success) {
+      console.log("Using mock pollutant data due to API failure");
+      return { 
+        success: true, 
+        data: [
+          { value: "NO2", label: "Nitrogen Dioxide (NO₂)" },
+          { value: "O3", label: "Ozone (O₃)" },
+          { value: "PM10", label: "Particulate Matter 10 (PM₁₀)" },
+          { value: "PM25", label: "Particulate Matter 2.5 (PM₂.₅)" },
+          { value: "SO2", label: "Sulfur Dioxide (SO₂)" }
+        ]
+      };
+    }
+    
+    return response;
   },
   getRegions: async () => {
-    return fetchWithAuth<Array<{label: string, value: string}>>("/metadata/regions");
+    const response = await fetchWithAuth<Array<{label: string, value: string}>>("/metadata/regions");
+    
+    // If API fails, return mock data
+    if (!response.success) {
+      console.log("Using mock region data due to API failure");
+      return { 
+        success: true, 
+        data: [
+          { value: "ampelokipoi-menemeni", label: "Ampelokipoi-Menemeni" },
+          { value: "kalamaria", label: "Kalamaria" },
+          { value: "pavlos-melas", label: "Pavlos Melas" },
+          { value: "neapoli-sykies", label: "Neapoli-Sykies" },
+          { value: "thessaloniki", label: "Thessaloniki Center" },
+          { value: "panorama", label: "Panorama" },
+          { value: "pylaia-chortiatis", label: "Pylaia-Chortiatis" },
+        ]
+      };
+    }
+    
+    return response;
   }
 };

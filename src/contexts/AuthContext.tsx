@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -13,6 +14,7 @@ interface AuthContextType {
   role: UserRole | null;
   isAdmin: boolean;
   isAuthenticated: boolean;
+  isLoading: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
 }
@@ -41,18 +43,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     logout: storeLogout 
   } = useUserStore();
   const [session, setSession] = useState<Session | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Login with Supabase
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
+      console.log("Login attempt for:", email);
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       
       if (error) {
+        console.error("Login error:", error);
         toast.error(error.message);
         return false;
       }
       
       if (data && data.session) {
+        console.log("Login successful, setting token");
         // Store the token from Supabase
         setUserToken(data.session.access_token);
         
@@ -61,10 +67,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           .from('profiles')
           .select('*')
           .eq('user_id', data.user.id)
-          .single();
+          .maybeSingle();
           
         if (profileError) {
           console.error("Error fetching profile:", profileError);
+        }
+        
+        // If no profile exists yet, create one
+        if (!profileData) {
+          console.log("Creating profile for new user");
+          const { error: createProfileError } = await supabase
+            .from('profiles')
+            .insert({
+              user_id: data.user.id,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            });
+            
+          if (createProfileError) {
+            console.error("Error creating profile:", createProfileError);
+          }
         }
         
         // Create user profile with Supabase data
@@ -99,14 +121,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       return false;
     } catch (error) {
-      console.error(error);
-      toast.error("An error occurred during login");
+      console.error("Unexpected login error:", error);
+      toast.error("An unexpected error occurred during login");
       return false;
     }
   };
 
   const logout = async () => {
     try {
+      console.log("Logging out...");
       // Sign out from Supabase
       const { error } = await supabase.auth.signOut();
       
@@ -129,12 +152,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Check for existing session on mount
   useEffect(() => {
+    console.log("Setting up auth state listener");
+    setIsLoading(true);
+    
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, currentSession) => {
+        console.log("Auth state changed:", event, currentSession ? "session exists" : "no session");
         setSession(currentSession);
         
         if (currentSession?.user) {
+          console.log("User authenticated:", currentSession.user.email);
           setUserToken(currentSession.access_token);
           
           // Fetch user profile data in a non-blocking way
@@ -176,63 +204,66 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // Clear state on sign out
           storeLogout();
         }
+        
+        setIsLoading(false);
       }
     );
 
-    // Check for existing session - FIX: properly handle Promise
-    try {
-      const fetchInitialSession = async () => {
-        try {
-          const { data: { session: initialSession } } = await supabase.auth.getSession();
+    // Check for existing session
+    const fetchInitialSession = async () => {
+      try {
+        console.log("Checking for existing session");
+        const { data: { session: initialSession } } = await supabase.auth.getSession();
+        
+        setSession(initialSession);
+        
+        if (initialSession?.user && !user) {
+          console.log("Initial session found for user:", initialSession.user.email);
+          setUserToken(initialSession.access_token);
           
-          setSession(initialSession);
-          
-          if (initialSession?.user && !user) {
-            setUserToken(initialSession.access_token);
+          // Fetch user profile data
+          try {
+            const { data: profileData } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('user_id', initialSession.user.id)
+              .maybeSingle();
             
-            // Fetch user profile data
-            try {
-              const { data: profileData } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('user_id', initialSession.user.id)
-                .maybeSingle();
-              
-              // Create user profile
-              const userProfile: UserProfile = {
-                id: initialSession.user.id,
-                email: initialSession.user.email || '',
-                // Add profile data if available
-                ...(profileData && {
-                  age: profileData.age,
-                  hasAsthma: profileData.has_asthma,
-                  isSmoker: profileData.is_smoker,
-                  hasHeartIssues: profileData.has_heart_disease,
-                  hasDiabetes: false,
-                  hasLungDisease: false,
-                }),
-              };
-              
-              setUser(userProfile);
-              
-              // Set role based on email for now
-              const userRole: UserRole = initialSession.user.email?.includes('admin') 
-                ? 'admin' 
-                : 'authenticated';
-              setRole(userRole);
-            } catch (error) {
-              console.error("Error fetching profile on init:", error);
-            }
+            // Create user profile
+            const userProfile: UserProfile = {
+              id: initialSession.user.id,
+              email: initialSession.user.email || '',
+              // Add profile data if available
+              ...(profileData && {
+                age: profileData.age,
+                hasAsthma: profileData.has_asthma,
+                isSmoker: profileData.is_smoker,
+                hasHeartIssues: profileData.has_heart_disease,
+                hasDiabetes: false,
+                hasLungDisease: false,
+              }),
+            };
+            
+            setUser(userProfile);
+            
+            // Set role based on email for now
+            const userRole: UserRole = initialSession.user.email?.includes('admin') 
+              ? 'admin' 
+              : 'authenticated';
+            setRole(userRole);
+          } catch (error) {
+            console.error("Error fetching profile on init:", error);
           }
-        } catch (error) {
-          console.error("Error getting session:", error);
         }
-      };
-      
-      fetchInitialSession();
-    } catch (error) {
-      console.error("Error in session initialization:", error);
-    }
+        
+        setIsLoading(false);
+      } catch (error) {
+        console.error("Error getting session:", error);
+        setIsLoading(false);
+      }
+    };
+    
+    fetchInitialSession();
 
     return () => {
       subscription.unsubscribe();
@@ -247,6 +278,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         role,
         isAdmin,
         isAuthenticated,
+        isLoading,
         login,
         logout,
       }}

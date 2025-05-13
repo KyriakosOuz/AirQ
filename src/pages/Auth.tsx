@@ -1,6 +1,6 @@
 
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -41,8 +41,18 @@ const registerSchema = loginSchema.extend({
 
 const Auth: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
+  const [authError, setAuthError] = useState<string | null>(null);
+  const { login, isAuthenticated } = useAuth();
+  
+  // Check if already authenticated, redirect to home if so
+  useEffect(() => {
+    if (isAuthenticated) {
+      const from = location.state?.from?.pathname || "/";
+      navigate(from, { replace: true });
+    }
+  }, [isAuthenticated, navigate, location]);
   
   // Login form
   const loginForm = useForm<z.infer<typeof loginSchema>>({
@@ -65,11 +75,21 @@ const Auth: React.FC = () => {
 
   const onLogin = async (data: z.infer<typeof loginSchema>) => {
     setIsLoading(true);
+    setAuthError(null);
     try {
+      console.log("Attempting login with:", data.email);
       const success = await login(data.email, data.password);
       if (success) {
-        navigate("/");
+        toast.success("Login successful!");
+        const from = location.state?.from?.pathname || "/";
+        navigate(from, { replace: true });
+      } else {
+        setAuthError("Login failed. Please check your credentials.");
       }
+    } catch (error) {
+      console.error("Login error:", error);
+      setAuthError("An unexpected error occurred during login.");
+      toast.error("Login failed. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -77,26 +97,49 @@ const Auth: React.FC = () => {
 
   const onRegister = async (data: z.infer<typeof registerSchema>) => {
     setIsLoading(true);
+    setAuthError(null);
     try {
+      console.log("Attempting registration with:", data.email);
       // Register with Supabase
       const { data: authData, error } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
+        options: {
+          data: {
+            // Add any additional user metadata here if needed
+          },
+        }
       });
       
       if (error) {
+        console.error("Registration error:", error);
+        setAuthError(error.message);
         toast.error(error.message);
         return;
       }
       
       if (authData.user) {
+        // Create profile entry if it doesn't exist
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .upsert({
+            user_id: authData.user.id,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          });
+          
+        if (profileError) {
+          console.error("Profile creation error:", profileError);
+        }
+        
         toast.success("Registration successful! You can now login.");
         loginForm.setValue("email", data.email);
         loginForm.setValue("password", data.password);
       }
     } catch (error) {
-      console.error(error);
-      toast.error("An error occurred during registration");
+      console.error("Registration error:", error);
+      setAuthError("An unexpected error occurred during registration.");
+      toast.error("Registration failed. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -117,6 +160,11 @@ const Auth: React.FC = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {authError && (
+            <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md mb-4">
+              {authError}
+            </div>
+          )}
           <Tabs defaultValue="login">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="login">Login</TabsTrigger>
@@ -207,9 +255,12 @@ const Auth: React.FC = () => {
             </TabsContent>
           </Tabs>
         </CardContent>
-        <CardFooter className="flex justify-center">
-          <p className="text-sm text-muted-foreground">
+        <CardFooter className="flex flex-col gap-2">
+          <p className="text-sm text-muted-foreground text-center">
             Monitoring air quality for a healthier Thessaloniki
+          </p>
+          <p className="text-xs text-muted-foreground text-center">
+            Note: For development, email verification is disabled. You can login immediately after registration.
           </p>
         </CardFooter>
       </Card>
