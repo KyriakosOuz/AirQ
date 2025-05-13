@@ -51,10 +51,14 @@ export function PollutantSelector({
           // Safely handle the error without directly accessing the error property
           console.error("Failed to fetch pollutants:", response.success ? "No data" : "API error");
           toast.error("Failed to load pollutant options");
+          // Initialize with empty array as fallback
+          setPollutantOptions([]);
         }
       } catch (error) {
         console.error("Error fetching pollutants:", error);
         toast.error("Failed to load pollutant options");
+        // Initialize with empty array as fallback
+        setPollutantOptions([]);
       } finally {
         setIsLoading(false);
       }
