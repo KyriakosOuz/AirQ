@@ -58,6 +58,15 @@ export function RegionSelector({ value, onValueChange }: RegionSelectorProps) {
     return REGIONS.find(region => region.value === value)?.label || "";
   }, [value]);
 
+  // Filter regions based on search input
+  const filteredRegions = React.useMemo(() => {
+    if (!searchValue) return REGIONS;
+    return REGIONS.filter(region => 
+      region.label.toLowerCase().includes(searchValue.toLowerCase()) ||
+      region.value.toLowerCase().includes(searchValue.toLowerCase())
+    );
+  }, [searchValue]);
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -72,7 +81,7 @@ export function RegionSelector({ value, onValueChange }: RegionSelectorProps) {
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-full p-0">
-        <Command shouldFilter={false}>
+        <Command>
           <CommandInput 
             placeholder="Search regions..."
             value={searchValue}
@@ -80,28 +89,22 @@ export function RegionSelector({ value, onValueChange }: RegionSelectorProps) {
           />
           <CommandEmpty>No region found.</CommandEmpty>
           <CommandGroup>
-            {REGIONS
-              .filter(region => 
-                !searchValue || 
-                region.label.toLowerCase().includes(searchValue.toLowerCase()) ||
-                region.value.toLowerCase().includes(searchValue.toLowerCase())
-              )
-              .map((region) => (
-                <CommandItem
-                  key={region.value}
-                  value={region.value}
-                  onSelect={handleSelect}
-                  className="cursor-pointer"
-                >
-                  <Check
-                    className={cn(
-                      "mr-2 h-4 w-4",
-                      value === region.value ? "opacity-100" : "opacity-0"
-                    )}
-                  />
-                  {region.label}
-                </CommandItem>
-              ))}
+            {filteredRegions.map((region) => (
+              <CommandItem
+                key={region.value}
+                value={region.value}
+                onSelect={handleSelect}
+                className="cursor-pointer"
+              >
+                <Check
+                  className={cn(
+                    "mr-2 h-4 w-4",
+                    value === region.value ? "opacity-100" : "opacity-0"
+                  )}
+                />
+                {region.label}
+              </CommandItem>
+            ))}
           </CommandGroup>
         </Command>
       </PopoverContent>
