@@ -57,6 +57,14 @@ export function RegionSelector({ value, onValueChange }: RegionSelectorProps) {
     return regions.find(region => region.value === value)?.label || "";
   }, [value]);
 
+  // Filter function for the Command component
+  const filterFn = React.useCallback((item: string, search: string) => {
+    if (!search) return true;
+    const region = regions.find(r => r.value === item);
+    if (!region) return false;
+    return region.label.toLowerCase().includes(search.toLowerCase());
+  }, []);
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -71,7 +79,7 @@ export function RegionSelector({ value, onValueChange }: RegionSelectorProps) {
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-full p-0">
-        <Command>
+        <Command value={searchValue} filter={filterFn}>
           <CommandInput 
             placeholder="Search regions..."
             value={searchValue}

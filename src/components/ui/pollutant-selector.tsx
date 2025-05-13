@@ -50,6 +50,14 @@ export function PollutantSelector({
     return POLLUTANT_OPTIONS.find(pollutant => pollutant.value === value)?.label || "";
   }, [value]);
 
+  // Filter function for the Command component
+  const filterFn = React.useCallback((item: string, search: string) => {
+    if (!search) return true;
+    const pollutant = POLLUTANT_OPTIONS.find(p => p.value === item);
+    if (!pollutant) return false;
+    return pollutant.label.toLowerCase().includes(search.toLowerCase());
+  }, []);
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -64,7 +72,7 @@ export function PollutantSelector({
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-full p-0">
-        <Command>
+        <Command value={searchValue} filter={filterFn}>
           <CommandInput 
             placeholder="Search pollutants..."
             value={searchValue}
