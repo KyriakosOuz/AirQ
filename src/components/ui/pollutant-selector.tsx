@@ -17,9 +17,16 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Pollutant } from "@/lib/types";
-import { metadataApi } from "@/lib/api";
-import { toast } from "sonner";
 import ErrorBoundary from "@/components/ErrorBoundary";
+
+// Defined pollutant options
+const pollutantOptions = [
+  { value: "no2_conc" as Pollutant, label: "Nitrogen Dioxide (NO₂)" },
+  { value: "o3_conc" as Pollutant, label: "Ozone (O₃)" },
+  { value: "co_conc" as Pollutant, label: "Carbon Monoxide (CO)" },
+  { value: "no_conc" as Pollutant, label: "Nitric Oxide (NO)" },
+  { value: "so2_conc" as Pollutant, label: "Sulfur Dioxide (SO₂)" },
+];
 
 interface PollutantSelectorProps {
   value: Pollutant | "";
@@ -32,36 +39,6 @@ export function PollutantSelector({
 }: PollutantSelectorProps) {
   const [open, setOpen] = React.useState(false);
   const [searchValue, setSearchValue] = React.useState("");
-  const [pollutantOptions, setPollutantOptions] = React.useState<Array<{label: string, value: Pollutant}>>([]);
-  const [isLoading, setIsLoading] = React.useState(false);
-
-  // Fetch pollutant options from API
-  React.useEffect(() => {
-    const fetchPollutants = async () => {
-      setIsLoading(true);
-      try {
-        // Instead of fetching from API, use the predefined list
-        const pollutantsList = [
-          { value: "no2_conc" as Pollutant, label: "Nitrogen Dioxide (NO₂)" },
-          { value: "o3_conc" as Pollutant, label: "Ozone (O₃)" },
-          { value: "co_conc" as Pollutant, label: "Carbon Monoxide (CO)" },
-          { value: "no_conc" as Pollutant, label: "Nitric Oxide (NO)" },
-          { value: "so2_conc" as Pollutant, label: "Sulfur Dioxide (SO₂)" },
-        ];
-        
-        setPollutantOptions(pollutantsList);
-      } catch (error) {
-        console.error("Error initializing pollutants:", error);
-        toast.error("Failed to load pollutant options");
-        // Initialize with empty array as fallback
-        setPollutantOptions([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchPollutants();
-  }, []);
 
   // Reset search when popup closes
   React.useEffect(() => {
@@ -81,27 +58,25 @@ export function PollutantSelector({
   const selectedPollutantLabel = React.useMemo(() => {
     if (!value) return "";
     return pollutantOptions.find(pollutant => pollutant.value === value)?.label || "";
-  }, [value, pollutantOptions]);
+  }, [value]);
 
-  // Filter pollutants based on search input with safety checks
+  // Filter pollutants based on search input
   const filteredPollutantOptions = React.useMemo(() => {
-    if (!Array.isArray(pollutantOptions)) return [];
     if (!searchValue) return pollutantOptions;
     
     return pollutantOptions.filter(pollutant => 
       pollutant.label.toLowerCase().includes(searchValue.toLowerCase())
     );
-  }, [pollutantOptions, searchValue]);
+  }, [searchValue]);
 
-  // Filter function for the Command component - returns a number for ranking
+  // Filter function for the Command component
   const filterFn = React.useCallback((item: string, search: string) => {
     if (!search) return 1;
-    if (!Array.isArray(pollutantOptions)) return 0;
     
     const pollutant = pollutantOptions.find(p => p.value === item);
     if (!pollutant) return 0;
     return pollutant.label.toLowerCase().includes(search.toLowerCase()) ? 1 : 0;
-  }, [pollutantOptions]);
+  }, []);
 
   return (
     <ErrorBoundary>
@@ -112,9 +87,8 @@ export function PollutantSelector({
             role="combobox"
             aria-expanded={open}
             className="w-full justify-between"
-            disabled={isLoading || pollutantOptions.length === 0}
           >
-            {isLoading ? "Loading..." : (selectedPollutantLabel || "Select pollutant...")}
+            {selectedPollutantLabel || "Select pollutant..."}
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
@@ -125,33 +99,25 @@ export function PollutantSelector({
               value={searchValue}
               onValueChange={setSearchValue}
             />
-            {isLoading ? (
-              <div className="py-6 text-center text-sm text-muted-foreground">
-                Loading pollutant options...
-              </div>
-            ) : (
-              <>
-                <CommandEmpty>No pollutant found.</CommandEmpty>
-                <CommandGroup>
-                  {filteredPollutantOptions.map((pollutant) => (
-                    <CommandItem
-                      key={pollutant.value}
-                      value={pollutant.value}
-                      onSelect={() => handleSelect(pollutant.value)}
-                      className="cursor-pointer"
-                    >
-                      <Check
-                        className={cn(
-                          "mr-2 h-4 w-4",
-                          value === pollutant.value ? "opacity-100" : "opacity-0"
-                        )}
-                      />
-                      {pollutant.label}
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-              </>
-            )}
+            <CommandEmpty>No pollutant found.</CommandEmpty>
+            <CommandGroup>
+              {filteredPollutantOptions.map((pollutant) => (
+                <CommandItem
+                  key={pollutant.value}
+                  value={pollutant.value}
+                  onSelect={() => handleSelect(pollutant.value)}
+                  className="cursor-pointer"
+                >
+                  <Check
+                    className={cn(
+                      "mr-2 h-4 w-4",
+                      value === pollutant.value ? "opacity-100" : "opacity-0"
+                    )}
+                  />
+                  {pollutant.label}
+                </CommandItem>
+              ))}
+            </CommandGroup>
           </Command>
         </PopoverContent>
       </Popover>
