@@ -26,6 +26,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { useUserStore } from "@/stores/userStore";
 import { setToken } from "@/lib/api";
+import { UserRole } from "@/lib/types";
 
 // Mock authentication - in real app would use Supabase
 const mockAuth = {
@@ -43,7 +44,7 @@ const mockAuth = {
             id: "user-123",
             email: "user@example.com",
           },
-          role: "authenticated"
+          role: "authenticated" as UserRole
         }
       };
     }
@@ -57,7 +58,7 @@ const mockAuth = {
             id: "admin-123",
             email: "admin@example.com",
           },
-          role: "admin"
+          role: "admin" as UserRole
         }
       };
     }
@@ -67,7 +68,18 @@ const mockAuth = {
   register: async (email: string, password: string) => {
     // Simulate API call
     await new Promise((resolve) => setTimeout(resolve, 1000));
-    return { success: true, data: { token: "mock-jwt-token", user: { id: "new-user", email } } };
+    // In a real app we would return a proper error if registration fails
+    return { 
+      success: true, 
+      data: { 
+        token: "mock-jwt-token", 
+        user: { 
+          id: "new-user", 
+          email 
+        } 
+      },
+      error: undefined // Adding error field with undefined as default
+    };
   },
 };
 
@@ -115,7 +127,8 @@ const Auth: React.FC = () => {
         setToken(response.data.token);
         setUserToken(response.data.token);
         setUser(response.data.user);
-        setRole(response.data.role);
+        // Fix: properly cast to UserRole type
+        setRole(response.data.role as UserRole);
         toast.success("Login successful!");
         navigate("/");
       } else {
@@ -137,7 +150,7 @@ const Auth: React.FC = () => {
         toast.success("Registration successful! You can now login.");
         loginForm.setValue("email", data.email);
         loginForm.setValue("password", data.password);
-      } else {
+      } else if (response.error) { // Use optional chaining to safely access error
         toast.error(response.error || "Registration failed");
       }
     } catch (error) {
