@@ -58,8 +58,9 @@ export function RegionSelector({ value, onValueChange }: RegionSelectorProps) {
     return REGIONS.find(region => region.value === value)?.label || "";
   }, [value]);
 
-  // Filter regions based on search input
+  // Filter regions based on search input with added safety check
   const filteredRegions = React.useMemo(() => {
+    if (!Array.isArray(REGIONS)) return [];
     if (!searchValue) return REGIONS;
     return REGIONS.filter(region => 
       region.label.toLowerCase().includes(searchValue.toLowerCase()) ||
@@ -93,7 +94,7 @@ export function RegionSelector({ value, onValueChange }: RegionSelectorProps) {
               <CommandItem
                 key={region.value}
                 value={region.value}
-                onSelect={handleSelect}
+                onSelect={() => handleSelect(region.value)}
                 className="cursor-pointer"
               >
                 <Check
