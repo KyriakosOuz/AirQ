@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { z } from "zod";
@@ -26,6 +25,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { authApi } from "@/lib/api";
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Invalid email address" }),
@@ -44,7 +44,7 @@ const Auth: React.FC = () => {
   const location = useLocation();
   const [isLoading, setIsLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
-  const { signIn, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
   
   // Check if already authenticated, redirect to home if so
   useEffect(() => {
@@ -78,14 +78,17 @@ const Auth: React.FC = () => {
     setAuthError(null);
     try {
       console.log("Attempting login with:", data.email);
-      const { error } = await signIn(data.email, data.password);
       
-      if (!error) {
+      // Use authApi.login which now uses supabase.auth.signInWithPassword
+      const response = await authApi.login(data.email, data.password);
+      
+      if (response.success) {
         toast.success("Login successful!");
         const from = location.state?.from?.pathname || "/";
         navigate(from, { replace: true });
       } else {
-        setAuthError("Login failed. Please check your credentials.");
+        setAuthError(response.error || "Login failed. Please check your credentials.");
+        toast.error(response.error || "Login failed");
       }
     } catch (error) {
       console.error("Login error:", error);

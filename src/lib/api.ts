@@ -1,6 +1,6 @@
-
 import { toast } from "sonner";
 import { Pollutant, Region, Dataset, HealthTip, TrendChart, SeasonalityChart } from "@/lib/types";
+import { supabase } from "@/integrations/supabase/client";
 
 // Define the base URL for API requests - fallback to mock data if API fails
 export const API_URL = "http://localhost:8000"; 
@@ -187,31 +187,47 @@ export const fetchWithAuth = async <T>(
   }
 };
 
-// Auth endpoints - will use Supabase directly in their respective components
+// Auth endpoints - updated to use Supabase directly
 export const authApi = {
-  // Updated to match the required backend endpoints
+  // Updated to use Supabase authentication directly
   login: async (email: string, password: string) => {
-    const response = await fetchWithAuth<{ access_token: string }>("/users/login/", {
-      method: "POST",
-      body: JSON.stringify({ email, password }),
-    });
-    
-    if (response.success && response.data?.access_token) {
-      setToken(response.data.access_token);
+    try {
+      // Use Supabase's native authentication
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email, 
+        password
+      });
+      
+      if (error) {
+        console.error("Supabase auth error:", error);
+        return { success: false, error: error.message };
+      }
+      
+      if (data?.session?.access_token) {
+        // Store the Supabase token
+        setToken(data.session.access_token);
+        console.log("Successfully authenticated with Supabase");
+        return { success: true, data: { access_token: data.session.access_token } };
+      } else {
+        console.error("No access token in Supabase response");
+        return { success: false, error: "Authentication failed" };
+      }
+    } catch (error) {
+      console.error("Login error:", error);
+      return { success: false, error: "Authentication failed" };
     }
-    
-    return response;
   },
   
   signup: async (email: string, password: string) => {
-    return fetchWithAuth<{ access_token: string }>("/users/signup/", {
-      method: "POST",
-      body: JSON.stringify({ email, password }),
-    });
+    // This is already handled by Auth.tsx directly with Supabase
+    return { success: false, error: "Use direct Supabase signup" };
   },
   
   logout: () => {
+    // Remove the token from localStorage
     removeToken();
+    // Also sign out from Supabase
+    supabase.auth.signOut();
   }
 };
 

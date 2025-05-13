@@ -48,6 +48,7 @@ export type Database = {
         Row: {
           created_at: string | null
           file_path: string
+          filename: string | null
           id: string
           pollutant: string | null
           region: string
@@ -57,6 +58,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           file_path: string
+          filename?: string | null
           id?: string
           pollutant?: string | null
           region: string
@@ -66,6 +68,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           file_path?: string
+          filename?: string | null
           id?: string
           pollutant?: string | null
           region?: string

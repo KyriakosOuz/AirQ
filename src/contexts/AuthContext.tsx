@@ -1,10 +1,10 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Session, User } from "@supabase/supabase-js";
 import { useUserStore } from "@/stores/userStore";
 import { useToast } from "@/hooks/use-toast";
 import { UserProfile, UserRole } from "@/lib/types";
+import { setToken, removeToken } from "@/lib/api";
 
 interface AuthContextType {
   user: User | null;
@@ -69,6 +69,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(newSession?.user ?? null);
       updateUser(newSession?.user ?? null);
       
+      // Store the access token for API calls if available
+      if (newSession?.access_token) {
+        setToken(newSession.access_token);
+      } else if (event === 'SIGNED_OUT') {
+        removeToken();
+      }
+      
       // Fetch user profile on auth state change, but not immediately
       // Use setTimeout to avoid potential deadlock with Supabase real-time
       if (newSession?.user) {
@@ -83,6 +90,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(data.session);
       setUser(data.session?.user ?? null);
       updateUser(data.session?.user ?? null);
+      
+      // Store the access token for API calls if available
+      if (data.session?.access_token) {
+        setToken(data.session.access_token);
+      }
       
       if (data.session?.user) {
         fetchUserProfile(data.session.user.id);
@@ -216,7 +228,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { user: null, session: null, error };
       }
       
-      if (!data.session) {
+      // If we have a session, store the access token
+      if (data.session?.access_token) {
+        setToken(data.session.access_token);
+      } else {
         toast({
           title: "Check your email",
           description: "We've sent you a confirmation link to complete your signup.",
@@ -246,6 +261,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { user: null, session: null, error };
       }
       
+      // Store the access token for API calls
+      if (data.session?.access_token) {
+        setToken(data.session.access_token);
+      }
+      
       return { user: data.user, session: data.session, error: null };
     } catch (error) {
       console.error('SignIn error', error);
@@ -260,6 +280,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error('Sign out error', error);
         return { error };
       }
+      
+      // Clear the token when signing out
+      removeToken();
       
       // Clear local user state
       updateUser(null);
