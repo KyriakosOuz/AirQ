@@ -181,19 +181,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Check for existing session - FIX: properly handle Promise
     try {
-      supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
-        setSession(initialSession);
-        
-        if (initialSession?.user && !user) {
-          setUserToken(initialSession.access_token);
+      const fetchInitialSession = async () => {
+        try {
+          const { data: { session: initialSession } } = await supabase.auth.getSession();
           
-          // Fetch user profile data
-          supabase
-            .from('profiles')
-            .select('*')
-            .eq('user_id', initialSession.user.id)
-            .maybeSingle()
-            .then(({ data: profileData }) => {
+          setSession(initialSession);
+          
+          if (initialSession?.user && !user) {
+            setUserToken(initialSession.access_token);
+            
+            // Fetch user profile data
+            try {
+              const { data: profileData } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('user_id', initialSession.user.id)
+                .maybeSingle();
+              
               // Create user profile
               const userProfile: UserProfile = {
                 id: initialSession.user.id,
@@ -216,14 +220,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 ? 'admin' 
                 : 'authenticated';
               setRole(userRole);
-            })
-            .catch((error) => {
+            } catch (error) {
               console.error("Error fetching profile on init:", error);
-            });
+            }
+          }
+        } catch (error) {
+          console.error("Error getting session:", error);
         }
-      }).catch(error => {
-        console.error("Error getting session:", error);
-      });
+      };
+      
+      fetchInitialSession();
     } catch (error) {
       console.error("Error in session initialization:", error);
     }
