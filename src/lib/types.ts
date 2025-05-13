@@ -1,4 +1,3 @@
-
 // Core data types
 export type Pollutant = "NO2" | "O3" | "SO2";
 
@@ -62,9 +61,9 @@ export interface Forecast {
   ds: string; // date
   yhat: number; // predicted value
   category: string; // AQI category from backend
-  // Optional properties from frontend implementation that may not be in backend
-  yhat_lower?: number; // lower bound - may need to be derived
-  yhat_upper?: number; // upper bound - may need to be derived
+  // Derived properties for chart display
+  yhat_lower?: number; // lower bound - to be derived
+  yhat_upper?: number; // upper bound - to be derived
 }
 
 export interface RegionForecast {

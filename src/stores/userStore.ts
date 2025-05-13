@@ -60,9 +60,9 @@ export const useUserStore = create<UserState>((set, get) => ({
         .from('profiles')
         .update({
           age: profileData.age,
-          has_asthma: profileData.hasAsthma,
-          is_smoker: profileData.isSmoker,
-          has_heart_disease: profileData.hasHeartIssues,
+          has_asthma: profileData.has_asthma,
+          is_smoker: profileData.is_smoker,
+          has_heart_disease: profileData.has_heart_disease,
           // Add other profile fields as needed
         })
         .eq('user_id', user.id);

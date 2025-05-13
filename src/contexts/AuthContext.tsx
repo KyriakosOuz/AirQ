@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -140,11 +139,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         id: user.id,
         email: user.email || '',
         age: profileData.age,
-        hasAsthma: profileData.has_asthma,
-        isSmoker: profileData.is_smoker,
-        hasHeartIssues: profileData.has_heart_disease,
-        hasDiabetes: false, // Not in the current profiles table
-        hasLungDisease: false, // Not in the current profiles table
+        has_asthma: profileData.has_asthma,
+        is_smoker: profileData.is_smoker,
+        has_heart_disease: profileData.has_heart_disease,
+        has_diabetes: false, // Not in the current profiles table
+        has_lung_disease: false, // Not in the current profiles table
       });
     } catch (error) {
       console.error("Error in fetchUserProfile:", error);

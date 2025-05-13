@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,11 +15,11 @@ const ProfilePage: React.FC = () => {
   const { user, updateProfile } = useUserStore();
   const [profile, setProfile] = useState({
     age: user?.age || 35,
-    hasAsthma: user?.hasAsthma || false,
-    isSmoker: user?.isSmoker || false,
-    hasHeartIssues: user?.hasHeartIssues || false,
-    hasDiabetes: user?.hasDiabetes || false,
-    hasLungDisease: user?.hasLungDisease || false,
+    has_asthma: user?.has_asthma || false,
+    is_smoker: user?.is_smoker || false,
+    has_heart_disease: user?.has_heart_disease || false,
+    has_diabetes: user?.has_diabetes || false,
+    has_lung_disease: user?.has_lung_disease || false,
   });
   const [riskData, setRiskData] = useState<any[]>([]);
   const [showingRiskTimeline, setShowingRiskTimeline] = useState(false);
@@ -85,11 +84,11 @@ const ProfilePage: React.FC = () => {
         if (data) {
           setProfile({
             age: data.age || 35,
-            hasAsthma: data.has_asthma || false,
-            isSmoker: data.is_smoker || false,
-            hasHeartIssues: data.has_heart_disease || false,
-            hasDiabetes: false, // Not in current profiles table
-            hasLungDisease: false, // Not in current profiles table
+            has_asthma: data.has_asthma || false,
+            is_smoker: data.is_smoker || false,
+            has_heart_disease: data.has_heart_disease || false,
+            has_diabetes: false, // Not in current profiles table
+            has_lung_disease: false, // Not in current profiles table
           });
           
           toast.success("Profile loaded");
@@ -110,11 +109,11 @@ const ProfilePage: React.FC = () => {
     try {
       const success = await updateProfile({
         age: profile.age,
-        hasAsthma: profile.hasAsthma,
-        isSmoker: profile.isSmoker,
-        hasHeartIssues: profile.hasHeartIssues,
-        hasDiabetes: profile.hasDiabetes,
-        hasLungDisease: profile.hasLungDisease
+        has_asthma: profile.has_asthma,
+        is_smoker: profile.is_smoker,
+        has_heart_disease: profile.has_heart_disease,
+        has_diabetes: profile.has_diabetes,
+        has_lung_disease: profile.has_lung_disease
       });
       
       if (success) {
@@ -154,11 +153,11 @@ const ProfilePage: React.FC = () => {
     
     setProfile({
       age: user.age || 35,
-      hasAsthma: user.hasAsthma || false,
-      isSmoker: user.isSmoker || false,
-      hasHeartIssues: user.hasHeartIssues || false,
-      hasDiabetes: user.hasDiabetes || false,
-      hasLungDisease: user.hasLungDisease || false,
+      has_asthma: user.has_asthma || false,
+      is_smoker: user.is_smoker || false,
+      has_heart_disease: user.has_heart_disease || false,
+      has_diabetes: user.has_diabetes || false,
+      has_lung_disease: user.has_lung_disease || false,
     });
   };
   
@@ -228,47 +227,47 @@ const ProfilePage: React.FC = () => {
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="flex items-center justify-between space-x-2">
-                <Label htmlFor="hasAsthma">Asthma</Label>
+                <Label htmlFor="has_asthma">Asthma</Label>
                 <Switch
-                  id="hasAsthma"
-                  checked={profile.hasAsthma}
-                  onCheckedChange={(checked) => handleSwitchChange("hasAsthma", checked)}
+                  id="has_asthma"
+                  checked={profile.has_asthma}
+                  onCheckedChange={(checked) => handleSwitchChange("has_asthma", checked)}
                 />
               </div>
               
               <div className="flex items-center justify-between space-x-2">
-                <Label htmlFor="isSmoker">Smoker</Label>
+                <Label htmlFor="is_smoker">Smoker</Label>
                 <Switch
-                  id="isSmoker"
-                  checked={profile.isSmoker}
-                  onCheckedChange={(checked) => handleSwitchChange("isSmoker", checked)}
+                  id="is_smoker"
+                  checked={profile.is_smoker}
+                  onCheckedChange={(checked) => handleSwitchChange("is_smoker", checked)}
                 />
               </div>
               
               <div className="flex items-center justify-between space-x-2">
-                <Label htmlFor="hasHeartIssues">Heart Disease</Label>
+                <Label htmlFor="has_heart_disease">Heart Disease</Label>
                 <Switch
-                  id="hasHeartIssues"
-                  checked={profile.hasHeartIssues}
-                  onCheckedChange={(checked) => handleSwitchChange("hasHeartIssues", checked)}
+                  id="has_heart_disease"
+                  checked={profile.has_heart_disease}
+                  onCheckedChange={(checked) => handleSwitchChange("has_heart_disease", checked)}
                 />
               </div>
               
               <div className="flex items-center justify-between space-x-2">
-                <Label htmlFor="hasDiabetes">Diabetes</Label>
+                <Label htmlFor="has_diabetes">Diabetes</Label>
                 <Switch
-                  id="hasDiabetes"
-                  checked={profile.hasDiabetes}
-                  onCheckedChange={(checked) => handleSwitchChange("hasDiabetes", checked)}
+                  id="has_diabetes"
+                  checked={profile.has_diabetes}
+                  onCheckedChange={(checked) => handleSwitchChange("has_diabetes", checked)}
                 />
               </div>
               
               <div className="flex items-center justify-between space-x-2">
-                <Label htmlFor="hasLungDisease">Other Lung Conditions</Label>
+                <Label htmlFor="has_lung_disease">Other Lung Conditions</Label>
                 <Switch
-                  id="hasLungDisease"
-                  checked={profile.hasLungDisease}
-                  onCheckedChange={(checked) => handleSwitchChange("hasLungDisease", checked)}
+                  id="has_lung_disease"
+                  checked={profile.has_lung_disease}
+                  onCheckedChange={(checked) => handleSwitchChange("has_lung_disease", checked)}
                 />
               </div>
             </div>

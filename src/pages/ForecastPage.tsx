@@ -45,12 +45,18 @@ const ForecastPage: React.FC = () => {
           const now = new Date();
           const isHistorical = date < now;
           
+          // Add derived confidence intervals (not provided by backend)
+          const value = item.yhat;
+          const lowerBound = value * 0.9; // Derive lower bound as 90% of value
+          const upperBound = value * 1.1; // Derive upper bound as 110% of value
+          
           return {
             month: `${month} ${year}`,
             actual: isHistorical ? item.yhat : null, // Only show actual for historical data
             predicted: item.yhat,
-            lower: item.yhat_lower,
-            upper: item.yhat_upper
+            lower: lowerBound,
+            upper: upperBound,
+            category: item.category
           };
         });
         
