@@ -50,12 +50,13 @@ export function PollutantSelector({
     return POLLUTANT_OPTIONS.find(pollutant => pollutant.value === value)?.label || "";
   }, [value]);
 
-  // Filter function for the Command component
+  // Filter function for the Command component - returns a number for ranking
+  // 1 = match, 0 = no match (could use different numbers for better/worse matches)
   const filterFn = React.useCallback((item: string, search: string) => {
-    if (!search) return true;
+    if (!search) return 1;
     const pollutant = POLLUTANT_OPTIONS.find(p => p.value === item);
-    if (!pollutant) return false;
-    return pollutant.label.toLowerCase().includes(search.toLowerCase());
+    if (!pollutant) return 0;
+    return pollutant.label.toLowerCase().includes(search.toLowerCase()) ? 1 : 0;
   }, []);
 
   return (

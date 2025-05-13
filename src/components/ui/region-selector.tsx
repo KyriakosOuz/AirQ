@@ -57,12 +57,13 @@ export function RegionSelector({ value, onValueChange }: RegionSelectorProps) {
     return regions.find(region => region.value === value)?.label || "";
   }, [value]);
 
-  // Filter function for the Command component
+  // Filter function for the Command component - returns a number for ranking
+  // 1 = match, 0 = no match (could use different numbers for better/worse matches)
   const filterFn = React.useCallback((item: string, search: string) => {
-    if (!search) return true;
+    if (!search) return 1;
     const region = regions.find(r => r.value === item);
-    if (!region) return false;
-    return region.label.toLowerCase().includes(search.toLowerCase());
+    if (!region) return 0;
+    return region.label.toLowerCase().includes(search.toLowerCase()) ? 1 : 0;
   }, []);
 
   return (
