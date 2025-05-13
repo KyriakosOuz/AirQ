@@ -1,4 +1,3 @@
-
 import * as React from "react";
 import { Check, ChevronsUpDown } from "lucide-react";
 
@@ -16,9 +15,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { toast } from "sonner";
 
-// Updated predefined regions with consistent formatting and hyphenation
+// Predefined regions with consistent formatting and hyphenation
 const REGIONS = [
   { value: "thessaloniki", label: "Thessaloniki" },
   { value: "ampelokipoi-menemeni", label: "Ampelokipoi - Menemeni" },
@@ -58,9 +56,8 @@ export function RegionSelector({ value, onValueChange }: RegionSelectorProps) {
     return REGIONS.find(region => region.value === value)?.label || "";
   }, [value]);
 
-  // Filter regions based on search input with added safety check
+  // Filter regions based on search input
   const filteredRegions = React.useMemo(() => {
-    if (!Array.isArray(REGIONS)) return [];
     if (!searchValue) return REGIONS;
     return REGIONS.filter(region => 
       region.label.toLowerCase().includes(searchValue.toLowerCase()) ||
