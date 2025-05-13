@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -350,7 +351,7 @@ const AdminPage: React.FC = () => {
                             <TableCell className="font-medium">{formatters.getDatasetName(dataset)}</TableCell>
                             <TableCell>{formatters.getRegionLabel(dataset.region)}</TableCell>
                             <TableCell>{dataset.year}</TableCell>
-                            <TableCell>{formatters.formatDate(dataset.uploadedAt)}</TableCell>
+                            <TableCell>{formatters.formatDate(dataset.created_at)}</TableCell>
                             <TableCell>
                               <div className="flex space-x-2">
                                 <Button 
