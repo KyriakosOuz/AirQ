@@ -58,15 +58,6 @@ export function RegionSelector({ value, onValueChange }: RegionSelectorProps) {
     return REGIONS.find(region => region.value === value)?.label || "";
   }, [value]);
 
-  // Filter function for the Command component - returns a number for ranking
-  // 1 = match, 0 = no match (could use different numbers for better/worse matches)
-  const filterFn = React.useCallback((item: string, search: string) => {
-    if (!search) return 1;
-    const region = REGIONS.find(r => r.value === item);
-    if (!region) return 0;
-    return region.label.toLowerCase().includes(search.toLowerCase()) ? 1 : 0;
-  }, []);
-
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -81,7 +72,7 @@ export function RegionSelector({ value, onValueChange }: RegionSelectorProps) {
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-full p-0">
-        <Command value={searchValue} filter={filterFn}>
+        <Command shouldFilter={false}>
           <CommandInput 
             placeholder="Search regions..."
             value={searchValue}
@@ -89,22 +80,28 @@ export function RegionSelector({ value, onValueChange }: RegionSelectorProps) {
           />
           <CommandEmpty>No region found.</CommandEmpty>
           <CommandGroup>
-            {REGIONS.map((region) => (
-              <CommandItem
-                key={region.value}
-                value={region.value}
-                onSelect={handleSelect}
-                className="cursor-pointer"
-              >
-                <Check
-                  className={cn(
-                    "mr-2 h-4 w-4",
-                    value === region.value ? "opacity-100" : "opacity-0"
-                  )}
-                />
-                {region.label}
-              </CommandItem>
-            ))}
+            {REGIONS
+              .filter(region => 
+                !searchValue || 
+                region.label.toLowerCase().includes(searchValue.toLowerCase()) ||
+                region.value.toLowerCase().includes(searchValue.toLowerCase())
+              )
+              .map((region) => (
+                <CommandItem
+                  key={region.value}
+                  value={region.value}
+                  onSelect={handleSelect}
+                  className="cursor-pointer"
+                >
+                  <Check
+                    className={cn(
+                      "mr-2 h-4 w-4",
+                      value === region.value ? "opacity-100" : "opacity-0"
+                    )}
+                  />
+                  {region.label}
+                </CommandItem>
+              ))}
           </CommandGroup>
         </Command>
       </PopoverContent>
