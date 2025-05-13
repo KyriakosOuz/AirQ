@@ -46,37 +46,49 @@ const App = () => (
               {/* Auth route - accessible when not logged in */}
               <Route path="/auth" element={<Auth />} />
               
-              {/* Protected routes - temporarily not requiring authentication */}
+              {/* Protected routes - requiring authentication */}
               <Route element={<AppLayout />}>
                 <Route path="/" element={
-                  <ErrorBoundary>
-                    <Dashboard />
-                  </ErrorBoundary>
+                  <ProtectedRoute>
+                    <ErrorBoundary>
+                      <Dashboard />
+                    </ErrorBoundary>
+                  </ProtectedRoute>
                 } />
                 <Route path="/insights" element={
-                  <ErrorBoundary>
-                    <Insights />
-                  </ErrorBoundary>
+                  <ProtectedRoute>
+                    <ErrorBoundary>
+                      <Insights />
+                    </ErrorBoundary>
+                  </ProtectedRoute>
                 } />
                 <Route path="/profile" element={
-                  <ErrorBoundary>
-                    <ProfilePage />
-                  </ErrorBoundary>
+                  <ProtectedRoute>
+                    <ErrorBoundary>
+                      <ProfilePage />
+                    </ErrorBoundary>
+                  </ProtectedRoute>
                 } />
                 <Route path="/forecasts" element={
-                  <ErrorBoundary>
-                    <ForecastPage />
-                  </ErrorBoundary>
+                  <ProtectedRoute>
+                    <ErrorBoundary>
+                      <ForecastPage />
+                    </ErrorBoundary>
+                  </ProtectedRoute>
                 } />
                 <Route path="/alerts" element={
-                  <ErrorBoundary>
-                    <AlertsPage />
-                  </ErrorBoundary>
+                  <ProtectedRoute>
+                    <ErrorBoundary>
+                      <AlertsPage />
+                    </ErrorBoundary>
+                  </ProtectedRoute>
                 } />
                 <Route path="/admin" element={
-                  <ErrorBoundary>
-                    <AdminPage />
-                  </ErrorBoundary>
+                  <ProtectedRoute requireAdmin={true}>
+                    <ErrorBoundary>
+                      <AdminPage />
+                    </ErrorBoundary>
+                  </ProtectedRoute>
                 } />
               </Route>
               
