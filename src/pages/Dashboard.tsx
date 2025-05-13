@@ -10,6 +10,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { useRegionStore } from "@/stores/regionStore";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { getErrorMessage } from "@/lib/utils";
 
 const Dashboard: React.FC = () => {
   const isMobile = useIsMobile();
@@ -51,7 +52,7 @@ const Dashboard: React.FC = () => {
           setTrendData(chartData);
         } else {
           console.error("Failed to fetch trend data:", trendResponse.error);
-          toast.error("Failed to load trend data");
+          toast.error(getErrorMessage(trendResponse.error));
         }
         
         // Fetch seasonal data - this endpoint looks correct
@@ -69,7 +70,7 @@ const Dashboard: React.FC = () => {
           setSeasonalData(chartData);
         } else {
           console.error("Failed to fetch seasonality data:", seasonalResponse.error);
-          toast.error("Failed to load seasonal data");
+          toast.error(getErrorMessage(seasonalResponse.error));
         }
 
         // Fetch real forecast data - updated to use models/predict instead
@@ -108,7 +109,7 @@ const Dashboard: React.FC = () => {
           }
         } else {
           console.error("Failed to fetch forecast data:", forecastResponse.error);
-          toast.error("Failed to load forecast data");
+          toast.error(getErrorMessage(forecastResponse.error));
           
           // Fallback to empty array if API fails
           setForecastData([]);
@@ -117,7 +118,7 @@ const Dashboard: React.FC = () => {
         toast.success(`Data updated for ${pollutant} in ${region}`);
       } catch (error) {
         console.error("Error fetching insight data:", error);
-        toast.error("Failed to load dashboard data");
+        toast.error(getErrorMessage(error));
       } finally {
         setLoading(false);
       }
@@ -171,7 +172,7 @@ const Dashboard: React.FC = () => {
       toast.success(`Data updated for ${pollutant} in ${region}`);
     } catch (error) {
       console.error(error);
-      toast.error("Failed to load dashboard data");
+      toast.error(getErrorMessage(error));
     } finally {
       setLoading(false);
     }
@@ -188,7 +189,7 @@ const Dashboard: React.FC = () => {
         toast.success("Health tip updated");
       } else {
         console.error("Failed to fetch health tip:", response.error);
-        toast.error("Failed to load health advice");
+        toast.error(getErrorMessage(response.error));
         
         // Fallback to generic tip if API fails
         setHealthTip({
@@ -199,7 +200,7 @@ const Dashboard: React.FC = () => {
       }
     } catch (error) {
       console.error("Error fetching health tip:", error);
-      toast.error("Failed to get health tip");
+      toast.error(getErrorMessage(error));
       
       // Fallback to generic tip on error
       setHealthTip({

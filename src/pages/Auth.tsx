@@ -26,6 +26,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { authApi } from "@/lib/api";
+import { getErrorMessage } from "@/lib/utils";
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Invalid email address" }),
@@ -87,13 +88,15 @@ const Auth: React.FC = () => {
         const from = location.state?.from?.pathname || "/";
         navigate(from, { replace: true });
       } else {
-        setAuthError(response.error || "Login failed. Please check your credentials.");
-        toast.error(response.error || "Login failed");
+        const errorMessage = getErrorMessage(response.error);
+        setAuthError(errorMessage);
+        toast.error(errorMessage);
       }
     } catch (error) {
       console.error("Login error:", error);
-      setAuthError("An unexpected error occurred during login.");
-      toast.error("Login failed. Please try again.");
+      const errorMessage = getErrorMessage(error);
+      setAuthError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -117,8 +120,9 @@ const Auth: React.FC = () => {
       
       if (error) {
         console.error("Registration error:", error);
-        setAuthError(error.message);
-        toast.error(error.message);
+        const errorMessage = getErrorMessage(error);
+        setAuthError(errorMessage);
+        toast.error(errorMessage);
         return;
       }
       
@@ -142,8 +146,9 @@ const Auth: React.FC = () => {
       }
     } catch (error) {
       console.error("Registration error:", error);
-      setAuthError("An unexpected error occurred during registration.");
-      toast.error("Registration failed. Please try again.");
+      const errorMessage = getErrorMessage(error);
+      setAuthError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }

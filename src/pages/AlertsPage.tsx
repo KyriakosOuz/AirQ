@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,6 +10,7 @@ import { RegionSelector } from "@/components/ui/region-selector";
 import { PollutantSelector } from "@/components/ui/pollutant-selector";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { getErrorMessage } from "@/lib/utils";
 
 // Notification component for active alerts
 const AlertNotification: React.FC<{ alert: Alert; onDelete: () => void }> = ({ alert, onDelete }) => {
@@ -55,7 +55,7 @@ const AlertsPage: React.FC = () => {
       }
     } catch (error) {
       console.error("Error loading alerts:", error);
-      toast.error("Failed to load alerts");
+      toast.error(getErrorMessage(error));
       setAlerts([]);
     } finally {
       setLoading(false);
@@ -84,11 +84,11 @@ const AlertsPage: React.FC = () => {
         toast.success("Alert subscription created");
         loadAlerts(); // Refresh the list
       } else {
-        toast.error("Failed to create alert subscription");
+        toast.error(getErrorMessage(response.error));
       }
     } catch (error) {
       console.error("Error creating alert:", error);
-      toast.error("Failed to create alert subscription");
+      toast.error(getErrorMessage(error));
     } finally {
       setLoading(false);
     }
@@ -104,11 +104,11 @@ const AlertsPage: React.FC = () => {
         toast.success("Alert subscription removed");
         setAlerts(alerts.filter(alert => alert.id !== alertId));
       } else {
-        toast.error("Failed to remove alert subscription");
+        toast.error(getErrorMessage(response.error));
       }
     } catch (error) {
       console.error("Error deleting alert:", error);
-      toast.error("Failed to remove alert subscription");
+      toast.error(getErrorMessage(error));
     } finally {
       setLoading(false);
     }
@@ -123,11 +123,11 @@ const AlertsPage: React.FC = () => {
       if (response.success) {
         toast.success("Alerts checked and notifications sent if needed");
       } else {
-        toast.error("Failed to check alerts");
+        toast.error(getErrorMessage(response.error));
       }
     } catch (error) {
       console.error("Error checking alerts:", error);
-      toast.error("Failed to check alerts");
+      toast.error(getErrorMessage(error));
     } finally {
       setLoading(false);
     }

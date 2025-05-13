@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Eye, FileSpreadsheet, Trash2 } from "lucide-react";
 import { TableSkeleton } from "@/components/ui/table-skeleton";
-import { useApiRequest, debounce, measurePerformance } from "@/lib/utils";
+import { useApiRequest, debounce, measurePerformance, getErrorMessage } from "@/lib/utils";
 
 // Constants to prevent re-renders
 const INITIAL_REGION = "thessaloniki";
@@ -65,7 +65,7 @@ const AdminPage: React.FC = () => {
           setDatasets(response.data);
         } else {
           console.error("Failed to fetch datasets:", response.error);
-          toast.error("Failed to fetch datasets");
+          toast.error(getErrorMessage(response.error));
           // Keep old data on error to prevent UI flickering
         }
       });
@@ -111,7 +111,7 @@ const AdminPage: React.FC = () => {
           fileInputElement.value = '';
         }
       } else {
-        toast.error(response.error || "Failed to upload dataset");
+        toast.error(getErrorMessage(response.error));
       }
     } finally {
       setUploadLoading(false);
@@ -129,7 +129,7 @@ const AdminPage: React.FC = () => {
       if (response.success) {
         toast.success(`Model trained for ${trainPollutant} in ${trainRegion}`);
       } else {
-        toast.error(response.error || "Failed to train model");
+        toast.error(getErrorMessage(response.error));
       }
     } finally {
       setTrainLoading(false);
@@ -156,7 +156,7 @@ const AdminPage: React.FC = () => {
           setDataPreview(null);
         }
       } else {
-        toast.error(response.error || "Failed to preview dataset");
+        toast.error(getErrorMessage(response.error));
         setDataPreview(null);
       }
     } finally {
@@ -179,11 +179,11 @@ const AdminPage: React.FC = () => {
         
         toast.success("Dataset deleted successfully");
       } else {
-        toast.error(response.error || "Failed to delete dataset");
+        toast.error(getErrorMessage(response.error));
       }
     } catch (error) {
       console.error("Delete dataset error:", error);
-      toast.error("Failed to delete dataset");
+      toast.error(getErrorMessage(error));
     }
   }, [selectedDataset]);
   
