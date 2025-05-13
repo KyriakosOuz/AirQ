@@ -35,12 +35,11 @@ interface RegionSelectorProps {
 
 export function RegionSelector({ value, onValueChange }: RegionSelectorProps) {
   const [open, setOpen] = React.useState(false);
-  const [inputValue, setInputValue] = React.useState("");
+  const [searchValue, setSearchValue] = React.useState("");
 
   const handleSelect = React.useCallback((currentValue: string) => {
     onValueChange(currentValue);
     setOpen(false);
-    setInputValue("");
   }, [onValueChange]);
 
   return (
@@ -62,8 +61,8 @@ export function RegionSelector({ value, onValueChange }: RegionSelectorProps) {
         <Command>
           <CommandInput 
             placeholder="Search regions..."
-            value={inputValue}
-            onValueChange={setInputValue}
+            value={searchValue}
+            onValueChange={setSearchValue}
           />
           <CommandEmpty>No region found.</CommandEmpty>
           <CommandGroup>
