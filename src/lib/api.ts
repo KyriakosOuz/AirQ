@@ -85,7 +85,6 @@ const tripCircuitBreaker = () => {
   
   if (CIRCUIT_BREAKER.failureCount >= CIRCUIT_BREAKER.maxFailures) {
     console.warn("Circuit breaker tripped! Too many API failures");
-    CIRCUIT_BREAKER.tripped = true;
     toast.error("API is currently unavailable. Using offline mode.", {
       id: "circuit-breaker",
       duration: 5000,
@@ -316,10 +315,12 @@ export const userApi = {
 // Dataset endpoints
 export const datasetApi = {
   upload: async (formData: FormData) => {
+    // Important: Do not set Content-Type header - browser will set it correctly with boundary
     return fetchWithAuth<{ dataset_id: string, file_url: string }>("/datasets/upload/", {
       method: "POST",
       body: formData,
-      headers: {}, // Let browser set content-type with boundary for FormData
+      // Note: Don't set Content-Type header for multipart/form-data
+      // The browser will automatically set it with the proper boundary
     });
   },
   

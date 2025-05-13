@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -91,10 +92,22 @@ const AdminPage: React.FC = () => {
     
     setUploadLoading(true);
     try {
+      // Create a new FormData instance
       const formData = new FormData();
+      
+      // Append the file with the correct field name 'file'
       formData.append('file', fileInput);
+      
+      // Append the region and year as strings (important for FormData)
       formData.append('region', uploadRegion);
       formData.append('year', uploadYear.toString());
+      
+      // Log the FormData content for debugging
+      console.log('FormData:', {
+        file: fileInput.name,
+        region: uploadRegion,
+        year: uploadYear
+      });
       
       const response = await datasetApi.upload(formData);
       
@@ -111,8 +124,12 @@ const AdminPage: React.FC = () => {
           fileInputElement.value = '';
         }
       } else {
+        console.error("Upload failed:", response.error);
         toast.error(getErrorMessage(response.error));
       }
+    } catch (error) {
+      console.error("Upload error:", error);
+      toast.error(getErrorMessage(error));
     } finally {
       setUploadLoading(false);
     }
