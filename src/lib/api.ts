@@ -422,21 +422,21 @@ export const metadataApi = {
       metadataApi._regionsCache = response.data;
     }
     
-    // If API fails, return mock data
+    // If API fails, return standardized region data from the constant
     if (!response.success) {
-      console.log("Using mock region data due to API failure");
-      const mockData = [
-        { value: "ampelokipoi-menemeni", label: "Ampelokipoi-Menemeni" },
+      console.log("Using standard region data due to API failure");
+      const standardRegions = [
+        { value: "thessaloniki", label: "Thessaloniki" },
+        { value: "ampelokipoi-menemeni", label: "Ampelokipoi - Menemeni" },
+        { value: "neapoli-sykies", label: "Neapoli - Sykies" },
         { value: "kalamaria", label: "Kalamaria" },
         { value: "pavlos-melas", label: "Pavlos Melas" },
-        { value: "neapoli-sykies", label: "Neapoli-Sykies" },
-        { value: "thessaloniki", label: "Thessaloniki Center" },
+        { value: "pylaia-chortiatis", label: "Pylaia - Chortiatis" },
         { value: "panorama", label: "Panorama" },
-        { value: "pylaia-chortiatis", label: "Pylaia-Chortiatis" },
       ];
-      // Cache mock data too
-      metadataApi._regionsCache = mockData;
-      return { success: true, data: mockData };
+      // Cache standard data
+      metadataApi._regionsCache = standardRegions;
+      return { success: true, data: standardRegions };
     }
     
     return response;
