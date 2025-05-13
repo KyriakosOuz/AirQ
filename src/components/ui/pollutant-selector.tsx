@@ -40,23 +40,18 @@ export function PollutantSelector({
     const fetchPollutants = async () => {
       setIsLoading(true);
       try {
-        const response = await metadataApi.getPollutants();
-        if (response.success && response.data) {
-          // Cast the data to ensure it matches the expected Pollutant type
-          const typedData = response.data.map(item => ({
-            label: item.label,
-            value: item.value as Pollutant
-          }));
-          setPollutantOptions(typedData);
-        } else {
-          // Safely handle the error without directly accessing the error property
-          console.error("Failed to fetch pollutants:", response.success ? "No data" : "API error");
-          toast.error("Failed to load pollutant options");
-          // Initialize with empty array as fallback
-          setPollutantOptions([]);
-        }
+        // Instead of fetching from API, use the predefined list
+        const pollutantsList = [
+          { value: "no2_conc" as Pollutant, label: "Nitrogen Dioxide (NO₂)" },
+          { value: "o3_conc" as Pollutant, label: "Ozone (O₃)" },
+          { value: "co_conc" as Pollutant, label: "Carbon Monoxide (CO)" },
+          { value: "no_conc" as Pollutant, label: "Nitric Oxide (NO)" },
+          { value: "so2_conc" as Pollutant, label: "Sulfur Dioxide (SO₂)" },
+        ];
+        
+        setPollutantOptions(pollutantsList);
       } catch (error) {
-        console.error("Error fetching pollutants:", error);
+        console.error("Error initializing pollutants:", error);
         toast.error("Failed to load pollutant options");
         // Initialize with empty array as fallback
         setPollutantOptions([]);
