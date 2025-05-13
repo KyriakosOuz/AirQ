@@ -1,3 +1,4 @@
+
 // Core data types
 export type Pollutant = "NO2" | "O3" | "SO2";
 
@@ -18,11 +19,11 @@ export interface UserProfile {
   id: string;
   email: string;
   age?: number;
-  hasAsthma?: boolean;
-  isSmoker?: boolean;
-  hasHeartIssues?: boolean;
-  hasDiabetes?: boolean;
-  hasLungDisease?: boolean;
+  has_asthma?: boolean;
+  is_smoker?: boolean;
+  has_heart_disease?: boolean;
+  has_diabetes?: boolean;
+  has_lung_disease?: boolean;
 }
 
 export interface Dataset {
@@ -40,7 +41,7 @@ export interface Alert {
   userId: string;
   region: string;
   pollutant: Pollutant;
-  threshold: number;
+  threshold: string; // Updated to string to match backend (e.g., "Good", "Moderate", etc.)
   active: boolean;
   createdAt: string;
 }
@@ -60,8 +61,10 @@ export interface PollutantData {
 export interface Forecast {
   ds: string; // date
   yhat: number; // predicted value
-  yhat_lower: number; // lower bound
-  yhat_upper: number; // upper bound
+  category: string; // AQI category from backend
+  // Optional properties from frontend implementation that may not be in backend
+  yhat_lower?: number; // lower bound - may need to be derived
+  yhat_upper?: number; // upper bound - may need to be derived
 }
 
 export interface RegionForecast {
@@ -131,6 +134,19 @@ export const getAqiLevelFromValue = (value: number, pollutant: Pollutant): AqiLe
     default:
       return "moderate";
   }
+};
+
+// String to AQI level mapping - for converting backend strings to our AQI types
+export const stringToAqiLevel = (level: string): AqiLevel => {
+  const mapping: Record<string, AqiLevel> = {
+    "Good": "good",
+    "Moderate": "moderate", 
+    "Unhealthy for Sensitive Groups": "unhealthy-sensitive",
+    "Unhealthy": "unhealthy",
+    "Very Unhealthy": "very-unhealthy",
+    "Hazardous": "hazardous"
+  };
+  return mapping[level] || "moderate";
 };
 
 export const aqiLevelLabels = {

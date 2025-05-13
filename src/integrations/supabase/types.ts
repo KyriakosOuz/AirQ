@@ -9,6 +9,41 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      aqi_subscriptions: {
+        Row: {
+          created_at: string | null
+          id: string
+          pollutant: string | null
+          region: string | null
+          threshold: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id: string
+          pollutant?: string | null
+          region?: string | null
+          threshold?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          pollutant?: string | null
+          region?: string | null
+          threshold?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "aqi_subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       datasets: {
         Row: {
           created_at: string | null
@@ -128,6 +163,7 @@ export type Database = {
           has_asthma: boolean | null
           has_heart_disease: boolean | null
           is_smoker: boolean | null
+          role: string | null
           updated_at: string | null
           user_id: string
         }
@@ -137,6 +173,7 @@ export type Database = {
           has_asthma?: boolean | null
           has_heart_disease?: boolean | null
           is_smoker?: boolean | null
+          role?: string | null
           updated_at?: string | null
           user_id: string
         }
@@ -146,6 +183,7 @@ export type Database = {
           has_asthma?: boolean | null
           has_heart_disease?: boolean | null
           is_smoker?: boolean | null
+          role?: string | null
           updated_at?: string | null
           user_id?: string
         }

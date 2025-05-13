@@ -14,52 +14,68 @@ import { Badge } from "@/components/ui/badge";
 import { AqiBadge } from "@/components/ui/aqi-badge";
 import { getAqiLevelFromValue } from "@/lib/types";
 import { Trash } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const AlertsPage: React.FC = () => {
   const [region, setRegion] = useState("thessaloniki");
   const [pollutant, setPollutant] = useState<Pollutant>("NO2");
-  const [threshold, setThreshold] = useState<number>(100);
+  const [threshold, setThreshold] = useState<string>("Moderate");
   const [loading, setLoading] = useState(false);
   const [alerts, setAlerts] = useState<Alert[]>([]);
   
-  // Initialize with mock alerts
+  // Available thresholds matching the backend requirements
+  const thresholdOptions = [
+    "Good",
+    "Moderate", 
+    "Unhealthy for Sensitive Groups", 
+    "Unhealthy", 
+    "Very Unhealthy",
+    "Hazardous"
+  ];
+  
+  // Load alerts from API on component mount
   useEffect(() => {
-    const mockAlerts: Alert[] = [
-      {
-        id: "1",
-        userId: "user-123",
-        region: "thessaloniki",
-        pollutant: "NO2",
-        threshold: 120,
-        active: true,
-        createdAt: "2024-05-01T12:00:00Z",
-      },
-      {
-        id: "2",
-        userId: "user-123",
-        region: "kalamaria",
-        pollutant: "O3",
-        threshold: 100,
-        active: true,
-        createdAt: "2024-05-02T10:30:00Z",
-      },
-    ];
-    
-    setAlerts(mockAlerts);
+    fetchAlerts();
   }, []);
   
   const fetchAlerts = async () => {
     setLoading(true);
     try {
-      // In real app: const response = await alertApi.list();
-      // if (response.success) {
-      //   setAlerts(response.data);
-      // }
+      const response = await alertApi.list();
       
-      // For demo, we'll use the existing mock data
-      toast.success("Alerts loaded");
+      if (response.success && response.data) {
+        setAlerts(response.data);
+        toast.success("Alerts loaded");
+      } else {
+        console.error("Failed to fetch alerts:", response.error);
+        toast.error("Failed to load alerts");
+        
+        // Use mock data if API fails
+        const mockAlerts: Alert[] = [
+          {
+            id: "1",
+            userId: "user-123",
+            region: "thessaloniki",
+            pollutant: "NO2",
+            threshold: "Unhealthy",
+            active: true,
+            createdAt: "2024-05-01T12:00:00Z",
+          },
+          {
+            id: "2",
+            userId: "user-123",
+            region: "kalamaria",
+            pollutant: "O3",
+            threshold: "Moderate",
+            active: true,
+            createdAt: "2024-05-02T10:30:00Z",
+          },
+        ];
+        
+        setAlerts(mockAlerts);
+      }
     } catch (error) {
-      console.error(error);
+      console.error("Error fetching alerts:", error);
       toast.error("Failed to load alerts");
     } finally {
       setLoading(false);
@@ -67,34 +83,23 @@ const AlertsPage: React.FC = () => {
   };
   
   const createAlert = async () => {
-    if (threshold < 1) {
-      toast.error("Threshold must be greater than 0");
-      return;
-    }
-    
     setLoading(true);
     try {
-      // In real app: const response = await alertApi.subscribe({
-      //   region,
-      //   pollutant,
-      //   threshold,
-      // });
-      
-      // For demo, simulate creating a new alert
-      const newAlert: Alert = {
-        id: `alert-${Date.now()}`,
-        userId: "user-123",
+      const response = await alertApi.subscribe({
         region,
         pollutant,
-        threshold,
-        active: true,
-        createdAt: new Date().toISOString(),
-      };
+        threshold
+      });
       
-      setAlerts(prev => [newAlert, ...prev]);
-      toast.success(`Alert created for ${pollutant} in ${region}`);
+      if (response.success) {
+        toast.success(`Alert created for ${pollutant} in ${region}`);
+        // Refresh alerts list
+        fetchAlerts();
+      } else {
+        toast.error(response.error || "Failed to create alert");
+      }
     } catch (error) {
-      console.error(error);
+      console.error("Error creating alert:", error);
       toast.error("Failed to create alert");
     } finally {
       setLoading(false);
@@ -104,13 +109,17 @@ const AlertsPage: React.FC = () => {
   const deleteAlert = async (alertId: string) => {
     setLoading(true);
     try {
-      // In real app: const response = await alertApi.delete(alertId);
+      const response = await alertApi.delete(alertId);
       
-      // For demo, remove from local state
-      setAlerts(prev => prev.filter(alert => alert.id !== alertId));
-      toast.success("Alert deleted");
+      if (response.success) {
+        // Remove from local state
+        setAlerts(prev => prev.filter(alert => alert.id !== alertId));
+        toast.success("Alert deleted");
+      } else {
+        toast.error(response.error || "Failed to delete alert");
+      }
     } catch (error) {
-      console.error(error);
+      console.error("Error deleting alert:", error);
       toast.error("Failed to delete alert");
     } finally {
       setLoading(false);
@@ -153,7 +162,23 @@ const AlertsPage: React.FC = () => {
       minute: "2-digit",
     });
   };
-
+  
+  // Get AQI level badge for threshold
+  const getThresholdBadge = (thresholdValue: string): JSX.Element => {
+    // Map backend threshold string to our AqiLevel type
+    const thresholdToAqiMap: Record<string, AqiLevel> = {
+      "Good": "good",
+      "Moderate": "moderate",
+      "Unhealthy for Sensitive Groups": "unhealthy-sensitive",
+      "Unhealthy": "unhealthy",
+      "Very Unhealthy": "very-unhealthy",
+      "Hazardous": "hazardous"
+    };
+    
+    const level = thresholdToAqiMap[thresholdValue] || "moderate";
+    return <AqiBadge level={level} />;
+  };
+  
   return (
     <div className="space-y-6">
       <div className="flex flex-col space-y-2">
@@ -181,16 +206,24 @@ const AlertsPage: React.FC = () => {
               <PollutantSelector value={pollutant} onValueChange={setPollutant} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="threshold">Threshold (μg/m³)</Label>
-              <Input 
-                id="threshold"
-                type="number"
-                value={threshold}
-                onChange={(e) => setThreshold(parseInt(e.target.value))}
-                min={1}
-              />
-              <p className="text-sm text-muted-foreground">
-                Alert level: <AqiBadge level={getAqiLevelFromValue(threshold, pollutant)} />
+              <Label htmlFor="threshold">Threshold Level</Label>
+              <Select value={threshold} onValueChange={setThreshold}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select threshold" />
+                </SelectTrigger>
+                <SelectContent>
+                  {thresholdOptions.map((option) => (
+                    <SelectItem key={option} value={option}>
+                      <div className="flex items-center gap-2">
+                        {option}
+                        {getThresholdBadge(option)}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-sm text-muted-foreground mt-2">
+                You'll be notified when air quality reaches this level
               </p>
             </div>
           </CardContent>
@@ -198,7 +231,7 @@ const AlertsPage: React.FC = () => {
             <Button 
               className="w-full"
               onClick={createAlert}
-              disabled={loading || threshold < 1}
+              disabled={loading}
             >
               {loading ? "Creating..." : "Create Alert"}
             </Button>
@@ -231,8 +264,8 @@ const AlertsPage: React.FC = () => {
                       <TableCell>{alert.pollutant}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          {alert.threshold} μg/m³
-                          <AqiBadge level={getAqiLevelFromValue(alert.threshold, alert.pollutant)} />
+                          {alert.threshold}
+                          {getThresholdBadge(alert.threshold)}
                         </div>
                       </TableCell>
                       <TableCell>{formatDate(alert.createdAt)}</TableCell>

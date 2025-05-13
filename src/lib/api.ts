@@ -191,9 +191,17 @@ export const authApi = {
 // User profile endpoints
 export const userApi = {
   saveProfile: async (profileData: any) => {
+    // Transform frontend camelCase to backend snake_case
+    const transformedData = {
+      age: profileData.age,
+      has_asthma: profileData.hasAsthma,
+      has_heart_disease: profileData.hasHeartIssues,
+      is_smoker: profileData.isSmoker,
+    };
+    
     return fetchWithAuth("/users/profile/", {
       method: "POST",
-      body: JSON.stringify(profileData),
+      body: JSON.stringify(transformedData),
     });
   },
   getProfile: async () => {
@@ -220,7 +228,7 @@ export const datasetApi = {
     return fetchWithAuth<{
       columns: string[],
       rows: Record<string, any>[]
-    }>(`/datasets/preview/?dataset_id=${datasetId}`);
+    }>(`/datasets/preview/${datasetId}`);
   },
   delete: async (datasetId: string) => {
     return fetchWithAuth(`/datasets/${datasetId}`, {
@@ -236,17 +244,24 @@ export const modelApi = {
       method: "POST",
       body: JSON.stringify(trainData),
     }, 10000); // Longer timeout for training requests
+  },
+  list: async () => {
+    return fetchWithAuth("/models/list/");
+  },
+  getForecast: async (modelId: string) => {
+    return fetchWithAuth(`/models/forecast/${modelId}`);
   }
 };
 
 // Prediction endpoints with improved error handling
 export const predictionApi = {
   forecast: async (params: { pollutant: string; region: string }) => {
+    // Updated to use models/predict instead of prediction/forecast
     const queryParams = new URLSearchParams(params as any).toString();
-    return fetchWithAuth<Array<{ ds: string; yhat: number; yhat_lower: number; yhat_upper: number }>>(`/prediction/forecast/?${queryParams}`, {}, 8000);
+    return fetchWithAuth<Array<{ ds: string; yhat: number; category: string }>>(`/models/predict/?${queryParams}`, {}, 8000);
   },
   compare: async (compareData: { pollutant: string; regions: string[] }) => {
-    return fetchWithAuth("/predictions/compare/", {
+    return fetchWithAuth("/models/predict/compare/", {
       method: "POST",
       body: JSON.stringify(compareData),
     }, 8000);
@@ -256,7 +271,12 @@ export const predictionApi = {
 // Health suggestions endpoints
 export const healthApi = {
   getTip: async (params: { pollutant: string; region: string }) => {
-    const queryParams = new URLSearchParams(params as any).toString();
+    // Add include_profile=true parameter to get personalized health tips
+    const queryParams = new URLSearchParams({
+      ...params,
+      include_profile: 'true'
+    } as any).toString();
+    
     return fetchWithAuth<HealthTip>(`/health/tip/?${queryParams}`);
   }
 };
@@ -275,6 +295,10 @@ export const insightApi = {
     const queryParams = new URLSearchParams(params as any).toString();
     return fetchWithAuth<Array<{ month: string; value: number }>>(`/insights/seasonality/?${queryParams}`);
   },
+  getPersonalized: async (params: { pollutant: string; region: string }) => {
+    const queryParams = new URLSearchParams(params as any).toString();
+    return fetchWithAuth(`/insights/personalized/?${queryParams}`);
+  },
   getSummary: async (params: { pollutant: string; region: string; year: number }) => {
     const queryParams = new URLSearchParams(params as any).toString();
     return fetchWithAuth(`/insights/summary/?${queryParams}`);
@@ -287,14 +311,23 @@ export const insightApi = {
 
 // AQI alerts endpoints
 export const alertApi = {
-  subscribe: async (alertData: { region: string; pollutant: string; threshold: number }) => {
+  subscribe: async (alertData: { region: string; pollutant: string; threshold: string }) => {
+    // Updated to accept string thresholds instead of numeric ("Good", "Moderate", etc.)
     return fetchWithAuth("/alerts/subscribe/", {
       method: "POST",
       body: JSON.stringify(alertData),
     });
   },
   list: async () => {
-    return fetchWithAuth("/alerts/list/");
+    return fetchWithAuth("/alerts/my-subscriptions/");
+  },
+  delete: async (alertId: string) => {
+    return fetchWithAuth(`/alerts/unsubscribe/${alertId}`, {
+      method: "DELETE",
+    });
+  },
+  checkAlerts: async (sendEmail: boolean = false) => {
+    return fetchWithAuth(`/alerts/check-alerts/?send_email=${sendEmail}`);
   }
 };
 
