@@ -1,11 +1,11 @@
-
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, AlertCircle, Clock, Trash2 } from "lucide-react";
+import { CheckCircle, AlertCircle, Clock, Trash2, Search, ArrowDownAZ, ArrowUpAZ, ChevronDown } from "lucide-react";
 import { TableSkeleton } from "@/components/ui/table-skeleton";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,6 +16,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { modelApi } from "@/lib/api";
 
@@ -44,6 +50,8 @@ interface RecentTrainingsCardProps {
   onModelDeleted?: () => void; // Callback for when a model is deleted
 }
 
+type SortOption = "newest" | "oldest" | "region-asc" | "region-desc";
+
 const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
   recentTrainings,
   formatters,
@@ -53,6 +61,10 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
   // State for confirmation dialog
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [modelToDelete, setModelToDelete] = useState<string | null>(null);
+  
+  // State for search and sort
+  const [searchText, setSearchText] = useState("");
+  const [sortOption, setSortOption] = useState<SortOption>("newest");
   
   // Helper function for badge styling
   const getBadgeStyle = (status: string) => {
@@ -139,12 +151,89 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
     setDeleteDialogOpen(true);
   };
 
+  // Get sort option label
+  const getSortOptionLabel = (option: SortOption): string => {
+    switch (option) {
+      case "newest": return "Newest First";
+      case "oldest": return "Oldest First";
+      case "region-asc": return "Region A–Z";
+      case "region-desc": return "Region Z–A";
+      default: return "Sort By";
+    }
+  };
+
+  // Filter and sort trainings
+  const filteredAndSortedTrainings = useMemo(() => {
+    // First filter by search text
+    const filtered = searchText.trim() === "" 
+      ? recentTrainings
+      : recentTrainings.filter(training => 
+          formatters.getRegionLabel(training.region)
+            .toLowerCase()
+            .includes(searchText.toLowerCase()));
+    
+    // Then sort based on sortOption
+    return [...filtered].sort((a, b) => {
+      switch (sortOption) {
+        case "newest":
+          return new Date(b.date).getTime() - new Date(a.date).getTime();
+        case "oldest":
+          return new Date(a.date).getTime() - new Date(b.date).getTime();
+        case "region-asc":
+          return formatters.getRegionLabel(a.region).localeCompare(formatters.getRegionLabel(b.region));
+        case "region-desc":
+          return formatters.getRegionLabel(b.region).localeCompare(formatters.getRegionLabel(a.region));
+        default:
+          return 0;
+      }
+    });
+  }, [recentTrainings, searchText, sortOption, formatters]);
+
   return (
     <>
       <Card>
         <CardHeader>
           <CardTitle>Recent Model Trainings</CardTitle>
           <CardDescription>Recently trained forecasting models</CardDescription>
+          
+          {/* Filter and Sort Controls */}
+          <div className="mt-4 flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-grow max-w-md">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by region name..."
+                className="pl-9"
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+              />
+            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="flex-shrink-0 min-w-[140px] justify-between">
+                  {getSortOptionLabel(sortOption)}
+                  <ChevronDown className="h-4 w-4 ml-2 opacity-50" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setSortOption("newest")}>
+                  <Clock className="mr-2 h-4 w-4" />
+                  Newest First
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSortOption("oldest")}>
+                  <Clock className="mr-2 h-4 w-4" />
+                  Oldest First
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSortOption("region-asc")}>
+                  <ArrowDownAZ className="mr-2 h-4 w-4" />
+                  Region A–Z
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSortOption("region-desc")}>
+                  <ArrowUpAZ className="mr-2 h-4 w-4" />
+                  Region Z–A
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -165,8 +254,8 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {recentTrainings.length > 0 ? (
-                    recentTrainings.map((training, index) => (
+                  {filteredAndSortedTrainings.length > 0 ? (
+                    filteredAndSortedTrainings.map((training, index) => (
                       <TableRow key={index}>
                         <TableCell>{formatters.getRegionLabel(training.region)}</TableCell>
                         <TableCell>{formatters.getPollutantDisplay(training.pollutant)}</TableCell>
@@ -209,7 +298,7 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
                   ) : (
                     <TableRow>
                       <TableCell colSpan={8} className="text-center text-muted-foreground py-6">
-                        No recent model trainings
+                        {searchText.trim() !== "" ? "No models match your search" : "No recent model trainings"}
                       </TableCell>
                     </TableRow>
                   )}
