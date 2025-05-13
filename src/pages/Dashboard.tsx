@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -138,30 +137,33 @@ const Dashboard: React.FC = () => {
   
   const fetchHealthTip = async () => {
     try {
-      // Simulate API call to get health tip
       setLoading(true);
-      // In real app: const response = await healthApi.getTip({ pollutant, region });
+      const response = await healthApi.getTip({ pollutant, region });
       
-      // Simulate different tips based on pollutant
-      let tipText;
-      if (pollutant === "NO2") {
-        tipText = "Nitrogen dioxide levels may affect respiratory conditions. Consider limiting prolonged outdoor activities if you have asthma.";
-      } else if (pollutant === "O3") {
-        tipText = "Ozone levels are higher in the afternoon. Schedule outdoor activities for morning if you're sensitive to air pollution.";
+      if (response.success && response.data) {
+        setHealthTip(response.data);
+        toast.success("Health tip updated");
       } else {
-        tipText = "Sulfur dioxide can irritate the respiratory system. If you have lung disease, monitor your symptoms when outdoors.";
+        console.error("Failed to fetch health tip:", response.error);
+        toast.error("Failed to load health advice");
+        
+        // Fallback to generic tip if API fails
+        setHealthTip({
+          tip: "Unable to fetch personalized health advice. Please try again later.",
+          riskLevel: "moderate",
+          personalized: false
+        });
       }
-      
-      setHealthTip({
-        tip: tipText,
-        riskLevel: currentAqi,
-        personalized: true
-      });
-      
-      toast.success("Health tip updated");
     } catch (error) {
-      console.error(error);
+      console.error("Error fetching health tip:", error);
       toast.error("Failed to get health tip");
+      
+      // Fallback to generic tip on error
+      setHealthTip({
+        tip: "Unable to fetch personalized health advice. Please try again later.",
+        riskLevel: "moderate",
+        personalized: false
+      });
     } finally {
       setLoading(false);
     }

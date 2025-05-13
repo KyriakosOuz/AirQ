@@ -1,5 +1,5 @@
 import { toast } from "sonner";
-import { Pollutant, Region, Dataset } from "@/lib/types";
+import { Pollutant, Region, Dataset, HealthTip } from "@/lib/types";
 
 // Define the base URL for API requests - fallback to mock data if API fails
 export const API_URL = "http://localhost:8000"; 
@@ -180,7 +180,7 @@ export const predictionApi = {
 export const healthApi = {
   getTip: async (params: { pollutant: string; region: string }) => {
     const queryParams = new URLSearchParams(params as any).toString();
-    return fetchWithAuth(`/suggestions/tip/?${queryParams}`);
+    return fetchWithAuth<HealthTip>(`/health/tip/?${queryParams}`);
   }
 };
 
