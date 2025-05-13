@@ -1,5 +1,5 @@
 import { toast } from "sonner";
-import { Pollutant, Region } from "@/lib/types";
+import { Pollutant, Region, Dataset } from "@/lib/types";
 
 // Define the base URL for API requests
 export const API_URL = "http://localhost:8000"; // Should be configurable
@@ -107,17 +107,20 @@ export const userApi = {
 // Dataset endpoints
 export const datasetApi = {
   upload: async (formData: FormData) => {
-    return fetchWithAuth("/datasets/upload/", {
+    return fetchWithAuth<{ dataset_id: string, file_url: string }>("/datasets/upload/", {
       method: "POST",
       body: formData,
       headers: {}, // Let browser set content-type with boundary for FormData
     });
   },
   list: async () => {
-    return fetchWithAuth("/datasets/list/");
+    return fetchWithAuth<Dataset[]>("/datasets/list/");
   },
   preview: async (datasetId: string) => {
-    return fetchWithAuth(`/datasets/preview/${datasetId}`);
+    return fetchWithAuth<{
+      columns: string[],
+      rows: Record<string, any>[]
+    }>(`/datasets/preview/?dataset_id=${datasetId}`);
   },
   delete: async (datasetId: string) => {
     return fetchWithAuth(`/datasets/${datasetId}`, {

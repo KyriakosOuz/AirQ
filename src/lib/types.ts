@@ -1,4 +1,3 @@
-
 // Core data types
 export type Pollutant = "NO2" | "O3" | "SO2";
 
@@ -28,11 +27,12 @@ export interface UserProfile {
 
 export interface Dataset {
   id: string;
-  name: string;
+  name?: string; // Making this optional since API might not return it
   region: string;
   year: number;
-  uploadedAt: string;
-  size: number;
+  uploadedAt?: string; // Making this optional since API might not return it
+  size?: number; // Making this optional since API might not return it
+  file_url?: string; // Adding this from API response
 }
 
 export interface Alert {

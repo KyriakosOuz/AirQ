@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Eye, FileSpreadsheet, Trash2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 const AdminPage: React.FC = () => {
   const [fileInput, setFileInput] = useState<File | null>(null);
@@ -25,40 +26,32 @@ const AdminPage: React.FC = () => {
   const [trainLoading, setTrainLoading] = useState(false);
   
   const [datasets, setDatasets] = useState<Dataset[]>([]);
+  const [datasetsLoading, setDatasetsLoading] = useState(false);
   const [selectedDataset, setSelectedDataset] = useState<string | null>(null);
-  const [dataPreview, setDataPreview] = useState<any[] | null>(null);
+  const [dataPreview, setDataPreview] = useState<{columns: string[], rows: Record<string, any>[]} | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
   
-  // Initialize with mock datasets
+  // Load datasets when component mounts
   useEffect(() => {
-    const mockDatasets: Dataset[] = [
-      {
-        id: "ds-1",
-        name: "Thessaloniki-2023.csv",
-        region: "thessaloniki",
-        year: 2023,
-        uploadedAt: "2024-04-15T10:30:00Z",
-        size: 1254678,
-      },
-      {
-        id: "ds-2",
-        name: "Kalamaria-2023.csv",
-        region: "kalamaria",
-        year: 2023,
-        uploadedAt: "2024-04-16T14:20:00Z",
-        size: 1124780,
-      },
-      {
-        id: "ds-3",
-        name: "Panorama-2023.csv",
-        region: "panorama",
-        year: 2023,
-        uploadedAt: "2024-04-18T09:15:00Z",
-        size: 1023456,
-      },
-    ];
-    
-    setDatasets(mockDatasets);
+    fetchDatasets();
   }, []);
+  
+  const fetchDatasets = async () => {
+    setDatasetsLoading(true);
+    try {
+      const response = await datasetApi.list();
+      if (response.success && response.data) {
+        setDatasets(response.data);
+      } else {
+        toast.error("Failed to fetch datasets");
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to fetch datasets");
+    } finally {
+      setDatasetsLoading(false);
+    }
+  };
   
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -74,35 +67,28 @@ const AdminPage: React.FC = () => {
     
     setUploadLoading(true);
     try {
-      // In real app:
-      // const formData = new FormData();
-      // formData.append('file', fileInput);
-      // formData.append('region', uploadRegion);
-      // formData.append('year', uploadYear.toString());
-      // const response = await datasetApi.upload(formData);
+      const formData = new FormData();
+      formData.append('file', fileInput);
+      formData.append('region', uploadRegion);
+      formData.append('year', uploadYear.toString());
       
-      // For demo, simulate successful upload
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      const response = await datasetApi.upload(formData);
       
-      const newDataset: Dataset = {
-        id: `ds-${Date.now()}`,
-        name: fileInput.name,
-        region: uploadRegion,
-        year: uploadYear,
-        uploadedAt: new Date().toISOString(),
-        size: fileInput.size,
-      };
-      
-      setDatasets(prev => [newDataset, ...prev]);
-      setFileInput(null);
-      
-      // Reset file input
-      const fileInputElement = document.getElementById('file-upload') as HTMLInputElement;
-      if (fileInputElement) {
-        fileInputElement.value = '';
+      if (response.success && response.data) {
+        toast.success("Dataset uploaded successfully");
+        // Refresh dataset list
+        fetchDatasets();
+        // Reset form
+        setFileInput(null);
+        
+        // Reset file input
+        const fileInputElement = document.getElementById('file-upload') as HTMLInputElement;
+        if (fileInputElement) {
+          fileInputElement.value = '';
+        }
+      } else {
+        toast.error(response.error || "Failed to upload dataset");
       }
-      
-      toast.success("Dataset uploaded successfully");
     } catch (error) {
       console.error(error);
       toast.error("Failed to upload dataset");
@@ -114,16 +100,16 @@ const AdminPage: React.FC = () => {
   const trainModel = async () => {
     setTrainLoading(true);
     try {
-      // In real app:
-      // const response = await modelApi.train({
-      //   pollutant: trainPollutant,
-      //   region: trainRegion,
-      // });
+      const response = await modelApi.train({
+        pollutant: trainPollutant,
+        region: trainRegion,
+      });
       
-      // For demo, simulate training
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      toast.success(`Model trained for ${trainPollutant} in ${trainRegion}`);
+      if (response.success) {
+        toast.success(`Model trained for ${trainPollutant} in ${trainRegion}`);
+      } else {
+        toast.error(response.error || "Failed to train model");
+      }
     } catch (error) {
       console.error(error);
       toast.error("Failed to train model");
@@ -133,44 +119,41 @@ const AdminPage: React.FC = () => {
   };
   
   const previewDataset = async (datasetId: string) => {
+    setPreviewLoading(true);
     try {
-      // In real app:
-      // const response = await datasetApi.preview(datasetId);
-      // if (response.success) {
-      //   setDataPreview(response.data);
-      // }
+      const response = await datasetApi.preview(datasetId);
       
-      // For demo, generate mock data preview
-      const mockPreview = [
-        { year: 2023, month: 1, NO2: 115, O3: 42, SO2: 22, region: datasets.find(d => d.id === datasetId)?.region || "" },
-        { year: 2023, month: 2, NO2: 110, O3: 45, SO2: 20, region: datasets.find(d => d.id === datasetId)?.region || "" },
-        { year: 2023, month: 3, NO2: 105, O3: 50, SO2: 18, region: datasets.find(d => d.id === datasetId)?.region || "" },
-        { year: 2023, month: 4, NO2: 95, O3: 55, SO2: 16, region: datasets.find(d => d.id === datasetId)?.region || "" },
-        { year: 2023, month: 5, NO2: 85, O3: 65, SO2: 14, region: datasets.find(d => d.id === datasetId)?.region || "" },
-      ];
-      
-      setSelectedDataset(datasetId);
-      setDataPreview(mockPreview);
+      if (response.success && response.data) {
+        setSelectedDataset(datasetId);
+        setDataPreview(response.data);
+      } else {
+        toast.error(response.error || "Failed to preview dataset");
+      }
     } catch (error) {
       console.error(error);
       toast.error("Failed to preview dataset");
+    } finally {
+      setPreviewLoading(false);
     }
   };
   
   const deleteDataset = async (datasetId: string) => {
     try {
-      // In real app:
-      // const response = await datasetApi.delete(datasetId);
+      const response = await datasetApi.delete(datasetId);
       
-      // For demo, remove from local state
-      setDatasets(prev => prev.filter(dataset => dataset.id !== datasetId));
-      
-      if (selectedDataset === datasetId) {
-        setSelectedDataset(null);
-        setDataPreview(null);
+      if (response.success) {
+        // Remove from local state
+        setDatasets(prev => prev.filter(dataset => dataset.id !== datasetId));
+        
+        if (selectedDataset === datasetId) {
+          setSelectedDataset(null);
+          setDataPreview(null);
+        }
+        
+        toast.success("Dataset deleted successfully");
+      } else {
+        toast.error(response.error || "Failed to delete dataset");
       }
-      
-      toast.success("Dataset deleted successfully");
     } catch (error) {
       console.error(error);
       toast.error("Failed to delete dataset");
@@ -178,14 +161,16 @@ const AdminPage: React.FC = () => {
   };
   
   // Format file size helper
-  const formatFileSize = (bytes: number): string => {
+  const formatFileSize = (bytes?: number): string => {
+    if (!bytes) return 'Unknown';
     if (bytes < 1024) return bytes + ' B';
     else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
     else return (bytes / 1048576).toFixed(1) + ' MB';
   };
   
   // Format date helper
-  const formatDate = (dateString: string): string => {
+  const formatDate = (dateString?: string): string => {
+    if (!dateString) return 'Unknown';
     return new Date(dateString).toLocaleDateString("en-US", {
       year: "numeric",
       month: "short",
@@ -208,6 +193,11 @@ const AdminPage: React.FC = () => {
     };
     
     return regionMap[regionValue] || regionValue;
+  };
+
+  // Get dataset name from dataset object
+  const getDatasetName = (dataset: Dataset): string => {
+    return dataset.name || `${getRegionLabel(dataset.region)}-${dataset.year}.csv`;
   };
 
   return (
@@ -261,7 +251,7 @@ const AdminPage: React.FC = () => {
                   onChange={handleFileChange}
                 />
                 <p className="text-xs text-muted-foreground">
-                  File must follow the format: year,month,NO2,O3,SO2,region
+                  File must follow the format: timestamp,NO2,O3,SO2,region
                 </p>
               </div>
             </CardContent>
@@ -285,7 +275,12 @@ const AdminPage: React.FC = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {datasets.length > 0 ? (
+                {datasetsLoading ? (
+                  <div className="py-8 text-center text-muted-foreground">
+                    <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full mx-auto"></div>
+                    <p className="mt-2">Loading datasets...</p>
+                  </div>
+                ) : datasets.length > 0 ? (
                   <div className="overflow-x-auto">
                     <Table>
                       <TableHeader>
@@ -301,7 +296,7 @@ const AdminPage: React.FC = () => {
                       <TableBody>
                         {datasets.map((dataset) => (
                           <TableRow key={dataset.id}>
-                            <TableCell className="font-medium">{dataset.name}</TableCell>
+                            <TableCell className="font-medium">{getDatasetName(dataset)}</TableCell>
                             <TableCell>{getRegionLabel(dataset.region)}</TableCell>
                             <TableCell>{dataset.year}</TableCell>
                             <TableCell>{formatFileSize(dataset.size)}</TableCell>
@@ -343,36 +338,37 @@ const AdminPage: React.FC = () => {
                 <CardHeader>
                   <CardTitle>Data Preview</CardTitle>
                   <CardDescription>
-                    {datasets.find(d => d.id === selectedDataset)?.name}
+                    {datasets.find(d => d.id === selectedDataset) ? getDatasetName(datasets.find(d => d.id === selectedDataset)!) : 'Dataset Preview'}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Year</TableHead>
-                          <TableHead>Month</TableHead>
-                          <TableHead>NO2</TableHead>
-                          <TableHead>O3</TableHead>
-                          <TableHead>SO2</TableHead>
-                          <TableHead>Region</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {dataPreview.map((row, idx) => (
-                          <TableRow key={idx}>
-                            <TableCell>{row.year}</TableCell>
-                            <TableCell>{row.month}</TableCell>
-                            <TableCell>{row.NO2}</TableCell>
-                            <TableCell>{row.O3}</TableCell>
-                            <TableCell>{row.SO2}</TableCell>
-                            <TableCell>{getRegionLabel(row.region)}</TableCell>
+                  {previewLoading ? (
+                    <div className="py-8 text-center text-muted-foreground">
+                      <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full mx-auto"></div>
+                      <p className="mt-2">Loading preview...</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            {dataPreview.columns.map((column) => (
+                              <TableHead key={column}>{column}</TableHead>
+                            ))}
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
+                        </TableHeader>
+                        <TableBody>
+                          {dataPreview.rows.map((row, idx) => (
+                            <TableRow key={idx}>
+                              {dataPreview.columns.map((column) => (
+                                <TableCell key={`${idx}-${column}`}>{row[column]}</TableCell>
+                              ))}
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
                   <p className="mt-2 text-right text-xs text-muted-foreground">Showing first 5 rows</p>
                 </CardContent>
               </Card>
