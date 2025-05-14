@@ -28,6 +28,7 @@ const ForecastPage: React.FC = () => {
   const [forecasts, setForecasts] = useState<Forecast[]>([]);
   const [loading, setLoading] = useState(false);
   const [usingFallbackModel, setUsingFallbackModel] = useState(false);
+  const [noModelAvailable, setNoModelAvailable] = useState(false);
 
   // Frequency options
   const frequencyOptions = [
@@ -53,6 +54,7 @@ const ForecastPage: React.FC = () => {
   const loadForecasts = async () => {
     setLoading(true);
     setUsingFallbackModel(false); // Reset fallback status
+    setNoModelAvailable(false); // Reset no model status
     
     try {
       // Build the query parameters
@@ -80,24 +82,26 @@ const ForecastPage: React.FC = () => {
       console.log(`Fetching forecast for ${region}, pollutant ${pollutant}, frequency ${frequency}, periods ${periods}`);
       const response = await predictionApi.forecast(params);
 
-      if (response.success && Array.isArray(response.data)) {
+      if (response.success && Array.isArray(response.data) && response.data.length > 0) {
         console.log(`Received ${response.data.length} forecast data points`);
         setForecasts(response.data);
         
         // Check if response metadata indicates a fallback model was used
-        if (response.data.length > 0 && response.meta?.using_fallback_model) {
+        if (response.meta?.using_fallback_model) {
           console.log("Using fallback model for forecast");
           setUsingFallbackModel(true);
         }
       } else {
-        console.error("Failed to load forecasts:", response.error);
-        toast.error(`Failed to load forecast data for ${getPollutantDisplay(pollutant)}`);
+        console.error("Failed to load forecasts or empty forecast data:", response.error);
+        toast.error(`No forecast model available for ${getPollutantDisplay(pollutant)}`);
         setForecasts([]);
+        setNoModelAvailable(true);
       }
     } catch (error) {
       console.error("Error loading forecasts:", error);
-      toast.error(`Failed to load forecast data for ${getPollutantDisplay(pollutant)}`);
+      toast.error(`No forecast model available for ${getPollutantDisplay(pollutant)}`);
       setForecasts([]);
+      setNoModelAvailable(true);
     } finally {
       setLoading(false);
     }
@@ -299,7 +303,18 @@ const ForecastPage: React.FC = () => {
         </Card>
       </div>
 
-      {usingFallbackModel && (
+      {noModelAvailable && (
+        <Alert variant="destructive" className="bg-red-50 dark:bg-red-950/30 border-red-300 dark:border-red-800">
+          <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
+          <AlertDescription className="text-red-800 dark:text-red-300">
+            No forecast model is available for {getPollutantDisplay(pollutant)} in {getRegionDisplay(region)} with {frequency === "D" ? "daily" : 
+                               frequency === "W" ? "weekly" : 
+                               frequency === "M" ? "monthly" : "yearly"} frequency.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {usingFallbackModel && !noModelAvailable && (
         <Alert variant="warning" className="bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800">
           <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
           <AlertDescription className="text-amber-800 dark:text-amber-300">
@@ -382,6 +397,25 @@ const ForecastPage: React.FC = () => {
                 Showing first 7 periods of {forecasts.length} total periods
               </p>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {forecasts.length === 0 && !loading && noModelAvailable && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Forecast Unavailable</CardTitle>
+            <CardDescription>
+              No forecast data for {getPollutantDisplay(pollutant)} in {getRegionDisplay(region)}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col items-center justify-center py-10 text-center">
+            <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
+            <h3 className="text-xl font-semibold mb-2">No forecast model available</h3>
+            <p className="text-muted-foreground max-w-md">
+              There is no trained model available to provide forecasts for this pollutant and region combination.
+              Try selecting a different pollutant or region.
+            </p>
           </CardContent>
         </Card>
       )}
