@@ -10,7 +10,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { CalendarIcon, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { AqiBadge } from "@/components/ui/aqi-badge";
@@ -26,6 +27,7 @@ const ForecastPage: React.FC = () => {
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
   const [forecasts, setForecasts] = useState<Forecast[]>([]);
   const [loading, setLoading] = useState(false);
+  const [usingFallbackModel, setUsingFallbackModel] = useState(false);
 
   // Frequency options
   const frequencyOptions = [
@@ -50,6 +52,8 @@ const ForecastPage: React.FC = () => {
 
   const loadForecasts = async () => {
     setLoading(true);
+    setUsingFallbackModel(false); // Reset fallback status
+    
     try {
       // Build the query parameters
       const params: {
@@ -79,6 +83,12 @@ const ForecastPage: React.FC = () => {
       if (response.success && Array.isArray(response.data)) {
         console.log(`Received ${response.data.length} forecast data points`);
         setForecasts(response.data);
+        
+        // Check if response metadata indicates a fallback model was used
+        if (response.data.length > 0 && response.meta?.using_fallback_model) {
+          console.log("Using fallback model for forecast");
+          setUsingFallbackModel(true);
+        }
       } else {
         console.error("Failed to load forecasts:", response.error);
         toast.error(`Failed to load forecast data for ${getPollutantDisplay(pollutant)}`);
@@ -288,6 +298,15 @@ const ForecastPage: React.FC = () => {
           </CardContent>
         </Card>
       </div>
+
+      {usingFallbackModel && (
+        <Alert variant="warning" className="bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800">
+          <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+          <AlertDescription className="text-amber-800 dark:text-amber-300">
+            Showing forecast from the most recent available model (not the latest trained model).
+          </AlertDescription>
+        </Alert>
+      )}
 
       {latestForecast && (
         <Card>

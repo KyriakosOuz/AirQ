@@ -10,6 +10,12 @@ export type ApiResponse<T> = {
   success: boolean;
   data?: T;
   error?: string;
+  meta?: {
+    using_fallback_model?: boolean;
+    model_id?: string;
+    model_created_at?: string;
+    [key: string]: any;
+  };
 };
 
 // Define the dataset preview response type for consistency
@@ -176,8 +182,20 @@ export const fetchWithAuth = async <T>(
 
     // Parse JSON response
     let data;
+    let meta;
     try {
-      data = await response.json();
+      const responseData = await response.json();
+      
+      // Extract data and metadata from response
+      if (responseData.data !== undefined) {
+        data = responseData.data;
+        // Capture any metadata if provided in the response
+        if (responseData.meta) {
+          meta = responseData.meta;
+        }
+      } else {
+        data = responseData;
+      }
     } catch (e) {
       console.error("Error parsing JSON response:", e);
       tripCircuitBreaker();
@@ -228,7 +246,7 @@ export const fetchWithAuth = async <T>(
 
     // Reset failure count on success
     CIRCUIT_BREAKER.failureCount = 0;
-    return { success: true, data };
+    return { success: true, data, meta };
   } catch (error) {
     // Trip circuit breaker on failure
     tripCircuitBreaker();
