@@ -13,16 +13,10 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer, ChartTooltipContent, ChartTooltip } from "@/components/ui/chart";
 import { aqiChartConfig } from "@/lib/chart-config";
-
-interface ForecastDataPoint {
-  ds: string;
-  yhat: number;
-  yhat_lower: number;
-  yhat_upper: number;
-}
+import { Forecast } from "@/lib/types";
 
 interface ForecastChartProps {
-  data: ForecastDataPoint[];
+  data: Forecast[];
   region: string;
   pollutant: string;
 }
@@ -44,25 +38,44 @@ const ForecastChart: React.FC<ForecastChartProps> = ({ data, region, pollutant }
   // Get pollutant display name
   const getDisplayName = (pollutantCode: string) => {
     const map: Record<string, string> = {
-      no2_conc: "NO₂",
-      o3_conc: "O₃",
-      so2_conc: "SO₂",
-      pm10_conc: "PM10",
-      pm25_conc: "PM2.5",
-      co_conc: "CO",
+      "no2_conc": "NO₂",
+      "o3_conc": "O₃",
+      "so2_conc": "SO₂",
+      "pm10_conc": "PM10",
+      "pm25_conc": "PM2.5",
+      "co_conc": "CO",
+      "no_conc": "NO",
     };
     return map[pollutantCode] || pollutantCode;
   };
 
+  // Get frequency display name
+  const getFrequencyDisplay = (dataPoints: Forecast[]) => {
+    if (dataPoints.length < 2) return "";
+    
+    // Try to determine frequency from the data points
+    const date1 = new Date(dataPoints[0].ds);
+    const date2 = new Date(dataPoints[1].ds);
+    const diffDays = Math.round((date1.getTime() - date2.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 1) return "Daily";
+    if (diffDays === 7) return "Weekly";
+    if (diffDays >= 28 && diffDays <= 31) return "Monthly";
+    if (diffDays >= 365 && diffDays <= 366) return "Yearly";
+    
+    return "";
+  };
+
   const pollutantDisplay = getDisplayName(pollutant);
   const regionDisplay = region.charAt(0).toUpperCase() + region.slice(1).replace("-", " ");
+  const frequencyDisplay = getFrequencyDisplay(data);
 
   return (
-    <Card className="col-span-2">
+    <Card>
       <CardHeader>
         <CardTitle>Forecast: {pollutantDisplay} in {regionDisplay}</CardTitle>
         <CardDescription>
-          Predicted pollutant levels for the next 6 days
+          {frequencyDisplay} prediction for {data.length} periods
         </CardDescription>
       </CardHeader>
       <CardContent>

@@ -6,17 +6,43 @@ import { PollutantSelector } from "@/components/ui/pollutant-selector";
 import { predictionApi } from "@/lib/api";
 import { Forecast, Pollutant, aqiLevelLabels, stringToAqiLevel } from "@/lib/types";
 import { Button } from "@/components/ui/button";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, AreaChart, Area } from "recharts";
-import { aqiChartConfig } from "@/lib/chart-config";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { format } from "date-fns";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { CalendarIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { AqiBadge } from "@/components/ui/aqi-badge";
-import { format } from "date-fns";
+import ForecastChart from "@/components/ForecastChart";
 
 const ForecastPage: React.FC = () => {
   const [region, setRegion] = useState("thessaloniki");
   const [pollutant, setPollutant] = useState<Pollutant>("no2_conc");
+  const [frequency, setFrequency] = useState("D"); // Default to daily
+  const [periodMode, setPeriodMode] = useState<"periods" | "daterange">("periods");
+  const [periods, setPeriods] = useState(6); // Default to 6 periods
+  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
   const [forecasts, setForecasts] = useState<Forecast[]>([]);
   const [loading, setLoading] = useState(false);
+
+  // Frequency options
+  const frequencyOptions = [
+    { value: "D", label: "Daily" },
+    { value: "W", label: "Weekly" },
+    { value: "M", label: "Monthly" },
+    { value: "Y", label: "Yearly" }
+  ];
+
+  // Period options based on frequency
+  const periodOptions = {
+    "D": [7, 14, 30, 60, 90],
+    "W": [4, 8, 12, 24],
+    "M": [3, 6, 12, 24],
+    "Y": [1, 2, 3, 5]
+  };
 
   useEffect(() => {
     loadForecasts();
@@ -25,57 +51,57 @@ const ForecastPage: React.FC = () => {
   const loadForecasts = async () => {
     setLoading(true);
     try {
-      const response = await predictionApi.forecast({
+      // Build the query parameters
+      const params: {
+        pollutant: string;
+        region: string;
+        frequency: string;
+        limit?: number;
+        start_date?: string;
+        end_date?: string;
+      } = {
         pollutant,
-        region
-      });
+        region,
+        frequency
+      };
+
+      // Add either periods or date range
+      if (periodMode === "periods") {
+        params.limit = periods;
+      } else if (startDate && endDate) {
+        params.start_date = format(startDate, "yyyy-MM-dd");
+        params.end_date = format(endDate, "yyyy-MM-dd");
+      }
+
+      const response = await predictionApi.forecast(params);
 
       if (response.success && Array.isArray(response.data)) {
-        // Process the forecast data to include derived properties
-        const processedForecasts = response.data.map((item) => {
-          // Make a variance of about 10-15% for lower and upper bounds to display error bands
-          const yhat = item.yhat;
-          const yhat_lower = yhat * 0.85; // 15% lower
-          const yhat_upper = yhat * 1.15; // 15% higher
-          
-          return {
-            ...item,
-            yhat_lower,
-            yhat_upper
-          };
-        });
-        
-        setForecasts(processedForecasts);
+        setForecasts(response.data);
       } else {
         console.error("Failed to load forecasts:", response.error);
         toast.error("Failed to load forecast data");
-        setForecasts([]); // Ensure forecasts is always an array
+        setForecasts([]);
       }
     } catch (error) {
       console.error("Error loading forecasts:", error);
       toast.error("Failed to load forecast data");
-      setForecasts([]); // Ensure forecasts is always an array
+      setForecasts([]);
     } finally {
       setLoading(false);
     }
   };
 
-  // Get the next 7 days of forecasts, ensuring we have an array
-  const next7DaysForecasts = Array.isArray(forecasts) ? forecasts.slice(0, 7) : [];
-
   // Get the latest forecast for displaying current AQI, with null check
-  const latestForecast = next7DaysForecasts[0] || null;
+  const latestForecast = forecasts.length > 0 ? forecasts[0] : null;
 
   // Handler for region change
   const handleRegionChange = (value: string) => {
     setRegion(value);
-    loadForecasts();
   };
 
   // Handler for pollutant change
   const handlePollutantChange = (value: Pollutant) => {
     setPollutant(value);
-    loadForecasts();
   };
 
   // Format date for display with error handling
@@ -97,7 +123,7 @@ const ForecastPage: React.FC = () => {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Region</CardTitle>
@@ -118,10 +144,114 @@ const ForecastPage: React.FC = () => {
 
         <Card>
           <CardHeader className="pb-2">
+            <CardTitle className="text-base">Frequency</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Select value={frequency} onValueChange={setFrequency}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select frequency" />
+              </SelectTrigger>
+              <SelectContent>
+                {frequencyOptions.map(option => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Forecast Range</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <Tabs defaultValue="periods" onValueChange={(value) => setPeriodMode(value as any)}>
+              <TabsList className="w-full">
+                <TabsTrigger value="periods" className="flex-1">Periods</TabsTrigger>
+                <TabsTrigger value="daterange" className="flex-1">Date Range</TabsTrigger>
+              </TabsList>
+              <TabsContent value="periods" className="pt-2">
+                <Select 
+                  value={periods.toString()} 
+                  onValueChange={(val) => setPeriods(parseInt(val))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select periods" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {periodOptions[frequency as keyof typeof periodOptions].map(option => (
+                      <SelectItem key={option} value={option.toString()}>
+                        {option} {frequency === "D" ? "days" : 
+                                 frequency === "W" ? "weeks" : 
+                                 frequency === "M" ? "months" : "years"}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </TabsContent>
+              <TabsContent value="daterange" className="pt-2 space-y-2">
+                <div className="grid gap-2">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "justify-start text-left font-normal w-full",
+                          !startDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {startDate ? format(startDate, "PPP") : "Start Date"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar
+                        mode="single"
+                        selected={startDate}
+                        onSelect={setStartDate}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "justify-start text-left font-normal w-full",
+                          !endDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {endDate ? format(endDate, "PPP") : "End Date"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar
+                        mode="single"
+                        selected={endDate}
+                        onSelect={setEndDate}
+                        initialFocus
+                        disabled={(date) => 
+                          (startDate ? date < startDate : false)
+                        }
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
             <CardTitle className="text-base">Actions</CardTitle>
           </CardHeader>
           <CardContent>
-            <Button onClick={loadForecasts} className="w-full" disabled={loading}>
+            <Button onClick={loadForecasts} className="w-full" disabled={loading || (periodMode === "daterange" && (!startDate || !endDate))}>
               {loading ? "Loading..." : "Update Forecast"}
             </Button>
           </CardContent>
@@ -173,76 +303,18 @@ const ForecastPage: React.FC = () => {
         </Card>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>7-Day Forecast: {pollutant} Levels</CardTitle>
-          <CardDescription>
-            Predicted air quality levels for the next week
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="h-96">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={next7DaysForecasts} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-              <defs>
-                {Object.entries(aqiChartConfig).map(([key, config]) => (
-                  <linearGradient key={key} id={`color${key}`} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor={config.color} stopOpacity={0.8} />
-                    <stop offset="95%" stopColor={config.color} stopOpacity={0.2} />
-                  </linearGradient>
-                ))}
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis 
-                dataKey="ds" 
-                tickFormatter={formatForecastDate}
-              />
-              <YAxis domain={['auto', 'auto']} />
-              <Tooltip 
-                labelFormatter={(label) => formatForecastDate(label)}
-                formatter={(value: any, name: any) => {
-                  if (name === "AQI") return [value.toFixed(1) + " µg/m³", name];
-                  if (name === "Range") return [value.toFixed(1) + " µg/m³", name];
-                  return [value, name];
-                }}
-              />
-              <Legend />
-              <Area 
-                type="monotone" 
-                dataKey="yhat_upper" 
-                name="Upper Bound" 
-                stroke="transparent" 
-                fillOpacity={0.2}
-                fill="#888888"
-              />
-              <Area 
-                type="monotone" 
-                dataKey="yhat" 
-                stroke="#8884d8" 
-                fillOpacity={0}
-                name="Forecast"
-                strokeWidth={2} 
-              />
-              <Area 
-                type="monotone" 
-                dataKey="yhat_lower" 
-                name="Lower Bound" 
-                stroke="transparent" 
-                fillOpacity={0.2}
-                fill="#888888"
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
+      {forecasts.length > 0 && (
+        <ForecastChart data={forecasts} region={region} pollutant={pollutant} />
+      )}
 
-      {next7DaysForecasts.length > 0 && (
+      {forecasts.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle>Daily Forecast</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4">
-              {next7DaysForecasts.map((forecast, index) => (
+              {forecasts.map((forecast, index) => (
                 <div key={index} className="flex flex-col items-center p-3 border rounded-lg">
                   <div className="text-sm font-medium">{formatForecastDate(forecast.ds)}</div>
                   <AqiBadge level={stringToAqiLevel(forecast.category)} className="my-3 h-10 w-10" />

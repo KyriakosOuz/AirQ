@@ -449,9 +449,22 @@ export const modelApi = {
 
 // Prediction endpoints with improved error handling
 export const predictionApi = {
-  forecast: async (params: { pollutant: string; region: string }) => {
+  forecast: async (params: { 
+    pollutant: string; 
+    region: string;
+    frequency?: string;
+    limit?: number;
+    start_date?: string;
+    end_date?: string;
+  }) => {
     const queryParams = new URLSearchParams(params as any).toString();
-    return fetchWithAuth<Array<{ ds: string; yhat: number; category: string }>>(`/models/predict/?${queryParams}`, {}, 8000);
+    return fetchWithAuth<Array<{ 
+      ds: string; 
+      yhat: number; 
+      yhat_lower: number; 
+      yhat_upper: number;
+      category: string; 
+    }>>(`/models/predict/?${queryParams}`, {}, 8000);
   },
   compare: async (compareData: { pollutant: string; regions: string[] }) => {
     return fetchWithAuth("/models/predict/compare/", {

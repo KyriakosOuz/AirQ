@@ -1,4 +1,3 @@
-
 // Add the created_at field to the Dataset interface
 export interface Dataset {
   id: string;
@@ -88,13 +87,16 @@ export interface SeasonalityChart {
 export interface Forecast {
   ds: string;
   yhat: number;
+  yhat_lower: number;
+  yhat_upper: number;
   category: string;
 }
 
-// Forecast data point with confidence intervals
+// Keeping ForecastDataPoint for backward compatibility
 export interface ForecastDataPoint {
   ds: string;
   yhat: number;
   yhat_lower: number;
   yhat_upper: number;
+  category?: string;
 }
