@@ -20,6 +20,7 @@ export interface ForecastDataPoint {
   yhat: number;
   yhat_lower: number;
   yhat_upper: number;
+  category?: string;
 }
 
 interface ForecastPreviewProps {
@@ -66,6 +67,12 @@ const ForecastPreview: React.FC<ForecastPreviewProps> = ({
     lower: Number(point.yhat_lower.toFixed(2)),
     upper: Number(point.yhat_upper.toFixed(2))
   }));
+  
+  // Get pollutant unit for display
+  const getPollutantUnit = (pollutantCode: string): string => {
+    // Most air pollutants are measured in µg/m³
+    return "µg/m³";
+  };
   
   // Handle CSV download
   const downloadCSV = () => {
@@ -114,7 +121,7 @@ const ForecastPreview: React.FC<ForecastPreviewProps> = ({
         <div>
           <CardTitle>Forecast Preview</CardTitle>
           <CardDescription>
-            {data.length}-day forecast for {formatters.getPollutantDisplay(pollutant)} in {formatters.getRegionLabel(region)}
+            {data.length}-period forecast for {formatters.getPollutantDisplay(pollutant)} in {formatters.getRegionLabel(region)}
           </CardDescription>
         </div>
         <DropdownMenu>
@@ -151,7 +158,7 @@ const ForecastPreview: React.FC<ForecastPreviewProps> = ({
               <XAxis dataKey="date" />
               <YAxis 
                 label={{ 
-                  value: `${formatters.getPollutantDisplay(pollutant)} Concentration (µg/m³)`,
+                  value: `${formatters.getPollutantDisplay(pollutant)} (${getPollutantUnit(pollutant)})`,
                   angle: -90, 
                   position: 'insideLeft',
                   style: { textAnchor: 'middle' }
@@ -159,7 +166,7 @@ const ForecastPreview: React.FC<ForecastPreviewProps> = ({
               />
               <Tooltip 
                 contentStyle={{ backgroundColor: '#ffffff', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}
-                formatter={(value: number) => [`${value} µg/m³`, 'Value']}
+                formatter={(value: number) => [`${value} ${getPollutantUnit(pollutant)}`, 'Value']}
                 labelFormatter={(label) => `Date: ${label}`}
               />
               <defs>

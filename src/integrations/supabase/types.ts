@@ -99,6 +99,7 @@ export type Database = {
           pollutant: string | null
           region: string | null
           rmse: number | null
+          status: string | null
           trained_by: string | null
         }
         Insert: {
@@ -114,6 +115,7 @@ export type Database = {
           pollutant?: string | null
           region?: string | null
           rmse?: number | null
+          status?: string | null
           trained_by?: string | null
         }
         Update: {
@@ -129,6 +131,7 @@ export type Database = {
           pollutant?: string | null
           region?: string | null
           rmse?: number | null
+          status?: string | null
           trained_by?: string | null
         }
         Relationships: [
