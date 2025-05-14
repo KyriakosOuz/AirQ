@@ -11,7 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-// Predefined regions with consistent formatting and hyphenation
+// Predefined regions with consistent formatting and hyphenation for keys
 const REGIONS = [
   { value: "thessaloniki", label: "Thessaloniki" },
   { value: "ampelokipoi-menemeni", label: "Ampelokipoi - Menemeni" },
