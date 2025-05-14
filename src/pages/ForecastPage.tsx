@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { RegionSelector } from "@/components/ui/region-selector";
@@ -22,7 +21,7 @@ const ForecastPage: React.FC = () => {
   const [pollutant, setPollutant] = useState<Pollutant>("no2_conc");
   const [frequency, setFrequency] = useState("D"); // Default to daily
   const [periodMode, setPeriodMode] = useState<"periods" | "daterange">("periods");
-  const [periods, setPeriods] = useState(6); // Default to 6 periods
+  const [periods, setPeriods] = useState(365); // Default to 365 periods instead of 6
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
   const [forecasts, setForecasts] = useState<Forecast[]>([]);
@@ -38,15 +37,16 @@ const ForecastPage: React.FC = () => {
 
   // Period options based on frequency
   const periodOptions = {
-    "D": [7, 14, 30, 60, 90],
-    "W": [4, 8, 12, 24],
+    "D": [7, 14, 30, 60, 90, 365],
+    "W": [4, 8, 12, 24, 52],
     "M": [3, 6, 12, 24],
     "Y": [1, 2, 3, 5]
   };
 
+  // Load forecasts when component mounts or when parameters change
   useEffect(() => {
     loadForecasts();
-  }, []);
+  }, [region, pollutant, frequency]); // Re-fetch when these key parameters change
 
   const loadForecasts = async () => {
     setLoading(true);
@@ -73,18 +73,20 @@ const ForecastPage: React.FC = () => {
         params.end_date = format(endDate, "yyyy-MM-dd");
       }
 
+      console.log(`Fetching forecast for ${region}, pollutant ${pollutant}, frequency ${frequency}, periods ${periods}`);
       const response = await predictionApi.forecast(params);
 
       if (response.success && Array.isArray(response.data)) {
+        console.log(`Received ${response.data.length} forecast data points`);
         setForecasts(response.data);
       } else {
         console.error("Failed to load forecasts:", response.error);
-        toast.error("Failed to load forecast data");
+        toast.error(`Failed to load forecast data for ${getPollutantDisplay(pollutant)}`);
         setForecasts([]);
       }
     } catch (error) {
       console.error("Error loading forecasts:", error);
-      toast.error("Failed to load forecast data");
+      toast.error(`Failed to load forecast data for ${getPollutantDisplay(pollutant)}`);
       setForecasts([]);
     } finally {
       setLoading(false);
@@ -102,6 +104,7 @@ const ForecastPage: React.FC = () => {
   // Handler for pollutant change
   const handlePollutantChange = (value: Pollutant) => {
     setPollutant(value);
+    // No need to call loadForecasts() here as the useEffect will handle it
   };
 
   // Format date for display with error handling
@@ -113,6 +116,34 @@ const ForecastPage: React.FC = () => {
       return dateStr;
     }
   };
+
+  // Get pollutant display name
+  const getPollutantDisplay = (pollutantCode: string): string => {
+    const map: Record<string, string> = {
+      "no2_conc": "NO₂",
+      "o3_conc": "O₃",
+      "so2_conc": "SO₂",
+      "pm10_conc": "PM10",
+      "pm25_conc": "PM2.5",
+      "co_conc": "CO",
+      "no_conc": "NO",
+    };
+    return map[pollutantCode] || pollutantCode;
+  };
+
+  // Get region display name
+  const getRegionDisplay = (regionValue: string): string => {
+    return regionValue.charAt(0).toUpperCase() + regionValue.slice(1).replace(/-/g, " ");
+  };
+
+  // Update periods when frequency changes
+  useEffect(() => {
+    // Set the first available period option for this frequency
+    const availableOptions = periodOptions[frequency as keyof typeof periodOptions] || [];
+    if (availableOptions.length > 0) {
+      setPeriods(availableOptions[0]);
+    }
+  }, [frequency]);
 
   return (
     <div className="space-y-6">
@@ -181,7 +212,7 @@ const ForecastPage: React.FC = () => {
                     <SelectValue placeholder="Select periods" />
                   </SelectTrigger>
                   <SelectContent>
-                    {periodOptions[frequency as keyof typeof periodOptions].map(option => (
+                    {periodOptions[frequency as keyof typeof periodOptions]?.map(option => (
                       <SelectItem key={option} value={option.toString()}>
                         {option} {frequency === "D" ? "days" : 
                                  frequency === "W" ? "weeks" : 
@@ -263,7 +294,7 @@ const ForecastPage: React.FC = () => {
           <CardHeader>
             <CardTitle>Current Air Quality</CardTitle>
             <CardDescription>
-              {region} - {new Date().toLocaleDateString()}
+              {getRegionDisplay(region)} - {getPollutantDisplay(pollutant)} - {new Date().toLocaleDateString()}
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col md:flex-row items-center gap-6">
@@ -274,7 +305,8 @@ const ForecastPage: React.FC = () => {
             </div>
             <div className="flex-1">
               <p>
-                The air quality in {region} today is considered <strong>{aqiLevelLabels[stringToAqiLevel(latestForecast.category)]}</strong> based on {pollutant} levels.
+                The {getPollutantDisplay(pollutant)} level in {getRegionDisplay(region)} today is considered{" "}
+                <strong>{aqiLevelLabels[stringToAqiLevel(latestForecast.category)]}</strong>.
               </p>
               {stringToAqiLevel(latestForecast.category) === "good" && (
                 <p className="mt-2">
@@ -311,10 +343,13 @@ const ForecastPage: React.FC = () => {
         <Card>
           <CardHeader>
             <CardTitle>Daily Forecast</CardTitle>
+            <CardDescription>
+              {periods}-period forecast for {getPollutantDisplay(pollutant)} in {getRegionDisplay(region)}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4">
-              {forecasts.map((forecast, index) => (
+              {forecasts.slice(0, 7).map((forecast, index) => (
                 <div key={index} className="flex flex-col items-center p-3 border rounded-lg">
                   <div className="text-sm font-medium">{formatForecastDate(forecast.ds)}</div>
                   <AqiBadge level={stringToAqiLevel(forecast.category)} className="my-3 h-10 w-10" />
@@ -323,6 +358,11 @@ const ForecastPage: React.FC = () => {
                 </div>
               ))}
             </div>
+            {forecasts.length > 7 && (
+              <p className="mt-4 text-center text-sm text-muted-foreground">
+                Showing first 7 periods of {forecasts.length} total periods
+              </p>
+            )}
           </CardContent>
         </Card>
       )}
