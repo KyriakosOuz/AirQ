@@ -7,7 +7,8 @@ import TrainModelCard from "./TrainModelCard";
 import RecentTrainingsCard, { TrainingRecord } from "./RecentTrainingsCard";
 import ForecastPreview, { ForecastDataPoint } from "./ForecastPreview";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
-import { Card } from "@/components/ui/card"; // Import the Card component
+import { Card } from "@/components/ui/card";
+import { AlertCircle } from "lucide-react";
 
 // Interface for model training API response
 interface ModelTrainingResponse {
@@ -40,16 +41,6 @@ const FREQUENCY_OPTIONS = [
   { value: "Y", label: "Yearly", ranges: [1, 2, 3, 5] },
 ];
 
-// Mock forecast data to use as a fallback
-const MOCK_FORECAST_DATA: ForecastDataPoint[] = [
-  { ds: new Date(Date.now()).toISOString(), yhat: 35, yhat_lower: 25, yhat_upper: 45 },
-  { ds: new Date(Date.now() + 86400000).toISOString(), yhat: 38, yhat_lower: 28, yhat_upper: 48 },
-  { ds: new Date(Date.now() + 172800000).toISOString(), yhat: 42, yhat_lower: 32, yhat_upper: 52 },
-  { ds: new Date(Date.now() + 259200000).toISOString(), yhat: 45, yhat_lower: 35, yhat_upper: 55 },
-  { ds: new Date(Date.now() + 345600000).toISOString(), yhat: 40, yhat_lower: 30, yhat_upper: 50 },
-  { ds: new Date(Date.now() + 432000000).toISOString(), yhat: 36, yhat_lower: 26, yhat_upper: 46 },
-];
-
 const ModelTrainingTab: React.FC = () => {
   // State for the training form
   const [trainRegion, setTrainRegion] = useState("thessaloniki");
@@ -62,6 +53,8 @@ const ModelTrainingTab: React.FC = () => {
   const [forecastData, setForecastData] = useState<ForecastDataPoint[]>([]);
   const [recentTrainings, setRecentTrainings] = useState<TrainingRecord[]>([]);
   const [modelsLoading, setModelsLoading] = useState(false);
+  const [forecastLoading, setForecastLoading] = useState(false);
+  const [noForecastAvailable, setNoForecastAvailable] = useState(false);
   
   // Get available ranges for the selected frequency
   const availableRanges = useMemo(() => {
@@ -247,11 +240,13 @@ const ModelTrainingTab: React.FC = () => {
           console.log("Using forecast data from API response:", apiResponse.forecast);
           // Only take the first 6 forecast points for display
           setForecastData(apiResponse.forecast.slice(0, 6));
+          setNoForecastAvailable(false);
         } else {
           console.log("No forecast data in response, using mock data");
           // Use mock data as fallback
           const mockData = generateMockForecastData(6);
           setForecastData(mockData);
+          setNoForecastAvailable(false);
         }
         
         // Refresh the list of trained models
@@ -259,18 +254,12 @@ const ModelTrainingTab: React.FC = () => {
       } else {
         console.error("Training failed:", response.error);
         toast.error(response.error || "Training failed");
-        
-        // Use mock data as fallback
-        const mockData = generateMockForecastData(6);
-        setForecastData(mockData);
+        setNoForecastAvailable(true);
       }
     } catch (error) {
       console.error("Training error:", error);
       toast.error("An error occurred during model training");
-      
-      // Use mock data as fallback
-      const mockData = generateMockForecastData(6);
-      setForecastData(mockData);
+      setNoForecastAvailable(true);
     } finally {
       setTrainLoading(false);
     }
@@ -282,6 +271,9 @@ const ModelTrainingTab: React.FC = () => {
       return;
     }
 
+    setForecastLoading(true);
+    setNoForecastAvailable(false);
+    
     try {
       console.log(`Fetching forecast range for ${trainRegion}, pollutant ${trainPollutant}, frequency ${trainFrequency}, periods ${trainPeriods}`);
       
@@ -301,15 +293,20 @@ const ModelTrainingTab: React.FC = () => {
         setForecastData(response.data.forecast);
       } else {
         console.log("No forecast data in response or API error:", response.error);
-        // Use mock data if the API fails
-        const mockData = generateMockForecastData(6);
-        setForecastData(mockData);
+        setForecastData([]);
+        setNoForecastAvailable(true);
       }
     } catch (error) {
       console.error("Error fetching forecast range:", error);
-      // Use mock data if the API throws an exception
-      const mockData = generateMockForecastData(6);
-      setForecastData(mockData);
+      setForecastData([]);
+      setNoForecastAvailable(true);
+      
+      // Check if it's a 404 error (model not found)
+      if (error instanceof Error && error.message.includes("404")) {
+        console.log("Model not found (404)");
+      }
+    } finally {
+      setForecastLoading(false);
     }
   };
 
@@ -353,7 +350,16 @@ const ModelTrainingTab: React.FC = () => {
             onModelDeleted={fetchTrainedModels}
           />
           
-          {forecastData && forecastData.length > 0 ? (
+          {forecastLoading && (
+            <Card className="col-span-2 flex items-center justify-center h-[300px]">
+              <div className="flex flex-col items-center justify-center">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+                <p className="mt-2 text-muted-foreground">Loading forecast data...</p>
+              </div>
+            </Card>
+          )}
+          
+          {!forecastLoading && forecastData && forecastData.length > 0 && (
             <ForecastPreview
               data={forecastData}
               region={trainRegion}
@@ -361,7 +367,22 @@ const ModelTrainingTab: React.FC = () => {
               frequency={trainFrequency}
               formatters={formatters}
             />
-          ) : (
+          )}
+          
+          {!forecastLoading && noForecastAvailable && (
+            <Card className="col-span-2 flex flex-col items-center justify-center h-[300px] p-6">
+              <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
+              <h3 className="text-xl font-semibold mb-2">No forecast available</h3>
+              <p className="text-muted-foreground text-center max-w-md mb-4">
+                No forecast model is available for {formatters.getPollutantDisplay(trainPollutant)} in {formatters.getRegionLabel(trainRegion)} with {formatters.getFrequencyDisplay(trainFrequency).toLowerCase()} frequency.
+              </p>
+              <p className="text-sm text-center text-muted-foreground">
+                Please train a model using the form on the left to generate forecasts.
+              </p>
+            </Card>
+          )}
+          
+          {!forecastLoading && !noForecastAvailable && (!forecastData || forecastData.length === 0) && (
             <Card className="col-span-2 flex items-center justify-center h-[300px]">
               <p className="text-muted-foreground">
                 Forecast preview will appear here after training a model
@@ -375,4 +396,3 @@ const ModelTrainingTab: React.FC = () => {
 };
 
 export default ModelTrainingTab;
-
