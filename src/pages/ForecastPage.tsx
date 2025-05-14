@@ -87,7 +87,19 @@ const ForecastPage: React.FC = () => {
 
       if (response.success && Array.isArray(response.data) && response.data.length > 0) {
         console.log(`Received ${response.data.length} forecast data points`);
-        setForecasts(response.data);
+        
+        // Validate and sanitize data to prevent undefined values
+        const validatedData = response.data.map(forecast => ({
+          ...forecast,
+          // Ensure numeric values or provide defaults
+          yhat: typeof forecast.yhat === 'number' ? forecast.yhat : 0,
+          yhat_lower: typeof forecast.yhat_lower === 'number' ? forecast.yhat_lower : 0,
+          yhat_upper: typeof forecast.yhat_upper === 'number' ? forecast.yhat_upper : 0,
+          // Ensure category has a valid value
+          category: forecast.category || "Unknown"
+        }));
+        
+        setForecasts(validatedData);
         
         // Check if response metadata indicates a fallback model was used
         if (response.meta?.using_fallback_model) {
@@ -96,6 +108,7 @@ const ForecastPage: React.FC = () => {
         }
       } else {
         console.error("Failed to load forecasts or empty forecast data:", response.error);
+        console.log("Response data:", JSON.stringify(response));
         toast.error(`No forecast model available for ${getPollutantDisplay(pollutant)}`);
         setNoModelAvailable(true);
       }

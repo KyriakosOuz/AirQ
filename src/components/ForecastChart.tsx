@@ -25,13 +25,20 @@ interface ForecastChartProps {
 const ForecastChart: React.FC<ForecastChartProps> = ({ data, region, pollutant }) => {
   // Format data for the chart based on frequency
   const chartData = React.useMemo(() => {
-    return data.map((item) => ({
-      ...item,
-      date: format(parseISO(item.ds), "MMM dd"),
-      value: Number(item.yhat.toFixed(2)),
-      lower: Number(item.yhat_lower.toFixed(2)),
-      upper: Number(item.yhat_upper.toFixed(2))
-    }));
+    return data.map((item) => {
+      // Safely handle potentially undefined values with default of 0
+      const yhat = typeof item.yhat === 'number' ? Number(item.yhat.toFixed(2)) : 0;
+      const yhat_lower = typeof item.yhat_lower === 'number' ? Number(item.yhat_lower.toFixed(2)) : 0;
+      const yhat_upper = typeof item.yhat_upper === 'number' ? Number(item.yhat_upper.toFixed(2)) : 0;
+      
+      return {
+        ...item,
+        date: format(parseISO(item.ds), "MMM dd"),
+        value: yhat,
+        lower: yhat_lower,
+        upper: yhat_upper
+      };
+    });
   }, [data]);
 
   // Get pollutant display name
@@ -142,7 +149,11 @@ const ForecastChart: React.FC<ForecastChartProps> = ({ data, region, pollutant }
                   content={
                     <ChartTooltipContent 
                       formatter={(value: any, name: string) => {
-                        return [`${parseFloat(value).toFixed(2)} µg/m³`, name];
+                        // Safely format the tooltip value
+                        const formattedValue = typeof value === 'number' ? 
+                          `${parseFloat(value.toString()).toFixed(2)} µg/m³` : 
+                          '-- µg/m³';
+                        return [formattedValue, name];
                       }}
                     />
                   }
