@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { RegionSelector } from "@/components/ui/region-selector";
@@ -11,10 +12,11 @@ import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { CalendarIcon, AlertCircle } from "lucide-react";
+import { CalendarIcon, AlertCircle, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { AqiBadge } from "@/components/ui/aqi-badge";
+import { Slider } from "@/components/ui/slider";
 import ForecastChart from "@/components/ForecastChart";
 
 const ForecastPage: React.FC = () => {
@@ -22,7 +24,7 @@ const ForecastPage: React.FC = () => {
   const [pollutant, setPollutant] = useState<Pollutant>("no2_conc");
   const [frequency, setFrequency] = useState("D"); // Default to daily
   const [periodMode, setPeriodMode] = useState<"periods" | "daterange">("periods");
-  const [periods, setPeriods] = useState(365); // Default to 365 periods instead of 6
+  const [periods, setPeriods] = useState(7); // Default to 7 days
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
   const [forecasts, setForecasts] = useState<Forecast[]>([]);
@@ -46,15 +48,16 @@ const ForecastPage: React.FC = () => {
     "Y": [1, 2, 3, 5]
   };
 
-  // Load forecasts when component mounts or when parameters change
+  // Load forecasts when component mounts
   useEffect(() => {
     loadForecasts();
-  }, [region, pollutant, frequency]); // Re-fetch when these key parameters change
+  }, []); 
 
   const loadForecasts = async () => {
     setLoading(true);
     setUsingFallbackModel(false); // Reset fallback status
     setNoModelAvailable(false); // Reset no model status
+    setForecasts([]); // Clear previous forecasts
     
     try {
       // Build the query parameters
@@ -94,20 +97,18 @@ const ForecastPage: React.FC = () => {
       } else {
         console.error("Failed to load forecasts or empty forecast data:", response.error);
         toast.error(`No forecast model available for ${getPollutantDisplay(pollutant)}`);
-        setForecasts([]);
         setNoModelAvailable(true);
       }
     } catch (error) {
       console.error("Error loading forecasts:", error);
       toast.error(`No forecast model available for ${getPollutantDisplay(pollutant)}`);
-      setForecasts([]);
       setNoModelAvailable(true);
     } finally {
       setLoading(false);
     }
   };
 
-  // Get the latest forecast for displaying current AQI, with null check
+  // Get the latest forecast for displaying current AQI
   const latestForecast = forecasts.length > 0 ? forecasts[0] : null;
 
   // Handler for region change
@@ -118,10 +119,9 @@ const ForecastPage: React.FC = () => {
   // Handler for pollutant change
   const handlePollutantChange = (value: Pollutant) => {
     setPollutant(value);
-    // No need to call loadForecasts() here as the useEffect will handle it
   };
 
-  // Format date for display with error handling
+  // Format date for display
   const formatForecastDate = (dateStr: string) => {
     try {
       const date = new Date(dateStr);
@@ -164,144 +164,155 @@ const ForecastPage: React.FC = () => {
       <div className="flex flex-col space-y-2">
         <h1 className="text-3xl font-bold tracking-tight">Air Quality Forecast</h1>
         <p className="text-muted-foreground">
-          View predicted air quality levels for the coming days.
+          View predicted air quality levels for upcoming periods.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Region</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <RegionSelector value={region} onValueChange={handleRegionChange} />
-          </CardContent>
-        </Card>
+      <Card className="overflow-hidden border-border/40 shadow-sm">
+        <CardContent className="p-0">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 p-4 bg-muted/30">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Region</label>
+              <RegionSelector value={region} onValueChange={handleRegionChange} />
+            </div>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Pollutant</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <PollutantSelector value={pollutant} onValueChange={handlePollutantChange} />
-          </CardContent>
-        </Card>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Pollutant</label>
+              <PollutantSelector value={pollutant} onValueChange={handlePollutantChange} />
+            </div>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Frequency</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Select value={frequency} onValueChange={setFrequency}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select frequency" />
-              </SelectTrigger>
-              <SelectContent>
-                {frequencyOptions.map(option => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </CardContent>
-        </Card>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Frequency</label>
+              <Select value={frequency} onValueChange={setFrequency}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select frequency" />
+                </SelectTrigger>
+                <SelectContent>
+                  {frequencyOptions.map(option => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Forecast Range</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <Tabs defaultValue="periods" onValueChange={(value) => setPeriodMode(value as any)}>
-              <TabsList className="w-full">
-                <TabsTrigger value="periods" className="flex-1">Periods</TabsTrigger>
-                <TabsTrigger value="daterange" className="flex-1">Date Range</TabsTrigger>
-              </TabsList>
-              <TabsContent value="periods" className="pt-2">
-                <Select 
-                  value={periods.toString()} 
-                  onValueChange={(val) => setPeriods(parseInt(val))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select periods" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {periodOptions[frequency as keyof typeof periodOptions]?.map(option => (
-                      <SelectItem key={option} value={option.toString()}>
-                        {option} {frequency === "D" ? "days" : 
-                                 frequency === "W" ? "weeks" : 
-                                 frequency === "M" ? "months" : "years"}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </TabsContent>
-              <TabsContent value="daterange" className="pt-2 space-y-2">
-                <div className="grid gap-2">
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "justify-start text-left font-normal w-full",
-                          !startDate && "text-muted-foreground"
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {startDate ? format(startDate, "PPP") : "Start Date"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <Calendar
-                        mode="single"
-                        selected={startDate}
-                        onSelect={setStartDate}
-                        initialFocus
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Forecast Range</label>
+              <Tabs defaultValue="periods" onValueChange={(value) => setPeriodMode(value as any)}>
+                <TabsList className="grid grid-cols-2 h-9">
+                  <TabsTrigger value="periods" className="text-xs">Periods</TabsTrigger>
+                  <TabsTrigger value="daterange" className="text-xs">Date Range</TabsTrigger>
+                </TabsList>
+                <TabsContent value="periods" className="pt-2">
+                  {frequency === "D" && (
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-xs">{periods} days</span>
+                        <span className="text-xs">{periodOptions.D.slice(-1)[0]} days</span>
+                      </div>
+                      <Slider 
+                        value={[periods]} 
+                        min={periodOptions.D[0]} 
+                        max={periodOptions.D.slice(-1)[0]} 
+                        step={1} 
+                        onValueChange={(value) => setPeriods(value[0])} 
+                        className="py-1"
                       />
-                    </PopoverContent>
-                  </Popover>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "justify-start text-left font-normal w-full",
-                          !endDate && "text-muted-foreground"
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {endDate ? format(endDate, "PPP") : "End Date"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <Calendar
-                        mode="single"
-                        selected={endDate}
-                        onSelect={setEndDate}
-                        initialFocus
-                        disabled={(date) => 
-                          (startDate ? date < startDate : false)
-                        }
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
+                    </div>
+                  )}
+                  {frequency !== "D" && (
+                    <Select 
+                      value={periods.toString()} 
+                      onValueChange={(val) => setPeriods(parseInt(val))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select periods" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {periodOptions[frequency as keyof typeof periodOptions]?.map(option => (
+                          <SelectItem key={option} value={option.toString()}>
+                            {option} {frequency === "W" ? "weeks" : 
+                                   frequency === "M" ? "months" : "years"}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </TabsContent>
+                <TabsContent value="daterange" className="pt-2 space-y-2">
+                  <div className="grid gap-2">
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "justify-start text-left font-normal w-full text-sm",
+                            !startDate && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {startDate ? format(startDate, "PPP") : "Start Date"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                        <Calendar
+                          mode="single"
+                          selected={startDate}
+                          onSelect={setStartDate}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "justify-start text-left font-normal w-full text-sm",
+                            !endDate && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {endDate ? format(endDate, "PPP") : "End Date"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                        <Calendar
+                          mode="single"
+                          selected={endDate}
+                          onSelect={setEndDate}
+                          initialFocus
+                          disabled={(date) => 
+                            (startDate ? date < startDate : false)
+                          }
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                </TabsContent>
+              </Tabs>
+            </div>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Actions</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Button onClick={loadForecasts} className="w-full" disabled={loading || (periodMode === "daterange" && (!startDate || !endDate))}>
-              {loading ? "Loading..." : "Update Forecast"}
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+            <div className="flex items-end">
+              <Button 
+                onClick={loadForecasts} 
+                className="w-full" 
+                disabled={loading || (periodMode === "daterange" && (!startDate || !endDate))}
+              >
+                {loading ? (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                    Loading...
+                  </>
+                ) : (
+                  "Update Forecast"
+                )}
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {noModelAvailable && (
         <Alert variant="destructive" className="bg-red-50 dark:bg-red-950/30 border-red-300 dark:border-red-800">
@@ -328,7 +339,7 @@ const ForecastPage: React.FC = () => {
           <CardHeader>
             <CardTitle>Current Air Quality</CardTitle>
             <CardDescription>
-              {getRegionDisplay(region)} - {getPollutantDisplay(pollutant)} - {new Date().toLocaleDateString()}
+              {getRegionDisplay(region)} - {getPollutantDisplay(pollutant)} - {format(new Date(), "MMMM d, yyyy")}
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col md:flex-row items-center gap-6">
