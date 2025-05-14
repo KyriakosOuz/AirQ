@@ -7,6 +7,7 @@ import TrainModelCard from "./TrainModelCard";
 import RecentTrainingsCard, { TrainingRecord } from "./RecentTrainingsCard";
 import ForecastPreview, { ForecastDataPoint } from "./ForecastPreview";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
+import { Card } from "@/components/ui/card"; // Import the Card component
 
 // Interface for model training API response
 interface ModelTrainingResponse {
@@ -141,7 +142,7 @@ const ModelTrainingTab: React.FC = () => {
           region: model.region,
           pollutant: model.pollutant as Pollutant, // Ensure pollutant is cast to Pollutant type
           date: model.created_at,
-          status: model.status || "complete", // Default to complete if not specified
+          status: (model.status || "complete") as "complete" | "in-progress" | "failed", // Fix status type with proper casting
           frequency: model.frequency,
           periods: model.forecast_periods,
           accuracy_mae: model.accuracy_mae,
@@ -198,8 +199,8 @@ const ModelTrainingTab: React.FC = () => {
       case "no2_conc": baseValue = 35; break;
       case "o3_conc": baseValue = 45; break;
       case "so2_conc": baseValue = 5; break;
-      case "pm10_conc": baseValue = 25; break;
-      case "pm25_conc": baseValue = 15; break;
+      case "pm10_conc" as Pollutant: baseValue = 25; break; // Type cast as Pollutant
+      case "pm25_conc" as Pollutant: baseValue = 15; break; // Type cast as Pollutant
       case "co_conc": baseValue = 300; break;
       default: baseValue = 30;
     }
@@ -374,3 +375,4 @@ const ModelTrainingTab: React.FC = () => {
 };
 
 export default ModelTrainingTab;
+
