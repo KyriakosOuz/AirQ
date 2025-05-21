@@ -1,8 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { Grid } from "@/components/ui/grid";
-import { toast } from "sonner";
 import { Pollutant } from "@/lib/types";
+import { toast } from "sonner";
 import { modelApi } from "@/lib/api";
 import TrainModelCard from "@/components/admin/TrainModelCard";
 import RecentTrainingsCard, { TrainingRecord } from "@/components/admin/RecentTrainingsCard";
@@ -123,7 +122,7 @@ const ModelTrainingTab: React.FC = () => {
     const fetchFilters = async () => {
       try {
         setFiltersLoading(true);
-        const response = await modelApi.getMetadata();
+        const response = await modelApi.getMetadataFilters();
         if (response.success && response.data) {
           setAvailableFilters(response.data);
         }
@@ -148,7 +147,7 @@ const ModelTrainingTab: React.FC = () => {
     const checkModelExists = async () => {
       setIsCheckingModel(true);
       try {
-        const response = await modelApi.exists({
+        const response = await modelApi.checkExists({
           region: trainRegion,
           pollutant: trainPollutant,
           frequency: trainFrequency
@@ -187,7 +186,7 @@ const ModelTrainingTab: React.FC = () => {
   const fetchRecentTrainings = async () => {
     setTrainingsLoading(true);
     try {
-      const response = await modelApi.getTrainings();
+      const response = await modelApi.list();
       
       if (response.success && response.data) {
         setRecentTrainings(response.data);
@@ -246,11 +245,7 @@ const ModelTrainingTab: React.FC = () => {
         response = await modelApi.getForecast(modelId);
       } else {
         // Preview for current parameters
-        response = await modelApi.getForecast(null, {
-          region: trainRegion,
-          pollutant: trainPollutant,
-          frequency: trainFrequency
-        });
+        response = await modelApi.getForecast(null);
       }
       
       if (response.success && response.data) {
@@ -301,7 +296,7 @@ const ModelTrainingTab: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <Grid className="grid-cols-1 xl:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         {/* Training Form Card */}
         <div>
           <TrainModelCard
@@ -344,13 +339,13 @@ const ModelTrainingTab: React.FC = () => {
             onModelSelect={handleModelSelect}
           />
         </div>
-      </Grid>
+      </div>
       
       {/* Forecast Preview Dialog */}
       {showForecast && (
         <ForecastPreview
-          open={showForecast}
-          onOpenChange={setShowForecast}
+          isOpen={showForecast}
+          onClose={() => setShowForecast(false)}
           data={forecastData}
           region={selectedModel?.region || trainRegion}
           pollutant={selectedModel?.pollutant || trainPollutant}
@@ -362,8 +357,8 @@ const ModelTrainingTab: React.FC = () => {
       {/* Model Comparison Dialog */}
       {showComparison && (
         <ModelComparisonView
-          open={showComparison}
-          onOpenChange={setShowComparison}
+          isOpen={showComparison}
+          onClose={() => setShowComparison(false)}
           modelIds={modelsToCompare}
           trainings={recentTrainings}
           formatters={formatters}
@@ -373,8 +368,8 @@ const ModelTrainingTab: React.FC = () => {
       {/* Model Details Dialog */}
       {showModelDetails && selectedModelId && (
         <ModelDetailsView
-          open={showModelDetails}
-          onOpenChange={setShowModelDetails}
+          isOpen={showModelDetails}
+          onClose={() => setShowModelDetails(false)}
           modelId={selectedModelId}
           formatters={formatters}
         />
