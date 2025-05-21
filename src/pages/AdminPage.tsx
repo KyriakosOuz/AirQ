@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,10 +11,11 @@ import { Dataset } from "@/lib/types";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Eye, FileSpreadsheet, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronUp, Eye, FileSpreadsheet, Trash2 } from "lucide-react";
 import { TableSkeleton } from "@/components/ui/table-skeleton";
 import { useApiRequest, debounce, measurePerformance, getErrorMessage } from "@/lib/utils";
 import ModelTrainingTab from "@/components/admin/ModelTrainingTab";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 // Constants to prevent re-renders
 const INITIAL_REGION = "thessaloniki";
@@ -227,6 +229,25 @@ const AdminPage: React.FC = () => {
     }
   }), []);
   
+  // Group datasets by region
+  const datasetsByRegion = useMemo(() => {
+    const grouped: Record<string, Dataset[]> = {};
+    
+    datasets.forEach(dataset => {
+      const regionKey = dataset.region || 'unknown';
+      if (!grouped[regionKey]) {
+        grouped[regionKey] = [];
+      }
+      grouped[regionKey].push(dataset);
+    });
+    
+    // Sort regions alphabetically
+    return Object.keys(grouped).sort().reduce((acc, region) => {
+      acc[region] = grouped[region].sort((a, b) => b.year - a.year);
+      return acc;
+    }, {} as Record<string, Dataset[]>);
+  }, [datasets]);
+  
   return (
     <div className="space-y-6">
       <div className="flex flex-col space-y-2">
@@ -321,53 +342,67 @@ const AdminPage: React.FC = () => {
               <CardContent>
                 {datasetsLoading && datasets.length === 0 ? (
                   <TableSkeleton columns={4} rows={3} />
-                ) : datasets.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Name</TableHead>
-                          <TableHead>Region</TableHead>
-                          <TableHead>Year</TableHead>
-                          <TableHead>Uploaded</TableHead>
-                          <TableHead className="w-[100px]">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {datasets.map((dataset) => (
-                          <TableRow key={dataset.id}>
-                            <TableCell className="font-medium">{formatters.getDatasetName(dataset)}</TableCell>
-                            <TableCell>{formatters.getRegionLabel(dataset.region)}</TableCell>
-                            <TableCell>{dataset.year}</TableCell>
-                            <TableCell>{formatters.formatDate(dataset.created_at)}</TableCell>
-                            <TableCell>
-                              <div className="flex space-x-2">
-                                <Button 
-                                  variant="outline" 
-                                  size="icon"
-                                  onClick={() => previewDataset(dataset.id)}
-                                  disabled={previewLoading && selectedDataset === dataset.id}
-                                >
-                                  {previewLoading && selectedDataset === dataset.id ? (
-                                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></span>
-                                  ) : (
-                                    <Eye size={16} />
-                                  )}
-                                </Button>
-                                <Button 
-                                  variant="outline" 
-                                  size="icon"
-                                  onClick={() => deleteDataset(dataset.id)}
-                                >
-                                  <Trash2 size={16} className="text-destructive" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
+                ) : Object.keys(datasetsByRegion).length > 0 ? (
+                  <Accordion type="multiple" defaultValue={Object.keys(datasetsByRegion)}>
+                    {Object.keys(datasetsByRegion).map((region) => (
+                      <AccordionItem key={region} value={region}>
+                        <AccordionTrigger className="hover:no-underline">
+                          <div className="flex items-center space-x-2">
+                            <span>{formatters.getRegionLabel(region)}</span>
+                            <Badge variant="outline">
+                              {datasetsByRegion[region].length}
+                            </Badge>
+                          </div>
+                        </AccordionTrigger>
+                        <AccordionContent>
+                          <div className="overflow-x-auto">
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead>Name</TableHead>
+                                  <TableHead>Year</TableHead>
+                                  <TableHead>Uploaded</TableHead>
+                                  <TableHead className="w-[100px]">Actions</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {datasetsByRegion[region].map((dataset) => (
+                                  <TableRow key={dataset.id}>
+                                    <TableCell className="font-medium">{formatters.getDatasetName(dataset)}</TableCell>
+                                    <TableCell>{dataset.year}</TableCell>
+                                    <TableCell>{formatters.formatDate(dataset.created_at)}</TableCell>
+                                    <TableCell>
+                                      <div className="flex space-x-2">
+                                        <Button 
+                                          variant="outline" 
+                                          size="icon"
+                                          onClick={() => previewDataset(dataset.id)}
+                                          disabled={previewLoading && selectedDataset === dataset.id}
+                                        >
+                                          {previewLoading && selectedDataset === dataset.id ? (
+                                            <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></span>
+                                          ) : (
+                                            <Eye size={16} />
+                                          )}
+                                        </Button>
+                                        <Button 
+                                          variant="outline" 
+                                          size="icon"
+                                          onClick={() => deleteDataset(dataset.id)}
+                                        >
+                                          <Trash2 size={16} className="text-destructive" />
+                                        </Button>
+                                      </div>
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    ))}
+                  </Accordion>
                 ) : (
                   <div className="py-8 text-center text-muted-foreground">
                     <FileSpreadsheet className="mx-auto h-12 w-12 text-muted-foreground/50" />
