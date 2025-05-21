@@ -189,7 +189,8 @@ const ModelTrainingTab: React.FC = () => {
       const response = await modelApi.list();
       
       if (response.success && response.data) {
-        setRecentTrainings(response.data);
+        // Fix the type casting issue by ensuring the data is of TrainingRecord[] type
+        setRecentTrainings(response.data as TrainingRecord[]);
       } else {
         toast.error("Failed to load recent trainings");
       }
@@ -344,8 +345,6 @@ const ModelTrainingTab: React.FC = () => {
       {/* Forecast Preview Dialog */}
       {showForecast && (
         <ForecastPreview
-          isOpen={showForecast}
-          onClose={() => setShowForecast(false)}
           data={forecastData}
           region={selectedModel?.region || trainRegion}
           pollutant={selectedModel?.pollutant || trainPollutant}
@@ -357,10 +356,8 @@ const ModelTrainingTab: React.FC = () => {
       {/* Model Comparison Dialog */}
       {showComparison && (
         <ModelComparisonView
-          isOpen={showComparison}
+          data={{ models: recentTrainings.filter(t => modelsToCompare.includes(t.id)) }}
           onClose={() => setShowComparison(false)}
-          modelIds={modelsToCompare}
-          trainings={recentTrainings}
           formatters={formatters}
         />
       )}
@@ -368,9 +365,15 @@ const ModelTrainingTab: React.FC = () => {
       {/* Model Details Dialog */}
       {showModelDetails && selectedModelId && (
         <ModelDetailsView
-          isOpen={showModelDetails}
-          onClose={() => setShowModelDetails(false)}
-          modelId={selectedModelId}
+          model={recentTrainings.find(t => t.id === selectedModelId) || { 
+            id: "", 
+            region: "", 
+            pollutant: "", 
+            frequency: "", 
+            forecast_periods: 0, 
+            created_at: "", 
+            status: "" 
+          }}
           formatters={formatters}
         />
       )}
