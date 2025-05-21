@@ -41,6 +41,8 @@ interface RecentTrainingsCardProps {
   onViewDetails?: (modelId: string) => void;
   modelsToCompare?: string[];
   onToggleCompare?: (modelId: string) => void;
+  selectedModelId?: string | null;
+  onModelSelect?: (model: TrainingRecord | null) => void;
 }
 
 const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
@@ -50,7 +52,9 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
   onModelDeleted,
   onViewDetails,
   modelsToCompare = [],
-  onToggleCompare
+  onToggleCompare,
+  selectedModelId,
+  onModelSelect
 }) => {
   const [deletingId, setDeletingId] = React.useState<string | null>(null);
 
@@ -81,6 +85,11 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
       if (response.success) {
         toast.success("Model deleted successfully");
         onModelDeleted();
+        
+        // If the deleted model was selected, clear the selection
+        if (selectedModelId === modelId && onModelSelect) {
+          onModelSelect(null);
+        }
       } else {
         toast.error(response.error || "Failed to delete model");
       }
@@ -89,6 +98,17 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
       toast.error("Failed to delete model");
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  // Handle model selection
+  const handleModelSelect = (model: TrainingRecord) => {
+    if (onModelSelect) {
+      if (selectedModelId === model.id) {
+        onModelSelect(null); // Deselect if already selected
+      } else {
+        onModelSelect(model); // Select the new model
+      }
     }
   };
 
@@ -202,6 +222,7 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
                               {onToggleCompare && (
                                 <TableHead className="w-10"></TableHead>
                               )}
+                              <TableHead className="w-10"></TableHead>
                               <TableHead>Pollutant</TableHead>
                               <TableHead>Frequency</TableHead>
                               <TableHead>Status</TableHead>
@@ -212,7 +233,13 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
                           </TableHeader>
                           <TableBody>
                             {modelsByRegion[region].map((model) => (
-                              <TableRow key={model.id} className={cn(model.status === "failed" && "bg-red-50/30")}>
+                              <TableRow 
+                                key={model.id} 
+                                className={cn(
+                                  model.status === "failed" && "bg-red-50/30",
+                                  selectedModelId === model.id && "bg-blue-50/30"
+                                )}
+                              >
                                 {onToggleCompare && (
                                   <TableCell>
                                     <Checkbox 
@@ -222,6 +249,13 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
                                     />
                                   </TableCell>
                                 )}
+                                <TableCell>
+                                  <Checkbox 
+                                    checked={selectedModelId === model.id}
+                                    onCheckedChange={() => handleModelSelect(model)}
+                                    disabled={model.status !== "complete"}
+                                  />
+                                </TableCell>
                                 <TableCell className="font-medium">
                                   {formatters.getPollutantDisplay(model.pollutant)}
                                 </TableCell>
@@ -307,6 +341,7 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
                       {onToggleCompare && (
                         <TableHead className="w-10"></TableHead>
                       )}
+                      <TableHead className="w-10"></TableHead>
                       <TableHead>Region</TableHead>
                       <TableHead>Pollutant</TableHead>
                       <TableHead>Frequency</TableHead>
@@ -318,7 +353,13 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
                   </TableHeader>
                   <TableBody>
                     {recentTrainings.map((model) => (
-                      <TableRow key={model.id} className={cn(model.status === "failed" && "bg-red-50/30")}>
+                      <TableRow 
+                        key={model.id} 
+                        className={cn(
+                          model.status === "failed" && "bg-red-50/30",
+                          selectedModelId === model.id && "bg-blue-50/30"
+                        )}
+                      >
                         {onToggleCompare && (
                           <TableCell>
                             <Checkbox 
@@ -328,6 +369,13 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
                             />
                           </TableCell>
                         )}
+                        <TableCell>
+                          <Checkbox 
+                            checked={selectedModelId === model.id}
+                            onCheckedChange={() => handleModelSelect(model)}
+                            disabled={model.status !== "complete"}
+                          />
+                        </TableCell>
                         <TableCell>{formatters.getRegionLabel(model.region)}</TableCell>
                         <TableCell className="font-medium">
                           {formatters.getPollutantDisplay(model.pollutant)}

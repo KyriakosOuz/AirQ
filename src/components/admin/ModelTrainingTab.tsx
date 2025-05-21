@@ -99,6 +99,9 @@ const ModelTrainingTab: React.FC = () => {
   const [availableFilters, setAvailableFilters] = useState<ModelMetadataFilters | null>(null);
   const [filtersLoading, setFiltersLoading] = useState(false);
   
+  // New state for selected model
+  const [selectedModel, setSelectedModel] = useState<TrainingRecord | null>(null);
+  
   // Get available ranges for the selected frequency
   const availableRanges = useMemo(() => {
     const selectedFreq = FREQUENCY_OPTIONS.find(opt => opt.value === trainFrequency);
@@ -445,28 +448,46 @@ const ModelTrainingTab: React.FC = () => {
     }
   };
 
+  // Handle model selection
+  const handleModelSelect = (model: TrainingRecord | null) => {
+    setSelectedModel(model);
+    
+    // If a model was deselected, reset the form parameters to match the model
+    if (model) {
+      setTrainRegion(model.region);
+      setTrainPollutant(model.pollutant);
+      if (model.frequency) setTrainFrequency(model.frequency);
+      if (model.periods) setTrainPeriods(model.periods);
+    }
+  };
+
   // When either frequency or range changes, fetch new forecast range
   const fetchForecastRange = async () => {
-    if (!trainRegion || !trainPollutant || !trainFrequency || !trainPeriods) {
-      return;
-    }
-
+    // Set loading state
     setForecastLoading(true);
     setNoForecastAvailable(false);
     
     try {
-      console.log(`Fetching forecast range for ${trainRegion}, pollutant ${trainPollutant}, frequency ${trainFrequency}, periods ${trainPeriods}`);
+      // Get parameters based on whether a model is selected or not
+      const params = selectedModel ? {
+        region: selectedModel.region,
+        pollutant: selectedModel.pollutant,
+        frequency: selectedModel.frequency || 'daily',
+        limit: selectedModel.periods || 7
+      } : {
+        region: trainRegion,
+        pollutant: trainPollutant,
+        frequency: trainFrequency,
+        limit: trainPeriods
+      };
+      
+      console.log(`Fetching forecast range with params:`, params);
       
       // Clear previous forecast data
       setForecastData([]);
       
       // Call the forecast-range endpoint
-      const response = await modelApi.getForecastRange({
-        region: trainRegion,
-        pollutant: trainPollutant,
-        frequency: trainFrequency,
-        limit: trainPeriods
-      });
+      const response = await modelApi.getForecastRange(params);
       
       if (response.success && response.data && response.data.forecast && response.data.forecast.length > 0) {
         console.log("Received forecast data:", response.data.forecast);
@@ -542,6 +563,7 @@ const ModelTrainingTab: React.FC = () => {
             filtersLoading={filtersLoading}
             forecastLoading={forecastLoading}
             onPreviewForecast={fetchForecastRange}
+            selectedModel={selectedModel}
           />
         </ResizablePanel>
         
@@ -557,6 +579,8 @@ const ModelTrainingTab: React.FC = () => {
               onViewDetails={handleViewModelDetails}
               modelsToCompare={modelsToCompare}
               onToggleCompare={toggleModelForComparison}
+              selectedModelId={selectedModel?.id || null}
+              onModelSelect={handleModelSelect}
             />
             
             {forecastLoading && (
@@ -571,9 +595,9 @@ const ModelTrainingTab: React.FC = () => {
             {!forecastLoading && forecastData && forecastData.length > 0 && (
               <ForecastPreview
                 data={forecastData}
-                region={trainRegion}
-                pollutant={trainPollutant}
-                frequency={trainFrequency}
+                region={selectedModel ? selectedModel.region : trainRegion}
+                pollutant={selectedModel ? selectedModel.pollutant : trainPollutant}
+                frequency={selectedModel ? selectedModel.frequency || 'daily' : trainFrequency}
                 formatters={formatters}
               />
             )}
@@ -583,7 +607,7 @@ const ModelTrainingTab: React.FC = () => {
                 <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
                 <h3 className="text-xl font-semibold mb-2">No forecast available</h3>
                 <p className="text-muted-foreground text-center max-w-md mb-4">
-                  No forecast model is available for {formatters.getPollutantDisplay(trainPollutant)} in {formatters.getRegionLabel(trainRegion)} with {formatters.getFrequencyDisplay(trainFrequency).toLowerCase()} frequency.
+                  No forecast model is available for {formatters.getPollutantDisplay(selectedModel ? selectedModel.pollutant : trainPollutant)} in {formatters.getRegionLabel(selectedModel ? selectedModel.region : trainRegion)} with {formatters.getFrequencyDisplay(selectedModel ? selectedModel.frequency || 'daily' : trainFrequency).toLowerCase()} frequency.
                 </p>
                 <p className="text-sm text-center text-muted-foreground">
                   Please train a model using the form on the left to generate forecasts.
