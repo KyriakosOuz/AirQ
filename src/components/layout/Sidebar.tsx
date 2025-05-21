@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -147,9 +146,6 @@ const DesktopSidebar: React.FC = () => {
               isCollapsed ? "h-8 w-8" : "h-8"
             )}
           />
-          {!isCollapsed && (
-            <span className="ml-2 text-lg font-semibold">AirQ</span>
-          )}
         </div>
         <Button 
           variant="ghost" 
