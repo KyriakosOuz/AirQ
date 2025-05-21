@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -78,86 +79,84 @@ const AdminPage: React.FC = () => {
     return () => clearTimeout(timer);
   }, [fetchDatasets]);
   
-const uploadDataset = async () => {
-  if (!fileInput) {
-    toast.error("Please select a file to upload");
-    return;
-  }
-  
-  setUploadLoading(true);
-  try {
-    // Create a new FormData instance
-    const formData = new FormData();
-    
-    // Append the file with the correct field name 'file'
-    formData.append('file', fileInput);
-    
-    // Append the region and year as strings (important for FormData)
-    formData.append('region', uploadRegion);
-    formData.append('year', uploadYear.toString());
-    
-    // Log the FormData content for debugging
-    console.log('FormData:', {
-      file: fileInput.name,
-      region: uploadRegion,
-      year: uploadYear
-    });
-    
-    // Use the updated datasetApi.upload method that accepts FormData
-    const response = await datasetApi.upload(formData);
-    
-    if (response.success && response.data) {
-      toast.success("Dataset uploaded successfully");
-      // Refresh dataset list
-      fetchDatasets();
-      // Reset form
-      setFileInput(null);
-      
-      // Reset file input
-      const fileInputElement = document.getElementById('file-upload') as HTMLInputElement;
-      if (fileInputElement) {
-        fileInputElement.value = '';
-      }
-    } else {
-      console.error("Upload failed:", response.error);
-      toast.error(getErrorMessage(response.error));
+  const uploadDataset = async () => {
+    if (!fileInput) {
+      toast.error("Please select a file to upload");
+      return;
     }
-  } catch (error) {
-    console.error("Upload error:", error);
-    toast.error(getErrorMessage(error));
-  } finally {
-    setUploadLoading(false);
-  }
-};
-
-// Also fixing the preview section
-const previewDataset = async (datasetId: string) => {
-  if (previewLoading) return; // Prevent multiple clicks
-  
-  setPreviewLoading(true);
-  setSelectedDataset(datasetId);
-  
-  try {
-    const response = await datasetApi.preview(datasetId);
     
-    if (response.success && response.data) {
-      // Check if both columns and data exist and are arrays
-      if (response.data.columns && Array.isArray(response.data.columns) && 
-          response.data.preview && Array.isArray(response.data.preview)) {
-        setDataPreview(response.data);
+    setUploadLoading(true);
+    try {
+      // Create a new FormData instance
+      const formData = new FormData();
+      
+      // Append the file with the correct field name 'file'
+      formData.append('file', fileInput);
+      
+      // Append the region and year as strings (important for FormData)
+      formData.append('region', uploadRegion);
+      formData.append('year', uploadYear.toString());
+      
+      // Log the FormData content for debugging
+      console.log('FormData:', {
+        file: fileInput.name,
+        region: uploadRegion,
+        year: uploadYear
+      });
+      
+      const response = await datasetApi.upload(formData);
+      
+      if (response.success && response.data) {
+        toast.success("Dataset uploaded successfully");
+        // Refresh dataset list
+        fetchDatasets();
+        // Reset form
+        setFileInput(null);
+        
+        // Reset file input
+        const fileInputElement = document.getElementById('file-upload') as HTMLInputElement;
+        if (fileInputElement) {
+          fileInputElement.value = '';
+        }
       } else {
-        console.error("Invalid preview data format:", response.data);
-        toast.error("Preview data has invalid format");
+        console.error("Upload failed:", response.error);
+        toast.error(getErrorMessage(response.error));
+      }
+    } catch (error) {
+      console.error("Upload error:", error);
+      toast.error(getErrorMessage(error));
+    } finally {
+      setUploadLoading(false);
+    }
+  };
+  
+  const previewDataset = useCallback(async (datasetId: string) => {
+    if (previewLoading) return; // Prevent multiple clicks
+    
+    setPreviewLoading(true);
+    setSelectedDataset(datasetId);
+    
+    try {
+      const response = await datasetApi.preview(datasetId);
+      
+      if (response.success && response.data) {
+        // Check if both columns and preview exist and are arrays
+        if (response.data.columns && response.data.preview && 
+            Array.isArray(response.data.columns) && Array.isArray(response.data.preview)) {
+          setDataPreview(response.data);
+        } else {
+          console.error("Invalid preview data format:", response.data);
+          toast.error("Preview data has invalid format");
+          setDataPreview(null);
+        }
+      } else {
+        toast.error(getErrorMessage(response.error));
         setDataPreview(null);
       }
-    } else {
-      toast.error(getErrorMessage(response.error));
-      setDataPreview(null);
+    } finally {
+      setPreviewLoading(false);
     }
-  } finally {
-    setPreviewLoading(false);
-  }
-};
+  }, [previewLoading]);
   
   const deleteDataset = useCallback(async (datasetId: string) => {
     try {

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -20,7 +21,7 @@ export interface TrainingRecord {
   region: string;
   pollutant: Pollutant;
   date: string;
-  status: "complete" | "ready" | "in-progress" | "failed";
+  status: "complete" | "in-progress" | "failed";
   frequency?: string;
   periods?: number;
   accuracy_mae?: number;
@@ -38,9 +39,10 @@ interface RecentTrainingsCardProps {
   isLoading: boolean;
   onModelDeleted: () => void;
   onViewDetails?: (modelId: string) => void;
-  onPreviewModel?: (modelId: string) => void;
   modelsToCompare?: string[];
   onToggleCompare?: (modelId: string) => void;
+  selectedModelId?: string | null;
+  onModelSelect?: (model: TrainingRecord | null) => void;
 }
 
 const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
@@ -49,9 +51,10 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
   isLoading,
   onModelDeleted,
   onViewDetails,
-  onPreviewModel,
   modelsToCompare = [],
-  onToggleCompare
+  onToggleCompare,
+  selectedModelId,
+  onModelSelect
 }) => {
   const [deletingId, setDeletingId] = React.useState<string | null>(null);
 
@@ -82,6 +85,11 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
       if (response.success) {
         toast.success("Model deleted successfully");
         onModelDeleted();
+        
+        // If the deleted model was selected, clear the selection
+        if (selectedModelId === modelId && onModelSelect) {
+          onModelSelect(null);
+        }
       } else {
         toast.error(response.error || "Failed to delete model");
       }
@@ -93,11 +101,21 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
     }
   };
 
+  // Handle model selection
+  const handleModelSelect = (model: TrainingRecord) => {
+    if (onModelSelect) {
+      if (selectedModelId === model.id) {
+        onModelSelect(null); // Deselect if already selected
+      } else {
+        onModelSelect(model); // Select the new model
+      }
+    }
+  };
+
   // Get status display badge
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "complete":
-      case "ready":
         return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200"><CheckCircle className="mr-1 h-3 w-3" /> Complete</Badge>;
       case "in-progress":
         return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200"><RefreshCw className="mr-1 h-3 w-3 animate-spin" /> Training</Badge>;
@@ -106,16 +124,6 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
-  };
-
-  // Function to check if a model is viewable (status is complete or ready)
-  const isModelViewable = (status: string) => {
-    return status === "complete" || status === "ready";
-  };
-
-  // Function to check if a model is previewable (has a forecast)
-  const isModelPreviewable = (status: string) => {
-    return status === "complete" || status === "ready";
   };
 
   // Get accuracy metrics display
@@ -214,26 +222,40 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
                               {onToggleCompare && (
                                 <TableHead className="w-10"></TableHead>
                               )}
+                              <TableHead className="w-10"></TableHead>
                               <TableHead>Pollutant</TableHead>
                               <TableHead>Frequency</TableHead>
                               <TableHead>Status</TableHead>
                               <TableHead>Metrics</TableHead>
                               <TableHead>Created</TableHead>
-                              <TableHead className="w-[150px]">Actions</TableHead>
+                              <TableHead className="w-[100px]">Actions</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
                             {modelsByRegion[region].map((model) => (
-                              <TableRow key={model.id} className={cn(model.status === "failed" && "bg-red-50/30")}>
+                              <TableRow 
+                                key={model.id} 
+                                className={cn(
+                                  model.status === "failed" && "bg-red-50/30",
+                                  selectedModelId === model.id && "bg-blue-50/30"
+                                )}
+                              >
                                 {onToggleCompare && (
                                   <TableCell>
                                     <Checkbox 
                                       checked={modelsToCompare.includes(model.id)}
                                       onCheckedChange={() => onToggleCompare(model.id)}
-                                      disabled={!isModelViewable(model.status)}
+                                      disabled={model.status !== "complete"}
                                     />
                                   </TableCell>
                                 )}
+                                <TableCell>
+                                  <Checkbox 
+                                    checked={selectedModelId === model.id}
+                                    onCheckedChange={() => handleModelSelect(model)}
+                                    disabled={model.status !== "complete"}
+                                  />
+                                </TableCell>
                                 <TableCell className="font-medium">
                                   {formatters.getPollutantDisplay(model.pollutant)}
                                 </TableCell>
@@ -253,30 +275,10 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
                                         variant="outline" 
                                         size="icon"
                                         onClick={() => onViewDetails(model.id)}
-                                        disabled={!isModelViewable(model.status)}
+                                        disabled={model.status !== "complete"}
                                       >
                                         <Eye size={16} />
                                       </Button>
-                                    )}
-                                    
-                                    {onPreviewModel && (
-                                      <TooltipProvider>
-                                        <Tooltip>
-                                          <TooltipTrigger asChild>
-                                            <Button 
-                                              variant="outline" 
-                                              size="icon"
-                                              onClick={() => onPreviewModel(model.id)}
-                                              disabled={!isModelPreviewable(model.status)}
-                                            >
-                                              <Eye size={16} className="text-blue-600" />
-                                            </Button>
-                                          </TooltipTrigger>
-                                          <TooltipContent>
-                                            <p>Preview forecast</p>
-                                          </TooltipContent>
-                                        </Tooltip>
-                                      </TooltipProvider>
                                     )}
                                     
                                     <AlertDialog>
@@ -339,27 +341,41 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
                       {onToggleCompare && (
                         <TableHead className="w-10"></TableHead>
                       )}
+                      <TableHead className="w-10"></TableHead>
                       <TableHead>Region</TableHead>
                       <TableHead>Pollutant</TableHead>
                       <TableHead>Frequency</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Metrics</TableHead>
                       <TableHead>Created</TableHead>
-                      <TableHead className="w-[150px]">Actions</TableHead>
+                      <TableHead className="w-[100px]">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {recentTrainings.map((model) => (
-                      <TableRow key={model.id} className={cn(model.status === "failed" && "bg-red-50/30")}>
+                      <TableRow 
+                        key={model.id} 
+                        className={cn(
+                          model.status === "failed" && "bg-red-50/30",
+                          selectedModelId === model.id && "bg-blue-50/30"
+                        )}
+                      >
                         {onToggleCompare && (
                           <TableCell>
                             <Checkbox 
                               checked={modelsToCompare.includes(model.id)}
                               onCheckedChange={() => onToggleCompare(model.id)}
-                              disabled={!isModelViewable(model.status)}
+                              disabled={model.status !== "complete"}
                             />
                           </TableCell>
                         )}
+                        <TableCell>
+                          <Checkbox 
+                            checked={selectedModelId === model.id}
+                            onCheckedChange={() => handleModelSelect(model)}
+                            disabled={model.status !== "complete"}
+                          />
+                        </TableCell>
                         <TableCell>{formatters.getRegionLabel(model.region)}</TableCell>
                         <TableCell className="font-medium">
                           {formatters.getPollutantDisplay(model.pollutant)}
@@ -380,30 +396,10 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
                                 variant="outline" 
                                 size="icon"
                                 onClick={() => onViewDetails(model.id)}
-                                disabled={!isModelViewable(model.status)}
+                                disabled={model.status !== "complete"}
                               >
                                 <Eye size={16} />
                               </Button>
-                            )}
-                            
-                            {onPreviewModel && (
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button 
-                                      variant="outline" 
-                                      size="icon"
-                                      onClick={() => onPreviewModel(model.id)}
-                                      disabled={!isModelPreviewable(model.status)}
-                                    >
-                                      <Eye size={16} className="text-blue-600" />
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p>Preview forecast</p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
                             )}
                             
                             <AlertDialog>

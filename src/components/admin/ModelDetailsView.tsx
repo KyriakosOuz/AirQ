@@ -6,7 +6,6 @@ import { Separator } from "@/components/ui/separator";
 import { AlertCircle, Info } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
-// Update the ModelDetails interface to match the one in ModelTrainingTab.tsx
 interface ModelDetails {
   id: string;
   region: string;
@@ -15,7 +14,7 @@ interface ModelDetails {
   forecast_periods: number;
   created_at: string;
   trained_by?: string;
-  status: "complete" | "ready" | "in-progress" | "failed";
+  status: string;
   accuracy_mae?: number;
   accuracy_rmse?: number;
   model_type?: string;
@@ -88,11 +87,11 @@ const ModelDetailsView: React.FC<ModelDetailsViewProps> = ({ model, formatters }
                   <TableCell className="py-2 font-medium">Status</TableCell>
                   <TableCell className="py-2">
                     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                      model.status === 'complete' || model.status === 'ready' ? 'bg-green-100 text-green-800' : 
+                      model.status === 'complete' ? 'bg-green-100 text-green-800' : 
                       model.status === 'in-progress' ? 'bg-blue-100 text-blue-800' : 
                       'bg-red-100 text-red-800'
                     }`}>
-                      {model.status === 'complete' || model.status === 'ready' ? 'Ready' : 
+                      {model.status === 'complete' ? 'Ready' : 
                        model.status === 'in-progress' ? 'Training' : 
                        'Failed'}
                     </span>
