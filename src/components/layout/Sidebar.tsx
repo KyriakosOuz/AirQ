@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -84,9 +83,6 @@ export const Sidebar: React.FC = () => {
               alt="AirQ Logo" 
               className="h-8 object-contain"
             />
-          )}
-          {!collapsed && (
-            <h1 className="ml-2 font-bold text-lg">AirQ</h1>
           )}
         </div>
         {!isMobile && (
