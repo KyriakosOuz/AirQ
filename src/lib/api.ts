@@ -1,3 +1,4 @@
+
 import { toast } from "sonner";
 import { Pollutant, Region, Dataset, HealthTip, TrendChart, SeasonalityChart } from "@/lib/types";
 import { supabase } from "@/integrations/supabase/client";
@@ -6,18 +7,23 @@ import { supabase } from "@/integrations/supabase/client";
 export const API_URL = "http://localhost:8000"; 
 
 // Define types for API responses
-export interface ApiResponse<T = any> {
+export type ApiResponse<T> = {
   success: boolean;
   data?: T;
   error?: string;
-  meta?: any; // Adding meta field to fix the error
-}
+  meta?: {
+    using_fallback_model?: boolean;
+    model_id?: string;
+    model_created_at?: string;
+    [key: string]: any;
+  };
+};
 
 // Define the dataset preview response type for consistency
-export interface DatasetPreviewResponse {
+export type DatasetPreviewResponse = {
   columns: string[];
   preview: Record<string, any>[];
-}
+};
 
 // Storage key for the auth token
 const TOKEN_KEY = "air_quality_token";
@@ -589,17 +595,6 @@ export const modelApi = {
   getMetadataFilters: async () => {
     return fetchWithAuth('/models/metadata/filters');
   },
-  
-  // Add method to get model preview
-  getModelPreview: async (modelId: string, periods: number = 6): Promise<any> => {
-    try {
-      const response = await apiRequest(`/models/preview/${modelId}?limit=${periods}`);
-      return response;
-    } catch (error) {
-      console.error("Error getting model preview:", error);
-      throw error;
-    }
-  }
 };
 
 // Prediction endpoints with improved error handling
@@ -773,13 +768,4 @@ export const metadataApi = {
     metadataApi._pollutantsCache = null;
     metadataApi._regionsCache = null;
   }
-};
-
-// Helper function to make API requests
-const apiRequest = async <T>(endpoint: string, options: RequestInit = {}): Promise<T> => {
-  const response = await fetchWithAuth<T>(endpoint, options);
-  if (!response.success) {
-    throw new Error(response.error || "API request failed");
-  }
-  return response.data;
 };

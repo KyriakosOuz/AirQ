@@ -1,15 +1,12 @@
 
 import React from 'react';
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
-import { AlertCircle, Info, X } from "lucide-react";
+import { AlertCircle, Info } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Button } from "@/components/ui/button";
 
-// Define the ModelDetails interface here to avoid conflicts
-export interface ModelDetails {
+interface ModelDetails {
   id: string;
   region: string;
   pollutant: string;
@@ -17,7 +14,7 @@ export interface ModelDetails {
   forecast_periods: number;
   created_at: string;
   trained_by?: string;
-  status: "complete" | "ready" | "in-progress" | "failed"; // Using string literals
+  status: "complete" | "ready" | "in-progress" | "failed";
   accuracy_mae?: number;
   accuracy_rmse?: number;
   model_type?: string;
@@ -26,26 +23,18 @@ export interface ModelDetails {
 interface ModelDetailsViewProps {
   model: ModelDetails;
   formatters: {
-    formatDate: (dateString?: string) => string;
-    getRegionLabel: (regionValue: string) => string;
-    getPollutantDisplay: (pollutantCode: string) => string;
-    getFrequencyDisplay?: (freqCode: string) => string;
+    formatDate: (date: string) => string;
+    getRegionLabel: (region: string) => string;
+    getPollutantDisplay: (pollutant: string) => string;
+    getFrequencyDisplay: (frequency: string) => string;
   };
-  onClose: () => void; // Add this prop
 }
 
-const ModelDetailsView: React.FC<ModelDetailsViewProps> = ({ model, formatters, onClose }) => {
+const ModelDetailsView: React.FC<ModelDetailsViewProps> = ({ model, formatters }) => {
   const { formatDate, getRegionLabel, getPollutantDisplay, getFrequencyDisplay } = formatters;
   
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h3 className="text-lg font-semibold">Model Details</h3>
-        <Button variant="ghost" size="sm" onClick={onClose}>
-          <X className="h-4 w-4" />
-        </Button>
-      </div>
-      
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
           <CardContent className="pt-6">

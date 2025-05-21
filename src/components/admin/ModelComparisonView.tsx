@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
-import { Badge } from "@/components/ui/badge";
 
 interface ModelComparisonViewProps {
   data: {
@@ -37,45 +36,6 @@ const LINE_COLORS = [
   "#8b5cf6", // violet-500
   "#ec4899", // pink-500
 ];
-
-// Background colors for different pollutant types (soft colors)
-const POLLUTANT_COLORS = {
-  "no2_conc": "#F2FCE2", // Soft Green
-  "o3_conc": "#FEF7CD",  // Soft Yellow
-  "so2_conc": "#FEC6A1", // Soft Orange
-  "pm10_conc": "#E5DEFF", // Soft Purple
-  "pm25_conc": "#FFDEE2", // Soft Pink
-  "co_conc": "#FDE1D3",  // Soft Peach
-  "no_conc": "#D3E4FD",  // Soft Blue
-};
-
-// Custom tooltip component to show pollutant information
-const CustomTooltip = ({ active, payload, label, formatters }: any) => {
-  if (active && payload && payload.length) {
-    return (
-      <div className="bg-white p-3 border rounded-md shadow-md">
-        <p className="text-sm font-medium">{label}</p>
-        <div className="mt-2 space-y-1">
-          {payload.map((entry: any, index: number) => (
-            <div 
-              key={`item-${index}`} 
-              className="flex items-center space-x-2"
-            >
-              <div 
-                className="w-2 h-2 rounded-full"
-                style={{ backgroundColor: entry.stroke }}
-              />
-              <span className="text-xs font-medium">{entry.name}:</span>
-              <span className="text-xs">{entry.value.toFixed(2)} µg/m³</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  return null;
-};
 
 const ModelComparisonView: React.FC<ModelComparisonViewProps> = ({ data, onClose, formatters }) => {
   // Format data for the chart
@@ -117,28 +77,12 @@ const ModelComparisonView: React.FC<ModelComparisonViewProps> = ({ data, onClose
     return `${region} - ${pollutant} (${frequency})`;
   };
 
-  // Check if we're comparing different pollutants
-  const hasDifferentPollutants = () => {
-    if (!data || !data.models || data.models.length <= 1) return false;
-    
-    const firstPollutant = data.models[0].pollutant;
-    return data.models.some(model => model.pollutant !== firstPollutant);
-  };
-
   const chartData = formatChartData();
-  const isDifferentPollutants = hasDifferentPollutants();
 
   return (
     <Card className="w-full">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <div className="flex flex-col">
-          <CardTitle className="text-lg">Model Comparison</CardTitle>
-          {isDifferentPollutants && (
-            <span className="text-xs mt-1 text-amber-500 flex items-center">
-              ⚠️ Comparing different pollutants may not provide meaningful insights
-            </span>
-          )}
-        </div>
+        <CardTitle className="text-lg">Model Comparison</CardTitle>
         <Button variant="ghost" size="icon" onClick={onClose}>
           <X className="h-4 w-4" />
         </Button>
@@ -160,7 +104,7 @@ const ModelComparisonView: React.FC<ModelComparisonViewProps> = ({ data, onClose
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="date" />
                   <YAxis />
-                  <Tooltip content={<CustomTooltip formatters={formatters} />} />
+                  <Tooltip />
                   <Legend />
                   {data.models.map((model, idx) => (
                     <Line
@@ -180,31 +124,18 @@ const ModelComparisonView: React.FC<ModelComparisonViewProps> = ({ data, onClose
             <div className="mt-4 space-y-2">
               <p className="text-sm font-medium">Models being compared:</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                {data.models.map((model, idx) => {
-                  const backgroundColor = POLLUTANT_COLORS[model.pollutant as keyof typeof POLLUTANT_COLORS] || '#F1F0FB';
-                  
-                  return (
+                {data.models.map((model, idx) => (
+                  <div 
+                    key={model.id} 
+                    className="flex items-center space-x-2 p-2 rounded-md border border-muted"
+                  >
                     <div 
-                      key={model.id} 
-                      className="flex items-center space-x-2 p-2 rounded-md border border-muted"
-                      style={{ backgroundColor }}
-                    >
-                      <div 
-                        className="w-3 h-3 rounded-full" 
-                        style={{ backgroundColor: LINE_COLORS[idx % LINE_COLORS.length] }}
-                      />
-                      <div className="flex-1">
-                        <span className="text-sm">{getModelLabel(model, idx)}</span>
-                        <Badge 
-                          variant="outline" 
-                          className="ml-2 text-xs"
-                        >
-                          {formatters.getPollutantDisplay(model.pollutant)}
-                        </Badge>
-                      </div>
-                    </div>
-                  );
-                })}
+                      className="w-3 h-3 rounded-full" 
+                      style={{ backgroundColor: LINE_COLORS[idx % LINE_COLORS.length] }}
+                    />
+                    <span className="text-sm">{getModelLabel(model, idx)}</span>
+                  </div>
+                ))}
               </div>
             </div>
           </>

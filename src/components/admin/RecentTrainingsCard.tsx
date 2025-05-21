@@ -1,60 +1,46 @@
-import React, { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Pollutant } from "@/lib/types";
+
+import React from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Trash2, Eye, BarChart2, CheckCircle2, Clock, AlertTriangle, LineChart, ChevronUp, ChevronDown, Info, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { modelApi } from "@/lib/api";
-import { toast } from "@/components/ui/sonner";
 import { TableSkeleton } from "@/components/ui/table-skeleton";
+import { Button } from "@/components/ui/button";
+import { AlertCircle, CheckCircle, ChevronDown, ChevronUp, Eye, Info, RefreshCw, Trash2 } from "lucide-react";
+import { Pollutant } from "@/lib/types";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
+import { modelApi } from "@/lib/api";
+import { toast } from "@/components/ui/sonner";
 
-// Training record definition for model data
 export interface TrainingRecord {
   id: string;
   region: string;
   pollutant: Pollutant;
   date: string;
-  status: "complete" | "in-progress" | "failed" | "ready";
+  status: "complete" | "ready" | "in-progress" | "failed";
   frequency?: string;
   periods?: number;
   accuracy_mae?: number;
   accuracy_rmse?: number;
 }
 
-// Props for RecentTrainingsCard component
 interface RecentTrainingsCardProps {
   recentTrainings: TrainingRecord[];
   formatters: {
-    formatDate: (dateString?: string) => string;
-    getRegionLabel: (regionValue: string) => string;
-    getPollutantDisplay: (pollutantCode: string) => string;
-    getFrequencyDisplay?: (freqCode: string) => string;
+    formatDate: (date?: string) => string;
+    getRegionLabel: (region: string) => string;
+    getPollutantDisplay: (pollutant: string) => string;
+    getFrequencyDisplay: (frequency: string) => string;
   };
   isLoading: boolean;
   onModelDeleted: () => void;
-  onViewDetails: (modelId: string) => void;
-  onPreviewForecast: (modelId: string, periods?: number) => void;
-  modelsToCompare: string[];
-  onToggleCompare: (modelId: string, pollutant: string) => void;
-  canSelectForComparison?: (pollutant: string) => boolean;
-  getDisabledTooltip?: (pollutant: string) => string;
+  onViewDetails?: (modelId: string) => void;
+  modelsToCompare?: string[];
+  onToggleCompare?: (modelId: string) => void;
 }
 
 const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
@@ -63,13 +49,10 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
   isLoading,
   onModelDeleted,
   onViewDetails,
-  onPreviewForecast,
   modelsToCompare = [],
-  onToggleCompare,
-  canSelectForComparison = () => true, // Default to allowing all models
-  getDisabledTooltip = () => "" // Default to no tooltip
+  onToggleCompare
 }) => {
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = React.useState<string | null>(null);
 
   // Group models by region
   const modelsByRegion = React.useMemo(() => {
@@ -114,11 +97,11 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
     switch (status) {
       case "complete":
       case "ready":
-        return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200"><CheckCircle2 className="mr-1 h-3 w-3" /> Complete</Badge>;
+        return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200"><CheckCircle className="mr-1 h-3 w-3" /> Complete</Badge>;
       case "in-progress":
-        return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200"><Clock className="mr-1 h-3 w-3 animate-spin" /> Training</Badge>;
+        return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200"><RefreshCw className="mr-1 h-3 w-3 animate-spin" /> Training</Badge>;
       case "failed":
-        return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200"><AlertTriangle className="mr-1 h-3 w-3" /> Failed</Badge>;
+        return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200"><AlertCircle className="mr-1 h-3 w-3" /> Failed</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -178,42 +161,6 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
     );
   };
   
-  // Render checkbox with tooltip if needed
-  const renderCheckbox = (model: TrainingRecord) => {
-    const isDisabled = !isModelViewable(model.status) || !canSelectForComparison(model.pollutant);
-    const tooltipText = getDisabledTooltip(model.pollutant);
-    
-    if (isDisabled && tooltipText) {
-      return (
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div>
-                <Checkbox 
-                  checked={modelsToCompare.includes(model.id)}
-                  onCheckedChange={() => onToggleCompare(model.id, model.pollutant)}
-                  disabled={isDisabled}
-                  className={!canSelectForComparison(model.pollutant) ? "opacity-50" : ""}
-                />
-              </div>
-            </TooltipTrigger>
-            <TooltipContent side="right" className="max-w-[280px]">
-              <p className="text-xs">{tooltipText}</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      );
-    }
-    
-    return (
-      <Checkbox 
-        checked={modelsToCompare.includes(model.id)}
-        onCheckedChange={() => onToggleCompare(model.id, model.pollutant)}
-        disabled={isDisabled}
-      />
-    );
-  };
-  
   // Render loading skeleton
   if (isLoading && recentTrainings.length === 0) {
     return (
@@ -266,7 +213,7 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
                               <TableHead>Status</TableHead>
                               <TableHead>Metrics</TableHead>
                               <TableHead>Created</TableHead>
-                              <TableHead className="w-[150px]">Actions</TableHead>
+                              <TableHead className="w-[100px]">Actions</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -274,14 +221,18 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
                               <TableRow key={model.id} className={cn(model.status === "failed" && "bg-red-50/30")}>
                                 {onToggleCompare && (
                                   <TableCell>
-                                    {renderCheckbox(model)}
+                                    <Checkbox 
+                                      checked={modelsToCompare.includes(model.id)}
+                                      onCheckedChange={() => onToggleCompare(model.id)}
+                                      disabled={!isModelViewable(model.status)}
+                                    />
                                   </TableCell>
                                 )}
                                 <TableCell className="font-medium">
                                   {formatters.getPollutantDisplay(model.pollutant)}
                                 </TableCell>
                                 <TableCell>
-                                  {model.frequency ? formatters.getFrequencyDisplay?.(model.frequency) : "N/A"}
+                                  {model.frequency ? formatters.getFrequencyDisplay(model.frequency) : "N/A"}
                                   {model.periods && <span className="text-xs text-muted-foreground ml-1">({model.periods})</span>}
                                 </TableCell>
                                 <TableCell>{getStatusBadge(model.status)}</TableCell>
@@ -291,27 +242,14 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
                                 </TableCell>
                                 <TableCell>
                                   <div className="flex space-x-2">
-                                    {onPreviewForecast && (
-                                      <Button 
-                                        variant="outline" 
-                                        size="icon"
-                                        onClick={() => onPreviewForecast(model.id, model.periods || 6)}
-                                        disabled={!isModelViewable(model.status)}
-                                        title="Preview forecast"
-                                      >
-                                        <Eye size={16} />
-                                      </Button>
-                                    )}
-                                    
                                     {onViewDetails && (
                                       <Button 
                                         variant="outline" 
                                         size="icon"
                                         onClick={() => onViewDetails(model.id)}
                                         disabled={!isModelViewable(model.status)}
-                                        title="View model details"
                                       >
-                                        <Info size={16} />
+                                        <Eye size={16} />
                                       </Button>
                                     )}
                                     
@@ -321,7 +259,6 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
                                           variant="outline" 
                                           size="icon"
                                           disabled={deletingId === model.id}
-                                          title="Delete model"
                                         >
                                           {deletingId === model.id ? (
                                             <RefreshCw size={16} className="animate-spin text-destructive" />
@@ -382,7 +319,7 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
                       <TableHead>Status</TableHead>
                       <TableHead>Metrics</TableHead>
                       <TableHead>Created</TableHead>
-                      <TableHead className="w-[150px]">Actions</TableHead>
+                      <TableHead className="w-[100px]">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -390,7 +327,11 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
                       <TableRow key={model.id} className={cn(model.status === "failed" && "bg-red-50/30")}>
                         {onToggleCompare && (
                           <TableCell>
-                            {renderCheckbox(model)}
+                            <Checkbox 
+                              checked={modelsToCompare.includes(model.id)}
+                              onCheckedChange={() => onToggleCompare(model.id)}
+                              disabled={!isModelViewable(model.status)}
+                            />
                           </TableCell>
                         )}
                         <TableCell>{formatters.getRegionLabel(model.region)}</TableCell>
@@ -398,7 +339,7 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
                           {formatters.getPollutantDisplay(model.pollutant)}
                         </TableCell>
                         <TableCell>
-                          {model.frequency ? formatters.getFrequencyDisplay?.(model.frequency) : "N/A"}
+                          {model.frequency ? formatters.getFrequencyDisplay(model.frequency) : "N/A"}
                           {model.periods && <span className="text-xs text-muted-foreground ml-1">({model.periods})</span>}
                         </TableCell>
                         <TableCell>{getStatusBadge(model.status)}</TableCell>
@@ -408,27 +349,14 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
                         </TableCell>
                         <TableCell>
                           <div className="flex space-x-2">
-                            {onPreviewForecast && (
-                              <Button 
-                                variant="outline" 
-                                size="icon"
-                                onClick={() => onPreviewForecast(model.id, model.periods || 6)}
-                                disabled={!isModelViewable(model.status)}
-                                title="Preview forecast"
-                              >
-                                <Eye size={16} />
-                              </Button>
-                            )}
-                            
                             {onViewDetails && (
                               <Button 
                                 variant="outline" 
                                 size="icon"
                                 onClick={() => onViewDetails(model.id)}
                                 disabled={!isModelViewable(model.status)}
-                                title="View model details"
                               >
-                                <Info size={16} />
+                                <Eye size={16} />
                               </Button>
                             )}
                             
@@ -438,7 +366,6 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
                                   variant="outline" 
                                   size="icon"
                                   disabled={deletingId === model.id}
-                                  title="Delete model"
                                 >
                                   {deletingId === model.id ? (
                                     <RefreshCw size={16} className="animate-spin text-destructive" />
