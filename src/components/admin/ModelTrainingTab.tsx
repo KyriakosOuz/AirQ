@@ -139,13 +139,16 @@ const ModelTrainingTab: React.FC = () => {
     setForecastLoading(true);
     
     try {
-      // Fix: Use getModelPreview instead of get
       const response = await modelApi.getModelPreview(modelId);
       
-      if (response.success && response.data && response.data.forecast) {
+      if (response.success && response.data) {
         // Fix: Cast response.data.forecast to Forecast[] before using map
-        const forecastData = response.data.forecast as Forecast[];
-        setForecastData(forecastData);
+        if (response.data.forecast && Array.isArray(response.data.forecast)) {
+          setForecastData(response.data.forecast as Forecast[]);
+        } else {
+          setForecastError("No forecast data available");
+          toast.error("No forecast data available");
+        }
       } else {
         setForecastError(response.error || "Failed to generate forecast preview");
         toast.error("Failed to generate forecast preview");
@@ -248,7 +251,7 @@ const ModelTrainingTab: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left column */}
         <div className="space-y-6">
-          {/* Fix: Remove onTrainingComplete prop since it's not expected */}
+          {/* Remove any props that aren't expected by TrainModelCard */}
           <TrainModelCard />
         </div>
         
