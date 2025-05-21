@@ -1,4 +1,3 @@
-
 import { toast } from "sonner";
 import { Pollutant, Region, Dataset, HealthTip, TrendChart, SeasonalityChart } from "@/lib/types";
 import { supabase } from "@/integrations/supabase/client";
@@ -595,6 +594,26 @@ export const modelApi = {
   getMetadataFilters: async () => {
     return fetchWithAuth('/models/metadata/filters');
   },
+  
+  // Add method to get model preview
+  getModelPreview: async (modelId: string, periods: number = 6) => {
+    try {
+      console.log(`Requesting preview for model ${modelId} with ${periods} periods`);
+      const response = await fetch(`/api/models/preview/${modelId}?limit=${periods}`);
+      
+      if (!response.ok) {
+        const error = await response.text();
+        console.error(`Error fetching model preview: ${error}`);
+        return { success: false, error };
+      }
+      
+      const data = await response.json();
+      return { success: true, data };
+    } catch (error) {
+      console.error("Error in getModelPreview:", error);
+      return { success: false, error: String(error) };
+    }
+  }
 };
 
 // Prediction endpoints with improved error handling

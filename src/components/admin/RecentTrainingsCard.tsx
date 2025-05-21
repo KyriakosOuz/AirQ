@@ -39,6 +39,7 @@ interface RecentTrainingsCardProps {
   isLoading: boolean;
   onModelDeleted: () => void;
   onViewDetails?: (modelId: string) => void;
+  onPreviewForecast?: (modelId: string, periods: number) => void; // New prop for previewing forecast
   modelsToCompare?: string[];
   onToggleCompare?: (modelId: string) => void;
 }
@@ -49,6 +50,7 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
   isLoading,
   onModelDeleted,
   onViewDetails,
+  onPreviewForecast, // New prop for previewing forecast
   modelsToCompare = [],
   onToggleCompare
 }) => {
@@ -213,7 +215,7 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
                               <TableHead>Status</TableHead>
                               <TableHead>Metrics</TableHead>
                               <TableHead>Created</TableHead>
-                              <TableHead className="w-[100px]">Actions</TableHead>
+                              <TableHead className="w-[150px]">Actions</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -242,14 +244,27 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
                                 </TableCell>
                                 <TableCell>
                                   <div className="flex space-x-2">
+                                    {onPreviewForecast && (
+                                      <Button 
+                                        variant="outline" 
+                                        size="icon"
+                                        onClick={() => onPreviewForecast(model.id, model.periods || 6)}
+                                        disabled={!isModelViewable(model.status)}
+                                        title="Preview forecast"
+                                      >
+                                        <Eye size={16} />
+                                      </Button>
+                                    )}
+                                    
                                     {onViewDetails && (
                                       <Button 
                                         variant="outline" 
                                         size="icon"
                                         onClick={() => onViewDetails(model.id)}
                                         disabled={!isModelViewable(model.status)}
+                                        title="View model details"
                                       >
-                                        <Eye size={16} />
+                                        <Info size={16} />
                                       </Button>
                                     )}
                                     
@@ -259,6 +274,7 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
                                           variant="outline" 
                                           size="icon"
                                           disabled={deletingId === model.id}
+                                          title="Delete model"
                                         >
                                           {deletingId === model.id ? (
                                             <RefreshCw size={16} className="animate-spin text-destructive" />
@@ -319,7 +335,7 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
                       <TableHead>Status</TableHead>
                       <TableHead>Metrics</TableHead>
                       <TableHead>Created</TableHead>
-                      <TableHead className="w-[100px]">Actions</TableHead>
+                      <TableHead className="w-[150px]">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -349,14 +365,27 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
                         </TableCell>
                         <TableCell>
                           <div className="flex space-x-2">
+                            {onPreviewForecast && (
+                              <Button 
+                                variant="outline" 
+                                size="icon"
+                                onClick={() => onPreviewForecast(model.id, model.periods || 6)}
+                                disabled={!isModelViewable(model.status)}
+                                title="Preview forecast"
+                              >
+                                <Eye size={16} />
+                              </Button>
+                            )}
+                            
                             {onViewDetails && (
                               <Button 
                                 variant="outline" 
                                 size="icon"
                                 onClick={() => onViewDetails(model.id)}
                                 disabled={!isModelViewable(model.status)}
+                                title="View model details"
                               >
-                                <Eye size={16} />
+                                <Info size={16} />
                               </Button>
                             )}
                             
@@ -366,6 +395,7 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
                                   variant="outline" 
                                   size="icon"
                                   disabled={deletingId === model.id}
+                                  title="Delete model"
                                 >
                                   {deletingId === model.id ? (
                                     <RefreshCw size={16} className="animate-spin text-destructive" />
