@@ -95,7 +95,6 @@ export type Database = {
           id: string
           mae: number | null
           mape: number | null
-          model_blob: string | null
           model_type: string
           pollutant: string | null
           region: string | null
@@ -112,7 +111,6 @@ export type Database = {
           id?: string
           mae?: number | null
           mape?: number | null
-          model_blob?: string | null
           model_type: string
           pollutant?: string | null
           region?: string | null
@@ -129,7 +127,6 @@ export type Database = {
           id?: string
           mae?: number | null
           mape?: number | null
-          model_blob?: string | null
           model_type?: string
           pollutant?: string | null
           region?: string | null
