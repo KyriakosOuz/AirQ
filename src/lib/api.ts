@@ -1,4 +1,3 @@
-
 import { toast } from "sonner";
 import { Pollutant, Region, Dataset, HealthTip, TrendChart, SeasonalityChart } from "@/lib/types";
 import { supabase } from "@/integrations/supabase/client";
@@ -595,6 +594,25 @@ export const modelApi = {
   getMetadataFilters: async () => {
     return fetchWithAuth('/models/metadata/filters');
   },
+  
+  // Get model forecast preview
+  getModelPreview: async (modelId: string) => {
+    try {
+      const response = await fetch(`/api/models/preview/${modelId}`);
+      
+      if (!response.ok) {
+        // Handle HTTP error
+        const errorData = await response.json().catch(() => ({ message: `HTTP error ${response.status}` }));
+        return { success: false, error: errorData.message || `HTTP error ${response.status}` };
+      }
+      
+      const data = await response.json();
+      return { success: true, data };
+    } catch (error) {
+      console.error("Error fetching model preview:", error);
+      return { success: false, error: getErrorMessage(error) };
+    }
+  }
 };
 
 // Prediction endpoints with improved error handling
@@ -767,5 +785,16 @@ export const metadataApi = {
   clearCache: () => {
     metadataApi._pollutantsCache = null;
     metadataApi._regionsCache = null;
+  }
+};
+
+// Helper function to get error message from an error object
+const getErrorMessage = (error: any): string => {
+  if (error instanceof Error) {
+    return error.message;
+  } else if (typeof error === 'string') {
+    return error;
+  } else {
+    return "Unknown error occurred";
   }
 };

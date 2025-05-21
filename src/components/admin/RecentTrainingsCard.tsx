@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -39,6 +38,7 @@ interface RecentTrainingsCardProps {
   isLoading: boolean;
   onModelDeleted: () => void;
   onViewDetails?: (modelId: string) => void;
+  onPreviewModel?: (modelId: string) => void;
   modelsToCompare?: string[];
   onToggleCompare?: (modelId: string) => void;
 }
@@ -49,6 +49,7 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
   isLoading,
   onModelDeleted,
   onViewDetails,
+  onPreviewModel,
   modelsToCompare = [],
   onToggleCompare
 }) => {
@@ -109,6 +110,11 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
 
   // Function to check if a model is viewable (status is complete or ready)
   const isModelViewable = (status: string) => {
+    return status === "complete" || status === "ready";
+  };
+
+  // Function to check if a model is previewable (has a forecast)
+  const isModelPreviewable = (status: string) => {
     return status === "complete" || status === "ready";
   };
 
@@ -213,7 +219,7 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
                               <TableHead>Status</TableHead>
                               <TableHead>Metrics</TableHead>
                               <TableHead>Created</TableHead>
-                              <TableHead className="w-[100px]">Actions</TableHead>
+                              <TableHead className="w-[150px]">Actions</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -251,6 +257,26 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
                                       >
                                         <Eye size={16} />
                                       </Button>
+                                    )}
+                                    
+                                    {onPreviewModel && (
+                                      <TooltipProvider>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <Button 
+                                              variant="outline" 
+                                              size="icon"
+                                              onClick={() => onPreviewModel(model.id)}
+                                              disabled={!isModelPreviewable(model.status)}
+                                            >
+                                              <Eye size={16} className="text-blue-600" />
+                                            </Button>
+                                          </TooltipTrigger>
+                                          <TooltipContent>
+                                            <p>Preview forecast</p>
+                                          </TooltipContent>
+                                        </Tooltip>
+                                      </TooltipProvider>
                                     )}
                                     
                                     <AlertDialog>
@@ -319,7 +345,7 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
                       <TableHead>Status</TableHead>
                       <TableHead>Metrics</TableHead>
                       <TableHead>Created</TableHead>
-                      <TableHead className="w-[100px]">Actions</TableHead>
+                      <TableHead className="w-[150px]">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -358,6 +384,26 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
                               >
                                 <Eye size={16} />
                               </Button>
+                            )}
+                            
+                            {onPreviewModel && (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button 
+                                      variant="outline" 
+                                      size="icon"
+                                      onClick={() => onPreviewModel(model.id)}
+                                      disabled={!isModelPreviewable(model.status)}
+                                    >
+                                      <Eye size={16} className="text-blue-600" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Preview forecast</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
                             )}
                             
                             <AlertDialog>
