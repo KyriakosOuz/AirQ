@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect } from "react";
 import { toast } from "@/components/ui/sonner";
 import { modelApi } from "@/lib/api";
@@ -138,10 +139,13 @@ const ModelTrainingTab: React.FC = () => {
     setForecastLoading(true);
     
     try {
+      // Fix: Use getModelPreview instead of get
       const response = await modelApi.getModelPreview(modelId);
       
       if (response.success && response.data && response.data.forecast) {
-        setForecastData(response.data.forecast);
+        // Fix: Cast response.data.forecast to Forecast[] before using map
+        const forecastData = response.data.forecast as Forecast[];
+        setForecastData(forecastData);
       } else {
         setForecastError(response.error || "Failed to generate forecast preview");
         toast.error("Failed to generate forecast preview");
@@ -166,12 +170,26 @@ const ModelTrainingTab: React.FC = () => {
     setViewModelDetails(true);
     
     try {
-      const response = await modelApi.get(modelId);
+      // Fix: The API doesn't have a get method, let's fetch the model from recentTrainings
+      const modelFromRecent = recentTrainings.find(m => m.id === modelId);
       
-      if (response.success && response.data) {
-        setSelectedModel(response.data);
+      if (modelFromRecent) {
+        // Convert TrainingRecord to ModelDetails
+        const modelDetails: ModelDetails = {
+          id: modelFromRecent.id,
+          region: modelFromRecent.region,
+          pollutant: modelFromRecent.pollutant,
+          frequency: modelFromRecent.frequency || 'D',
+          forecast_periods: modelFromRecent.periods || 7,
+          created_at: modelFromRecent.date,
+          status: modelFromRecent.status,
+          accuracy_mae: modelFromRecent.accuracy_mae,
+          accuracy_rmse: modelFromRecent.accuracy_rmse
+        };
+        
+        setSelectedModel(modelDetails);
       } else {
-        console.error("Failed to fetch model details:", response.error);
+        console.error("Failed to find model details");
         toast.error("Failed to fetch model details");
       }
     } catch (error) {
@@ -225,22 +243,13 @@ const ModelTrainingTab: React.FC = () => {
     fetchModels();
   }, []);
   
-  const handleTrainingComplete = (response: TrainModelResponse) => {
-    setTraining(false);
-    if (response.success && response.data) {
-      toast.success("Model training started successfully");
-      fetchModels();
-    } else {
-      toast.error(response.error || "Failed to start model training");
-    }
-  };
-  
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left column */}
         <div className="space-y-6">
-          <TrainModelCard onTrainingComplete={fetchModels} />
+          {/* Fix: Remove onTrainingComplete prop since it's not expected */}
+          <TrainModelCard />
         </div>
         
         {/* Right column */}
