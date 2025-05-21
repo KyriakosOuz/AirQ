@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Pollutant } from "@/lib/types";
-import { AlertCircle, Clock, RefreshCw } from "lucide-react";
+import { AlertCircle, Clock, RefreshCw, LineChart } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -47,6 +47,8 @@ interface TrainModelCardProps {
   isCheckingModel?: boolean;
   availableFilters?: FilterMetadata | null;
   filtersLoading?: boolean;
+  forecastLoading?: boolean;
+  onPreviewForecast?: () => void;
 }
 
 const TrainModelCard: React.FC<TrainModelCardProps> = ({
@@ -68,7 +70,9 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
   modelExists = false,
   isCheckingModel = false,
   availableFilters = null,
-  filtersLoading = false
+  filtersLoading = false,
+  forecastLoading = false,
+  onPreviewForecast
 }) => {
   // Helper to get the frequency display label
   const getFrequencyLabel = (value: string): string => {
@@ -268,7 +272,7 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
           </div>
         )}
       </CardContent>
-      <CardFooter>
+      <CardFooter className="flex flex-col">
         <Button 
           className="w-full" 
           disabled={trainLoading || isCheckingModel}
@@ -288,6 +292,29 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
             </>
           ) : overwriteModel ? "Retrain Model" : "Train Model"}
         </Button>
+        
+        {/* Preview Forecast Button */}
+        {onPreviewForecast && (
+          <Button 
+            variant="outline" 
+            disabled={forecastLoading}
+            onClick={onPreviewForecast}
+            className="w-full mt-2"
+            size="sm"
+          >
+            {forecastLoading ? (
+              <>
+                <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                Loading...
+              </>
+            ) : (
+              <>
+                <LineChart className="mr-2 h-4 w-4" />
+                Preview Forecast
+              </>
+            )}
+          </Button>
+        )}
       </CardFooter>
     </Card>
   );
