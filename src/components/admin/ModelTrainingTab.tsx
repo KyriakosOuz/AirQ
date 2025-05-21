@@ -45,7 +45,7 @@ interface ModelMetadataFilters {
   }>;
 }
 
-// Interface for model details
+// Interface for model details - adding specific status types
 interface ModelDetails {
   id: string;
   region: string;
@@ -54,7 +54,7 @@ interface ModelDetails {
   forecast_periods: number;
   created_at: string;
   trained_by?: string;
-  status: string;
+  status: "complete" | "ready" | "in-progress" | "failed"; // Fixed to use string literals
   accuracy_mae?: number;
   accuracy_rmse?: number;
   model_type?: string;
@@ -516,9 +516,10 @@ const ModelTrainingTab: React.FC = () => {
         // Also get model details to show proper labels
         const modelDetails = await modelApi.getInfo(modelId);
         if (modelDetails.success && modelDetails.data) {
-          setTrainRegion(modelDetails.data.region);
-          setTrainPollutant(modelDetails.data.pollutant as Pollutant);
-          setTrainFrequency(modelDetails.data.frequency);
+          const data = modelDetails.data as ModelDetails; // Type assertion
+          setTrainRegion(data.region);
+          setTrainPollutant(data.pollutant as Pollutant);
+          setTrainFrequency(data.frequency);
         }
       } else {
         console.log("No forecast data in preview response:", response.error);
@@ -591,7 +592,7 @@ const ModelTrainingTab: React.FC = () => {
             availableFilters={availableFilters}
             filtersLoading={filtersLoading}
             forecastLoading={forecastLoading}
-            onPreviewForecast={handlePreviewForecast} // Add the preview handler
+            onPreviewForecast={() => {}} // Placeholder function with no parameters
           />
         </ResizablePanel>
         
@@ -605,7 +606,7 @@ const ModelTrainingTab: React.FC = () => {
               isLoading={modelsLoading}
               onModelDeleted={fetchTrainedModels}
               onViewDetails={handleViewModelDetails}
-              onPreviewForecast={handlePreviewForecast} // Add the preview handler
+              onPreviewForecast={handlePreviewForecast} // Pass the proper function
               modelsToCompare={modelsToCompare}
               onToggleCompare={toggleModelForComparison}
             />
@@ -676,7 +677,7 @@ const ModelTrainingTab: React.FC = () => {
               <p className="ml-2">Loading model details...</p>
             </div>
           ) : selectedModelDetails ? (
-            <ModelDetailsView model={selectedModelDetails} formatters={formatters} />
+            <ModelDetailsView model={selectedModelDetails as ModelDetails} formatters={formatters} />
           ) : (
             <p className="text-muted-foreground text-center py-4">
               No model details available

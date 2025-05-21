@@ -6,23 +6,18 @@ import { supabase } from "@/integrations/supabase/client";
 export const API_URL = "http://localhost:8000"; 
 
 // Define types for API responses
-export type ApiResponse<T> = {
+export interface ApiResponse<T = any> {
   success: boolean;
   data?: T;
   error?: string;
-  meta?: {
-    using_fallback_model?: boolean;
-    model_id?: string;
-    model_created_at?: string;
-    [key: string]: any;
-  };
-};
+  meta?: any; // Adding meta field to fix the error
+}
 
 // Define the dataset preview response type for consistency
-export type DatasetPreviewResponse = {
+export interface DatasetPreviewResponse {
   columns: string[];
   preview: Record<string, any>[];
-};
+}
 
 // Storage key for the auth token
 const TOKEN_KEY = "air_quality_token";
@@ -596,22 +591,13 @@ export const modelApi = {
   },
   
   // Add method to get model preview
-  getModelPreview: async (modelId: string, periods: number = 6) => {
+  getModelPreview: async (modelId: string, periods: number = 6): Promise<any> => {
     try {
-      console.log(`Requesting preview for model ${modelId} with ${periods} periods`);
-      const response = await fetch(`/api/models/preview/${modelId}?limit=${periods}`);
-      
-      if (!response.ok) {
-        const error = await response.text();
-        console.error(`Error fetching model preview: ${error}`);
-        return { success: false, error };
-      }
-      
-      const data = await response.json();
-      return { success: true, data };
+      const response = await apiRequest(`/models/preview/${modelId}?limit=${periods}`);
+      return response;
     } catch (error) {
-      console.error("Error in getModelPreview:", error);
-      return { success: false, error: String(error) };
+      console.error("Error getting model preview:", error);
+      throw error;
     }
   }
 };
@@ -787,4 +773,13 @@ export const metadataApi = {
     metadataApi._pollutantsCache = null;
     metadataApi._regionsCache = null;
   }
+};
+
+// Helper function to make API requests
+const apiRequest = async <T>(endpoint: string, options: RequestInit = {}): Promise<T> => {
+  const response = await fetchWithAuth<T>(endpoint, options);
+  if (!response.success) {
+    throw new Error(response.error || "API request failed");
+  }
+  return response.data;
 };

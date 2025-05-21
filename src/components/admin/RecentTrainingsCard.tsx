@@ -1,47 +1,55 @@
-
-import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { TableSkeleton } from "@/components/ui/table-skeleton";
+import React, { useState } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, CheckCircle, ChevronDown, ChevronUp, Eye, Info, RefreshCw, Trash2 } from "lucide-react";
 import { Pollutant } from "@/lib/types";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Trash2, Eye, BarChart2, CheckCircle2, Clock, AlertTriangle, LineChart, ChevronUp, ChevronDown, Info } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { cn } from "@/lib/utils";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { modelApi } from "@/lib/api";
 import { toast } from "@/components/ui/sonner";
+import { TableSkeleton } from "@/components/ui/table-skeleton";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Checkbox } from "@/components/ui/checkbox";
 
+// Training record definition for model data
 export interface TrainingRecord {
   id: string;
   region: string;
   pollutant: Pollutant;
   date: string;
-  status: "complete" | "ready" | "in-progress" | "failed";
+  status: "complete" | "in-progress" | "failed" | "ready";
   frequency?: string;
   periods?: number;
   accuracy_mae?: number;
   accuracy_rmse?: number;
 }
 
+// Props for RecentTrainingsCard component
 interface RecentTrainingsCardProps {
   recentTrainings: TrainingRecord[];
   formatters: {
-    formatDate: (date?: string) => string;
-    getRegionLabel: (region: string) => string;
-    getPollutantDisplay: (pollutant: string) => string;
-    getFrequencyDisplay: (frequency: string) => string;
+    formatDate: (dateString?: string) => string;
+    getRegionLabel: (regionValue: string) => string;
+    getPollutantDisplay: (pollutantCode: string) => string;
+    getFrequencyDisplay?: (freqCode: string) => string;
   };
   isLoading: boolean;
   onModelDeleted: () => void;
-  onViewDetails?: (modelId: string) => void;
-  onPreviewForecast?: (modelId: string, periods: number) => void; // New prop for previewing forecast
-  modelsToCompare?: string[];
-  onToggleCompare?: (modelId: string) => void;
+  onViewDetails: (modelId: string) => void;
+  onPreviewForecast: (modelId: string, periods?: number) => void; // Updated type definition
+  modelsToCompare: string[];
+  onToggleCompare: (modelId: string) => void;
 }
 
 const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
@@ -50,11 +58,11 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
   isLoading,
   onModelDeleted,
   onViewDetails,
-  onPreviewForecast, // New prop for previewing forecast
+  onPreviewForecast,
   modelsToCompare = [],
   onToggleCompare
 }) => {
-  const [deletingId, setDeletingId] = React.useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // Group models by region
   const modelsByRegion = React.useMemo(() => {
@@ -99,11 +107,11 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
     switch (status) {
       case "complete":
       case "ready":
-        return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200"><CheckCircle className="mr-1 h-3 w-3" /> Complete</Badge>;
+        return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200"><CheckCircle2 className="mr-1 h-3 w-3" /> Complete</Badge>;
       case "in-progress":
-        return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200"><RefreshCw className="mr-1 h-3 w-3 animate-spin" /> Training</Badge>;
+        return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200"><Clock className="mr-1 h-3 w-3 animate-spin" /> Training</Badge>;
       case "failed":
-        return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200"><AlertCircle className="mr-1 h-3 w-3" /> Failed</Badge>;
+        return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200"><AlertTriangle className="mr-1 h-3 w-3" /> Failed</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }

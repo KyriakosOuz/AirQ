@@ -1,12 +1,13 @@
-
 import React from 'react';
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
 import { AlertCircle, Info } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
-interface ModelDetails {
+// Define the ModelDetails interface here to avoid conflicts
+export interface ModelDetails {
   id: string;
   region: string;
   pollutant: string;
@@ -14,7 +15,7 @@ interface ModelDetails {
   forecast_periods: number;
   created_at: string;
   trained_by?: string;
-  status: "complete" | "ready" | "in-progress" | "failed";
+  status: "complete" | "ready" | "in-progress" | "failed"; // Using string literals
   accuracy_mae?: number;
   accuracy_rmse?: number;
   model_type?: string;
@@ -23,10 +24,10 @@ interface ModelDetails {
 interface ModelDetailsViewProps {
   model: ModelDetails;
   formatters: {
-    formatDate: (date: string) => string;
-    getRegionLabel: (region: string) => string;
-    getPollutantDisplay: (pollutant: string) => string;
-    getFrequencyDisplay: (frequency: string) => string;
+    formatDate: (dateString?: string) => string;
+    getRegionLabel: (regionValue: string) => string;
+    getPollutantDisplay: (pollutantCode: string) => string;
+    getFrequencyDisplay?: (freqCode: string) => string;
   };
 }
 
