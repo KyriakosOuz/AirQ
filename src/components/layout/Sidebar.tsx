@@ -138,7 +138,7 @@ const DesktopSidebar: React.FC = () => {
   return (
     <SidebarComponent variant="sidebar" collapsible="icon">
       <SidebarHeader className="p-4 flex items-center">
-        <div className="flex items-start">
+        <div className="flex justify-start w-full">
           <img 
             src="/lovable-uploads/a95d6ea6-5b37-4d78-aa50-114b5e7537d2.png" 
             alt="AirQ Logo" 
