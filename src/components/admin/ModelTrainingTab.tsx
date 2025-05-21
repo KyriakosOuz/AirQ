@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -97,6 +98,17 @@ const ModelTrainingTab: React.FC = () => {
     return frequencyOption ? frequencyOption.ranges : [];
   }, [trainFrequency]);
   
+  // Check if data is available for training
+  const isDataAvailableForTraining = useCallback(() => {
+    if (!availableFilters || !availableFilters.available || !Array.isArray(availableFilters.available)) {
+      return false;
+    }
+
+    return availableFilters.available.some(
+      item => item.region === trainRegion && item.pollutant === trainPollutant && item.frequency === trainFrequency
+    );
+  }, [availableFilters, trainRegion, trainPollutant, trainFrequency]);
+  
   // Check if a model exists with the current parameters
   const checkModelExists = useCallback(async () => {
     try {
@@ -139,17 +151,6 @@ const ModelTrainingTab: React.FC = () => {
     return () => clearTimeout(timer);
   }, [trainRegion, trainPollutant, trainFrequency, checkModelExists]);
   
-  // Check if data is available for training
-  const isDataAvailableForTraining = useCallback(() => {
-    if (!availableFilters || !availableFilters.available || !Array.isArray(availableFilters.available)) {
-      return false;
-    }
-
-    return availableFilters.available.some(
-      item => item.region === trainRegion && item.pollutant === trainPollutant && item.frequency === trainFrequency
-    );
-  }, [availableFilters, trainRegion, trainPollutant, trainFrequency]);
-
   // Train a model with the current parameters
   const trainModel = async () => {
     try {
@@ -497,7 +498,6 @@ const ModelTrainingTab: React.FC = () => {
                 status: selectedModel.status === "training" ? "in-progress" : selectedModel.status
               }}
               formatters={formatters}
-              onClose={() => setSelectedModel(null)}
             />
           )}
         </div>
