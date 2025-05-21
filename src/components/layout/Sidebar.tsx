@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -136,8 +137,8 @@ const DesktopSidebar: React.FC = () => {
   
   return (
     <SidebarComponent variant="sidebar" collapsible="icon">
-      <SidebarHeader className="flex items-center justify-between p-4">
-        <div className="flex items-center overflow-hidden">
+      <SidebarHeader className="p-4 flex items-center justify-between">
+        <div className="flex items-center">
           <img 
             src="/lovable-uploads/a95d6ea6-5b37-4d78-aa50-114b5e7537d2.png" 
             alt="AirQ Logo" 
@@ -147,17 +148,27 @@ const DesktopSidebar: React.FC = () => {
             )}
           />
         </div>
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          onClick={toggleSidebar}
-          className="h-8 w-8 p-0 text-sidebar-foreground"
-        >
-          {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
-          <span className="sr-only">
-            {isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-          </span>
-        </Button>
+
+        <div className="absolute top-4 right-0 transform translate-x-1/2 z-10">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                variant="outline" 
+                size="icon" 
+                onClick={toggleSidebar}
+                className="h-7 w-7 rounded-full bg-background shadow-sm border-sidebar-border hover:bg-sidebar-accent"
+              >
+                {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+                <span className="sr-only">
+                  {isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+                </span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right">
+              {isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            </TooltipContent>
+          </Tooltip>
+        </div>
       </SidebarHeader>
       
       <SidebarContent>
