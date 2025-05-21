@@ -8,9 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { InfoCircle, AlertCircle, RefreshCw, LineChart } from "lucide-react";
+import { AlertCircle, RefreshCw, LineChart } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Spinner } from "@/components/ui/spinner";
 import { Pollutant } from "@/lib/types";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { TrainingRecord } from "./RecentTrainingsCard";
@@ -145,11 +144,10 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
 
           {/* Region Selection */}
           <div className="space-y-2">
-            <Label htmlFor="region">Region</Label>
+            <Label htmlFor="region-selector">Region</Label>
             <RegionSelector 
-              id="region"
               value={trainRegion} 
-              onChange={setTrainRegion}
+              onValueChange={setTrainRegion}
               disabled={trainLoading || filtersLoading}
               regions={availableRegions}
             />
@@ -157,11 +155,10 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
           
           {/* Pollutant Selection */}
           <div className="space-y-2">
-            <Label htmlFor="pollutant">Pollutant</Label>
+            <Label htmlFor="pollutant-selector">Pollutant</Label>
             <PollutantSelector
-              id="pollutant"
               value={trainPollutant}
-              onChange={setTrainPollutant}
+              onValueChange={setTrainPollutant}
               disabled={trainLoading || filtersLoading}
               pollutants={availablePollutants}
             />
