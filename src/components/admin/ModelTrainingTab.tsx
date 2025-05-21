@@ -49,6 +49,8 @@ const ModelTrainingTab: React.FC = () => {
   const [selectedModel, setSelectedModel] = useState<ModelDetails | null>(null);
   const [modelsToCompare, setModelsToCompare] = useState<string[]>([]);
   const [showComparison, setShowComparison] = useState(false);
+  const [overwriteModel, setOverwriteModel] = useState(true);
+  const [trainingError, setTrainingError] = useState<string | null>(null);
   
   // New state variables for forecast preview
   const [showPreview, setShowPreview] = useState(false);
@@ -109,6 +111,36 @@ const ModelTrainingTab: React.FC = () => {
       return map[frequencyCode] || frequencyCode;
     }
   }), []);
+
+  // Handle training model
+  const handleTrainModel = async () => {
+    setTraining(true);
+    setTrainingError(null);
+
+    try {
+      const response = await modelApi.train({
+        pollutant,
+        region,
+        frequency,
+        periods: forecastPeriods,
+        overwrite: overwriteModel
+      });
+
+      if (response.success) {
+        toast.success("Model training started successfully");
+        fetchModels(); // Refresh models list
+      } else {
+        setTrainingError(response.error || "Failed to start model training");
+        toast.error("Failed to start model training");
+      }
+    } catch (error) {
+      console.error("Error training model:", error);
+      setTrainingError("An error occurred while starting model training");
+      toast.error("Failed to start model training");
+    } finally {
+      setTraining(false);
+    }
+  };
   
   // New function to handle the preview
   const handlePreviewModel = async (modelId: string) => {
@@ -142,7 +174,7 @@ const ModelTrainingTab: React.FC = () => {
       const response = await modelApi.getModelPreview(modelId);
       
       if (response.success && response.data) {
-        // Fix: Cast response.data.forecast to Forecast[] before using map
+        // Cast response.data.forecast to Forecast[] before using
         if (response.data.forecast && Array.isArray(response.data.forecast)) {
           setForecastData(response.data.forecast as Forecast[]);
         } else {
@@ -216,20 +248,26 @@ const ModelTrainingTab: React.FC = () => {
       const response = await modelApi.list();
       
       if (response.success && response.data) {
-        // Map API response to TrainingRecord format
-        const trainings: TrainingRecord[] = response.data.map((model: any) => ({
-          id: model.id,
-          region: model.region,
-          pollutant: model.pollutant,
-          date: model.created_at,
-          status: model.status,
-          frequency: model.frequency,
-          periods: model.forecast_periods,
-          accuracy_mae: model.accuracy_mae,
-          accuracy_rmse: model.accuracy_rmse
-        }));
-        
-        setRecentTrainings(trainings);
+        // Ensure response.data is an array before mapping
+        if (Array.isArray(response.data)) {
+          // Map API response to TrainingRecord format
+          const trainings: TrainingRecord[] = response.data.map((model: any) => ({
+            id: model.id,
+            region: model.region,
+            pollutant: model.pollutant,
+            date: model.created_at,
+            status: model.status,
+            frequency: model.frequency,
+            periods: model.forecast_periods,
+            accuracy_mae: model.accuracy_mae,
+            accuracy_rmse: model.accuracy_rmse
+          }));
+          
+          setRecentTrainings(trainings);
+        } else {
+          console.error("API response is not an array:", response.data);
+          toast.error("Invalid response format from server");
+        }
       } else {
         console.error("Failed to fetch models:", response.error);
         toast.error("Failed to fetch trained models");
@@ -245,14 +283,39 @@ const ModelTrainingTab: React.FC = () => {
   useEffect(() => {
     fetchModels();
   }, []);
+
+  // Get available ranges based on selected frequency
+  const availableRanges = useMemo(() => {
+    const selectedFreq = frequencyOptions.find(f => f.value === frequency);
+    if (!selectedFreq) return [7];
+    
+    const { min, max } = selectedFreq.range;
+    return Array.from({ length: max - min + 1 }, (_, i) => min + i);
+  }, [frequency]);
   
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left column */}
         <div className="space-y-6">
-          {/* Remove any props that aren't expected by TrainModelCard */}
-          <TrainModelCard />
+          <TrainModelCard 
+            trainRegion={region}
+            setTrainRegion={setRegion}
+            trainPollutant={pollutant}
+            setTrainPollutant={setPollutant}
+            trainFrequency={frequency}
+            setTrainFrequency={setFrequency}
+            trainPeriods={forecastPeriods}
+            setTrainPeriods={setForecastPeriods}
+            trainLoading={training}
+            onTrainModel={handleTrainModel}
+            frequencyOptions={frequencyOptions}
+            availableRanges={availableRanges}
+            overwriteModel={overwriteModel}
+            setOverwriteModel={setOverwriteModel}
+            trainingError={trainingError}
+            onPreviewForecast={() => selectedModelId && handlePreviewModel(selectedModelId)}
+          />
         </div>
         
         {/* Right column */}

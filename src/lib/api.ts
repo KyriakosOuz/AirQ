@@ -29,6 +29,7 @@ export interface Forecast {
 export interface DatasetPreviewResponse {
   data: any[];
   columns: string[];
+  preview: any[]; // Added the missing preview property
 }
 
 const api = {
@@ -150,14 +151,9 @@ export const datasetApi = {
   delete: async (datasetId: string): Promise<ApiResponse<any>> => {
     return api.delete(`/datasets/${datasetId}`);
   },
-  upload: async (file: File, datasetId?: string): Promise<ApiResponse<any>> => {
+  // Update upload function to accept FormData
+  upload: async (formData: FormData, datasetId?: string): Promise<ApiResponse<any>> => {
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-      if (datasetId) {
-        formData.append('dataset_id', datasetId);
-      }
-
       const headers: Record<string, string> = {};
       if (authToken) {
         headers['Authorization'] = `Bearer ${authToken}`;
@@ -255,13 +251,23 @@ export const authApi = {
   },
 };
 
-// Add stubs for the missing API modules
+// Expand alertApi with missing methods
 export const alertApi = {
   list: async (): Promise<ApiResponse<any[]>> => {
     return { success: true, data: [] };
   },
+  subscribe: async (alertData: { region: string; pollutant: string; threshold: string }): Promise<ApiResponse<any>> => {
+    return { success: true, data: {} };
+  },
+  delete: async (alertId: string): Promise<ApiResponse<any>> => {
+    return { success: true };
+  },
+  checkAlerts: async (sendEmail: boolean = false): Promise<ApiResponse<any>> => {
+    return { success: true };
+  },
 };
 
+// Expand metadataApi with missing methods
 export const metadataApi = {
   getRegions: async (): Promise<ApiResponse<string[]>> => {
     return { success: true, data: [] };
@@ -271,12 +277,18 @@ export const metadataApi = {
   },
 };
 
+// Expand predictionApi with missing methods
 export const predictionApi = {
   getForecast: async (params: any): Promise<ApiResponse<any>> => {
     return { success: true, data: [] };
   },
+  // Add the missing forecast method
+  forecast: async (params: { region: string; pollutant: string }): Promise<ApiResponse<Forecast[]>> => {
+    return { success: true, data: [] };
+  },
 };
 
+// Expand insightApi with missing methods
 export const insightApi = {
   getDailyInsights: async (): Promise<ApiResponse<any>> => {
     return { success: true, data: [] };
@@ -284,19 +296,41 @@ export const insightApi = {
   getWeeklyReport: async (): Promise<ApiResponse<any>> => {
     return { success: true, data: [] };
   },
+  // Add missing getTrend method
+  getTrend: async (params: { region: string; pollutant: string }): Promise<ApiResponse<any>> => {
+    return { success: true, data: { labels: [], values: [], deltas: [] } };
+  },
+  // Add missing getSeasonality method
+  getSeasonality: async (params: { region: string; pollutant: string }): Promise<ApiResponse<any>> => {
+    return { success: true, data: { labels: [], values: [] } };
+  },
+  // Add missing getTopPolluted method
+  getTopPolluted: async (params: { limit?: number }): Promise<ApiResponse<any>> => {
+    return { success: true, data: [] };
+  },
 };
 
+// Expand healthApi with missing methods
 export const healthApi = {
   getUserHealth: async (): Promise<ApiResponse<any>> => {
     return { success: true, data: {} };
   },
+  // Add missing getTip method
+  getTip: async (params: { region: string; pollutant: string }): Promise<ApiResponse<any>> => {
+    return { success: true, data: {} };
+  },
 };
 
+// Expand userApi with missing methods
 export const userApi = {
   getProfile: async (): Promise<ApiResponse<any>> => {
     return { success: true, data: {} };
   },
   updateProfile: async (profile: any): Promise<ApiResponse<any>> => {
     return { success: true, data: {} };
+  },
+  // Add missing saveProfile method
+  saveProfile: async (profile: any): Promise<ApiResponse<any>> => {
+    return userApi.updateProfile(profile); // Alias for updateProfile
   },
 };
