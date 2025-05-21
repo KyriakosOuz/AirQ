@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect } from "react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 import { modelApi } from "@/lib/api";
 import { Pollutant } from "@/lib/types";
 import TrainModelCard from "./TrainModelCard";
@@ -48,6 +48,7 @@ const ModelTrainingTab: React.FC = () => {
   const [trainFrequency, setTrainFrequency] = useState("D"); // Default: Daily
   const [trainPeriods, setTrainPeriods] = useState(365); // Default: 365 periods
   const [trainLoading, setTrainLoading] = useState(false);
+  const [overwriteModel, setOverwriteModel] = useState(false); // New state for the overwrite option
   
   // State for forecast data and training records
   const [forecastData, setForecastData] = useState<ForecastDataPoint[]>([]);
@@ -55,6 +56,7 @@ const ModelTrainingTab: React.FC = () => {
   const [modelsLoading, setModelsLoading] = useState(false);
   const [forecastLoading, setForecastLoading] = useState(false);
   const [noForecastAvailable, setNoForecastAvailable] = useState(false);
+  const [trainingError, setTrainingError] = useState<string | null>(null); // New state to track specific training errors
   
   // Get available ranges for the selected frequency
   const availableRanges = useMemo(() => {
@@ -218,14 +220,17 @@ const ModelTrainingTab: React.FC = () => {
   // Handle model training
   const trainModel = async () => {
     setTrainLoading(true);
+    setTrainingError(null); // Clear any previous errors
+    
     try {
-      console.log(`Training model for ${trainRegion}, pollutant ${trainPollutant}, frequency ${trainFrequency}, periods ${trainPeriods}`);
+      console.log(`Training model for ${trainRegion}, pollutant ${trainPollutant}, frequency ${trainFrequency}, periods ${trainPeriods}, overwrite: ${overwriteModel}`);
       
       const response = await modelApi.train({
         pollutant: trainPollutant,
         region: trainRegion,
         frequency: trainFrequency,
         periods: trainPeriods,
+        overwrite: overwriteModel // Add the overwrite flag to the API call
       });
       
       console.log("Training response:", response);
@@ -252,13 +257,25 @@ const ModelTrainingTab: React.FC = () => {
         // Refresh the list of trained models
         fetchTrainedModels();
       } else {
+        // Handle specific error cases
         console.error("Training failed:", response.error);
-        toast.error(response.error || "Training failed");
+        
+        if (response.error && response.error.includes("already exists")) {
+          // Model already exists error - show specific message
+          setTrainingError("Model already exists. Use the 'Retrain' option to overwrite.");
+          toast.error("Model already exists. Use the 'Retrain' option to overwrite.");
+        } else {
+          // Generic error message for other errors
+          setTrainingError(response.error || "Training failed");
+          toast.error(response.error || "Training failed");
+        }
+        
         setNoForecastAvailable(true);
       }
     } catch (error) {
       console.error("Training error:", error);
       toast.error("An error occurred during model training");
+      setTrainingError("An error occurred during model training");
       setNoForecastAvailable(true);
     } finally {
       setTrainLoading(false);
@@ -336,6 +353,9 @@ const ModelTrainingTab: React.FC = () => {
           onTrainModel={trainModel}
           frequencyOptions={FREQUENCY_OPTIONS}
           availableRanges={availableRanges}
+          overwriteModel={overwriteModel}
+          setOverwriteModel={setOverwriteModel}
+          trainingError={trainingError}
         />
       </ResizablePanel>
       

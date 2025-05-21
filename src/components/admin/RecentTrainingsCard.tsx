@@ -1,8 +1,9 @@
+
 import React, { useState, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, AlertCircle, Clock, Trash2, Search, ArrowDownAZ, ArrowUpAZ, ChevronDown } from "lucide-react";
+import { CheckCircle, AlertCircle, Clock, Trash2, Search, ArrowDownAZ, ArrowUpAZ, ChevronDown, BadgeCheck, Info } from "lucide-react";
 import { TableSkeleton } from "@/components/ui/table-skeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,7 +23,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { toast } from "sonner";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { toast } from "@/components/ui/sonner";
 import { modelApi } from "@/lib/api";
 
 // Interface for a training record
@@ -78,6 +85,14 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
       default:
         return "";
     }
+  };
+
+  // Get accuracy class based on value
+  const getAccuracyClass = (value: number | undefined): string => {
+    if (value === undefined) return "text-gray-500";
+    if (value < 5) return "text-green-600";
+    if (value < 10) return "text-yellow-600";
+    return "text-red-600";
   };
 
   // Format frequency display
@@ -190,7 +205,7 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
   }, [recentTrainings, searchText, sortOption, formatters]);
 
   return (
-    <>
+    <TooltipProvider>
       <Card>
         <CardHeader>
           <CardTitle>Recent Model Trainings</CardTitle>
@@ -247,7 +262,21 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
                     <TableHead>Pollutant</TableHead>
                     <TableHead>Frequency</TableHead>
                     <TableHead>Forecast Range</TableHead>
-                    <TableHead>Accuracy</TableHead>
+                    <TableHead>
+                      <div className="flex items-center">
+                        Accuracy
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info className="h-3.5 w-3.5 ml-1 text-muted-foreground" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="text-xs">MAE: Mean Absolute Error</p>
+                            <p className="text-xs">RMSE: Root Mean Square Error</p>
+                            <p className="text-xs mt-1">Lower values indicate better accuracy</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </div>
+                    </TableHead>
                     <TableHead>Date</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="w-[80px]">Actions</TableHead>
@@ -263,11 +292,28 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
                         <TableCell>{getForecastRange(training.frequency, training.periods)}</TableCell>
                         <TableCell>
                           {training.accuracy_mae !== undefined || training.accuracy_rmse !== undefined ? (
-                            <span className="text-xs">
-                              {training.accuracy_mae !== undefined ? `MAE: ${training.accuracy_mae.toFixed(2)}` : ''}
-                              {training.accuracy_mae !== undefined && training.accuracy_rmse !== undefined ? ', ' : ''}
-                              {training.accuracy_rmse !== undefined ? `RMSE: ${training.accuracy_rmse.toFixed(2)}` : ''}
-                            </span>
+                            <div className="space-y-1">
+                              {training.accuracy_mae !== undefined && (
+                                <div className="flex items-center">
+                                  <Badge variant="outline" className="py-0 h-5 text-xs font-normal">
+                                    <BadgeCheck className="mr-1 h-3 w-3" />
+                                    <span className={getAccuracyClass(training.accuracy_mae)}>
+                                      MAE: {training.accuracy_mae.toFixed(2)}
+                                    </span>
+                                  </Badge>
+                                </div>
+                              )}
+                              {training.accuracy_rmse !== undefined && (
+                                <div className="flex items-center">
+                                  <Badge variant="outline" className="py-0 h-5 text-xs font-normal">
+                                    <BadgeCheck className="mr-1 h-3 w-3" />
+                                    <span className={getAccuracyClass(training.accuracy_rmse)}>
+                                      RMSE: {training.accuracy_rmse.toFixed(2)}
+                                    </span>
+                                  </Badge>
+                                </div>
+                              )}
+                            </div>
                           ) : (
                             "N/A"
                           )}
@@ -324,7 +370,7 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    </TooltipProvider>
   );
 };
 

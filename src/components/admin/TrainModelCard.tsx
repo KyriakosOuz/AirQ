@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,8 +7,10 @@ import { RegionSelector } from "@/components/ui/region-selector";
 import { PollutantSelector } from "@/components/ui/pollutant-selector";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
 import { Pollutant } from "@/lib/types";
-import { Clock } from "lucide-react";
+import { AlertCircle, Clock, RefreshCw } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface FrequencyOption {
   value: string;
@@ -28,6 +31,9 @@ interface TrainModelCardProps {
   onTrainModel: () => void;
   frequencyOptions: FrequencyOption[];
   availableRanges: number[];
+  overwriteModel: boolean;
+  setOverwriteModel: (value: boolean) => void;
+  trainingError: string | null;
 }
 
 const TrainModelCard: React.FC<TrainModelCardProps> = ({
@@ -42,7 +48,10 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
   trainLoading,
   onTrainModel,
   frequencyOptions,
-  availableRanges
+  availableRanges,
+  overwriteModel,
+  setOverwriteModel,
+  trainingError
 }) => {
   // Helper to get the frequency display label
   const getFrequencyLabel = (value: string): string => {
@@ -138,6 +147,31 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
                           trainFrequency === "M" ? "months" : "years"} ahead
           </p>
         </div>
+        
+        {/* New Retrain Option */}
+        <div className="flex items-center justify-between space-x-2 pt-2 pb-1">
+          <div className="space-y-0.5">
+            <Label htmlFor="retrain" className="text-xs">Retrain Model</Label>
+            <p className="text-[10px] text-muted-foreground">
+              Overwrite existing model if it already exists
+            </p>
+          </div>
+          <Switch
+            id="retrain"
+            checked={overwriteModel}
+            onCheckedChange={setOverwriteModel}
+          />
+        </div>
+        
+        {/* Display training error if present */}
+        {trainingError && (
+          <Alert variant="destructive" className="py-2">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription className="text-xs">
+              {trainingError}
+            </AlertDescription>
+          </Alert>
+        )}
       </CardContent>
       <CardFooter>
         <Button 
@@ -148,10 +182,10 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
         >
           {trainLoading ? (
             <>
-              <span className="mr-1 h-3 w-3 animate-spin rounded-full border-2 border-background border-t-transparent"></span>
+              <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
               Training...
             </>
-          ) : "Train Model"}
+          ) : overwriteModel ? "Retrain Model" : "Train Model"}
         </Button>
       </CardFooter>
     </Card>
