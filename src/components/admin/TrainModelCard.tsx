@@ -293,27 +293,46 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
           ) : overwriteModel ? "Retrain Model" : "Train Model"}
         </Button>
         
-        {/* Preview Forecast Button */}
+        {/* Preview Forecast Button with enhanced behavior */}
         {onPreviewForecast && (
-          <Button 
-            variant="outline" 
-            disabled={forecastLoading}
-            onClick={onPreviewForecast}
-            className="w-full mt-2"
-            size="sm"
-          >
-            {forecastLoading ? (
-              <>
-                <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                Loading...
-              </>
-            ) : (
-              <>
-                <LineChart className="mr-2 h-4 w-4" />
-                Preview Forecast
-              </>
-            )}
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="w-full mt-2">
+                  <Button 
+                    variant="outline" 
+                    disabled={trainLoading || forecastLoading || !modelExists}
+                    onClick={onPreviewForecast}
+                    className="w-full"
+                    size="sm"
+                  >
+                    {forecastLoading ? (
+                      <>
+                        <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                        Loading...
+                      </>
+                    ) : (
+                      <>
+                        <LineChart className="mr-2 h-4 w-4" />
+                        Preview Forecast
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                {trainLoading ? (
+                  "Please wait for training to complete"
+                ) : forecastLoading ? (
+                  "Loading forecast data..."
+                ) : !modelExists ? (
+                  "No model available yet. Train a model first."
+                ) : (
+                  "Preview forecast data for current parameters"
+                )}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         )}
       </CardFooter>
     </Card>
