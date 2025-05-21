@@ -13,10 +13,14 @@ import { AlertCircle, Clock, RefreshCw, LineChart } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
+// Fix the interface to match the actual structure used in ModelTrainingTab
 interface FrequencyOption {
   value: string;
   label: string;
-  ranges: number[];
+  range: {
+    min: number;
+    max: number;
+  };
 }
 
 interface FilterMetadata {

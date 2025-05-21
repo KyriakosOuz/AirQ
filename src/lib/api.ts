@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -16,6 +15,10 @@ export interface ApiResponse<T> {
   success: boolean;
   data?: T;
   error?: string;
+  meta?: {
+    using_fallback_model?: boolean;
+    [key: string]: any;
+  };
 }
 
 export interface Forecast {
@@ -304,8 +307,8 @@ export const insightApi = {
   getSeasonality: async (params: { region: string; pollutant: string }): Promise<ApiResponse<any>> => {
     return { success: true, data: { labels: [], values: [] } };
   },
-  // Add missing getTopPolluted method
-  getTopPolluted: async (params: { limit?: number }): Promise<ApiResponse<any>> => {
+  // Update getTopPolluted method to include pollutant parameter
+  getTopPolluted: async (params: { limit?: number; pollutant?: string; year?: number }): Promise<ApiResponse<any>> => {
     return { success: true, data: [] };
   },
 };
