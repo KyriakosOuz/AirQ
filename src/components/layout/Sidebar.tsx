@@ -72,9 +72,19 @@ export const Sidebar: React.FC = () => {
     >
       <div className={cn("p-4 flex items-center", collapsed && "justify-center")}>
         <div className="flex items-center">
-          <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-            <span className="text-white font-bold">AQ</span>
-          </div>
+          {collapsed ? (
+            <img 
+              src="/lovable-uploads/a95d6ea6-5b37-4d78-aa50-114b5e7537d2.png" 
+              alt="AirQ Logo" 
+              className="w-8 h-8 object-contain"
+            />
+          ) : (
+            <img 
+              src="/lovable-uploads/a95d6ea6-5b37-4d78-aa50-114b5e7537d2.png" 
+              alt="AirQ Logo" 
+              className="h-8 object-contain"
+            />
+          )}
           {!collapsed && (
             <h1 className="ml-2 font-bold text-lg">AirQ</h1>
           )}
