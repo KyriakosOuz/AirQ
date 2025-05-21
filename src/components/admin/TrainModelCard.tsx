@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -120,6 +121,7 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
             value={trainRegion} 
             onValueChange={setTrainRegion}
             disabled={filtersLoading}
+            regions={regions}
           />
         </div>
         
@@ -129,6 +131,7 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
             value={trainPollutant} 
             onValueChange={setTrainPollutant}
             disabled={filtersLoading}
+            pollutants={pollutants as Pollutant[]}
           />
         </div>
         
