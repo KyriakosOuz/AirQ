@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -51,9 +50,11 @@ interface RecentTrainingsCardProps {
   isLoading: boolean;
   onModelDeleted: () => void;
   onViewDetails: (modelId: string) => void;
-  onPreviewForecast: (modelId: string, periods?: number) => void; // Updated type definition
+  onPreviewForecast: (modelId: string, periods?: number) => void;
   modelsToCompare: string[];
-  onToggleCompare: (modelId: string) => void;
+  onToggleCompare: (modelId: string, pollutant: string) => void;
+  canSelectForComparison?: (pollutant: string) => boolean;
+  getDisabledTooltip?: (pollutant: string) => string;
 }
 
 const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
@@ -64,7 +65,9 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
   onViewDetails,
   onPreviewForecast,
   modelsToCompare = [],
-  onToggleCompare
+  onToggleCompare,
+  canSelectForComparison = () => true, // Default to allowing all models
+  getDisabledTooltip = () => "" // Default to no tooltip
 }) => {
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -175,6 +178,42 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
     );
   };
   
+  // Render checkbox with tooltip if needed
+  const renderCheckbox = (model: TrainingRecord) => {
+    const isDisabled = !isModelViewable(model.status) || !canSelectForComparison(model.pollutant);
+    const tooltipText = getDisabledTooltip(model.pollutant);
+    
+    if (isDisabled && tooltipText) {
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div>
+                <Checkbox 
+                  checked={modelsToCompare.includes(model.id)}
+                  onCheckedChange={() => onToggleCompare(model.id, model.pollutant)}
+                  disabled={isDisabled}
+                  className={!canSelectForComparison(model.pollutant) ? "opacity-50" : ""}
+                />
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="max-w-[280px]">
+              <p className="text-xs">{tooltipText}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    }
+    
+    return (
+      <Checkbox 
+        checked={modelsToCompare.includes(model.id)}
+        onCheckedChange={() => onToggleCompare(model.id, model.pollutant)}
+        disabled={isDisabled}
+      />
+    );
+  };
+  
   // Render loading skeleton
   if (isLoading && recentTrainings.length === 0) {
     return (
@@ -235,11 +274,7 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
                               <TableRow key={model.id} className={cn(model.status === "failed" && "bg-red-50/30")}>
                                 {onToggleCompare && (
                                   <TableCell>
-                                    <Checkbox 
-                                      checked={modelsToCompare.includes(model.id)}
-                                      onCheckedChange={() => onToggleCompare(model.id)}
-                                      disabled={!isModelViewable(model.status)}
-                                    />
+                                    {renderCheckbox(model)}
                                   </TableCell>
                                 )}
                                 <TableCell className="font-medium">
@@ -355,11 +390,7 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
                       <TableRow key={model.id} className={cn(model.status === "failed" && "bg-red-50/30")}>
                         {onToggleCompare && (
                           <TableCell>
-                            <Checkbox 
-                              checked={modelsToCompare.includes(model.id)}
-                              onCheckedChange={() => onToggleCompare(model.id)}
-                              disabled={!isModelViewable(model.status)}
-                            />
+                            {renderCheckbox(model)}
                           </TableCell>
                         )}
                         <TableCell>{formatters.getRegionLabel(model.region)}</TableCell>

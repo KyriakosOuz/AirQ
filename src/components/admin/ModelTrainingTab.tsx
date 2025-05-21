@@ -12,6 +12,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import ModelDetailsView from "./ModelDetailsView";
 import ModelComparisonView from "./ModelComparisonView";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 // Interface for model training API response
 interface ModelTrainingResponse {
@@ -93,6 +95,8 @@ const ModelTrainingTab: React.FC = () => {
   const [selectedModelDetails, setSelectedModelDetails] = useState<ModelDetails | null>(null);
   const [modelDetailsLoading, setModelDetailsLoading] = useState(false);
   const [modelsToCompare, setModelsToCompare] = useState<string[]>([]);
+  const [allowCrossPollutantComparison, setAllowCrossPollutantComparison] = useState(false);
+  const [basePollutant, setBasePollutant] = useState<string | null>(null);
   const [showComparison, setShowComparison] = useState(false);
   const [comparisonData, setComparisonData] = useState<any>(null);
   const [comparisonLoading, setComparisonLoading] = useState(false);
@@ -417,14 +421,43 @@ const ModelTrainingTab: React.FC = () => {
   };
 
   // Toggle model selection for comparison
-  const toggleModelForComparison = (modelId: string) => {
+  const toggleModelForComparison = (modelId: string, pollutant: string) => {
     setModelsToCompare(prev => {
+      // If removing a model
       if (prev.includes(modelId)) {
-        return prev.filter(id => id !== modelId);
-      } else {
+        const newModels = prev.filter(id => id !== modelId);
+        
+        // If all models are removed, reset the base pollutant
+        if (newModels.length === 0) {
+          setBasePollutant(null);
+        }
+        
+        return newModels;
+      } 
+      // If adding a model
+      else {
+        // If this is the first model, set its pollutant as the base
+        if (prev.length === 0) {
+          setBasePollutant(pollutant);
+        }
+        
         return [...prev, modelId];
       }
     });
+  };
+
+  // Check if a model can be selected for comparison based on pollutant rules
+  const canSelectForComparison = (pollutant: string): boolean => {
+    // If cross-pollutant comparison is allowed, or no base pollutant is set, or pollutant matches base
+    return allowCrossPollutantComparison || basePollutant === null || pollutant === basePollutant;
+  };
+
+  // Get tooltip text for disabled model selection
+  const getDisabledTooltip = (pollutant: string): string => {
+    if (basePollutant && pollutant !== basePollutant) {
+      return `Only models with pollutant ${formatters.getPollutantDisplay(basePollutant)} can be compared. Enable cross-pollutant to override.`;
+    }
+    return "";
   };
 
   // Compare selected models
@@ -544,27 +577,55 @@ const ModelTrainingTab: React.FC = () => {
   return (
     <div className="flex flex-col gap-4">
       {modelsToCompare.length > 0 && (
-        <div className="bg-muted/30 rounded-lg p-3 flex items-center justify-between">
+        <div className="bg-muted/30 rounded-lg p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div className="flex items-center space-x-2">
             <span className="text-sm font-medium">
               {modelsToCompare.length} model{modelsToCompare.length !== 1 ? 's' : ''} selected for comparison
             </span>
+            {basePollutant && (
+              <Badge variant="outline" className="ml-2">
+                Base: {formatters.getPollutantDisplay(basePollutant)}
+              </Badge>
+            )}
           </div>
-          <div className="flex space-x-2">
-            <Button 
-              size="sm" 
-              variant="outline" 
-              onClick={() => setModelsToCompare([])}
-            >
-              Clear
-            </Button>
-            <Button 
-              size="sm" 
-              onClick={compareSelectedModels} 
-              disabled={modelsToCompare.length < 2 || comparisonLoading}
-            >
-              {comparisonLoading ? 'Comparing...' : 'Compare Models'}
-            </Button>
+          <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+            <div className="flex items-center space-x-2">
+              <Switch 
+                id="cross-pollutant"
+                checked={allowCrossPollutantComparison}
+                onCheckedChange={setAllowCrossPollutantComparison}
+              />
+              <label 
+                htmlFor="cross-pollutant" 
+                className="text-sm cursor-pointer flex items-center"
+              >
+                Allow cross-pollutant comparison
+                {allowCrossPollutantComparison && (
+                  <span className="ml-2 text-amber-500 text-xs flex items-center">
+                    ⚠️ Comparing different pollutants may not be meaningful
+                  </span>
+                )}
+              </label>
+            </div>
+            <div className="flex space-x-2 sm:ml-2">
+              <Button 
+                size="sm" 
+                variant="outline" 
+                onClick={() => {
+                  setModelsToCompare([]);
+                  setBasePollutant(null);
+                }}
+              >
+                Clear
+              </Button>
+              <Button 
+                size="sm" 
+                onClick={compareSelectedModels} 
+                disabled={modelsToCompare.length < 2 || comparisonLoading}
+              >
+                {comparisonLoading ? 'Comparing...' : 'Compare Models'}
+              </Button>
+            </div>
           </div>
         </div>
       )}
@@ -592,7 +653,7 @@ const ModelTrainingTab: React.FC = () => {
             availableFilters={availableFilters}
             filtersLoading={filtersLoading}
             forecastLoading={forecastLoading}
-            onPreviewForecast={() => {}} // Placeholder function with no parameters
+            onPreviewForecast={() => {}}
           />
         </ResizablePanel>
         
@@ -606,9 +667,11 @@ const ModelTrainingTab: React.FC = () => {
               isLoading={modelsLoading}
               onModelDeleted={fetchTrainedModels}
               onViewDetails={handleViewModelDetails}
-              onPreviewForecast={handlePreviewForecast} // Pass the proper function
+              onPreviewForecast={handlePreviewForecast}
               modelsToCompare={modelsToCompare}
-              onToggleCompare={toggleModelForComparison}
+              onToggleCompare={(modelId, pollutant) => toggleModelForComparison(modelId, pollutant)}
+              canSelectForComparison={canSelectForComparison}
+              getDisabledTooltip={getDisabledTooltip}
             />
             
             {forecastLoading && (
@@ -635,7 +698,7 @@ const ModelTrainingTab: React.FC = () => {
                 <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
                 <h3 className="text-xl font-semibold mb-2">No forecast available</h3>
                 <p className="text-muted-foreground text-center max-w-md mb-4">
-                  No forecast model is available for {formatters.getPollutantDisplay(trainPollutant)} in {formatters.getRegionLabel(trainRegion)} with {formatters.getFrequencyDisplay(trainFrequency).toLowerCase()} frequency.
+                  No forecast model is available for {formatters.getPollutantDisplay(trainPollutant)} in {formatters.getRegionLabel(trainRegion)} with {formatters.getFrequencyDisplay?.(trainFrequency).toLowerCase()} frequency.
                 </p>
                 <p className="text-sm text-center text-muted-foreground">
                   Please train a model using the form on the left to generate forecasts.
