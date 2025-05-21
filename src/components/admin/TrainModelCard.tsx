@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Pollutant } from "@/lib/types";
-import { AlertCircle, Clock, RefreshCw } from "lucide-react";
+import { AlertCircle, Clock, RefreshCw, LineChart } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -46,6 +47,8 @@ interface TrainModelCardProps {
   isCheckingModel?: boolean;
   availableFilters?: FilterMetadata | null;
   filtersLoading?: boolean;
+  forecastLoading?: boolean;
+  onPreviewForecast?: () => void;
 }
 
 const TrainModelCard: React.FC<TrainModelCardProps> = ({
@@ -67,7 +70,9 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
   modelExists = false,
   isCheckingModel = false,
   availableFilters = null,
-  filtersLoading = false
+  filtersLoading = false,
+  forecastLoading = false,
+  onPreviewForecast
 }) => {
   // Helper to get the frequency display label
   const getFrequencyLabel = (value: string): string => {
@@ -120,6 +125,7 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
             value={trainRegion} 
             onValueChange={setTrainRegion}
             disabled={filtersLoading}
+            regions={regions}
           />
         </div>
         
@@ -129,6 +135,7 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
             value={trainPollutant} 
             onValueChange={setTrainPollutant}
             disabled={filtersLoading}
+            pollutants={pollutants as Pollutant[]}
           />
         </div>
         
@@ -265,7 +272,7 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
           </div>
         )}
       </CardContent>
-      <CardFooter>
+      <CardFooter className="flex flex-col">
         <Button 
           className="w-full" 
           disabled={trainLoading || isCheckingModel}
@@ -285,6 +292,48 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
             </>
           ) : overwriteModel ? "Retrain Model" : "Train Model"}
         </Button>
+        
+        {/* Preview Forecast Button with enhanced behavior */}
+        {onPreviewForecast && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="w-full mt-2">
+                  <Button 
+                    variant="outline" 
+                    disabled={trainLoading || forecastLoading || !modelExists}
+                    onClick={onPreviewForecast}
+                    className="w-full"
+                    size="sm"
+                  >
+                    {forecastLoading ? (
+                      <>
+                        <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                        Loading...
+                      </>
+                    ) : (
+                      <>
+                        <LineChart className="mr-2 h-4 w-4" />
+                        Preview Forecast
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                {trainLoading ? (
+                  "Please wait for training to complete"
+                ) : forecastLoading ? (
+                  "Loading forecast data..."
+                ) : !modelExists ? (
+                  "No model available yet. Train a model first."
+                ) : (
+                  "Preview forecast data for current parameters"
+                )}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
       </CardFooter>
     </Card>
   );

@@ -1,11 +1,10 @@
 
 import React from 'react';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { CheckCircle, RefreshCw, AlertCircle, AlertTriangle, Calendar, ArrowRight } from "lucide-react";
-import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Separator } from "@/components/ui/separator";
+import { AlertCircle, Info } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface ModelDetails {
   id: string;
@@ -24,7 +23,7 @@ interface ModelDetails {
 interface ModelDetailsViewProps {
   model: ModelDetails;
   formatters: {
-    formatDate: (date?: string) => string;
+    formatDate: (date: string) => string;
     getRegionLabel: (region: string) => string;
     getPollutantDisplay: (pollutant: string) => string;
     getFrequencyDisplay: (frequency: string) => string;
@@ -32,155 +31,146 @@ interface ModelDetailsViewProps {
 }
 
 const ModelDetailsView: React.FC<ModelDetailsViewProps> = ({ model, formatters }) => {
-  // Get status display badge
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "complete":
-        return (
-          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-            <CheckCircle className="mr-1 h-3 w-3" /> Complete
-          </Badge>
-        );
-      case "in-progress":
-        return (
-          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-            <RefreshCw className="mr-1 h-3 w-3 animate-spin" /> Training
-          </Badge>
-        );
-      case "failed":
-        return (
-          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
-            <AlertCircle className="mr-1 h-3 w-3" /> Failed
-          </Badge>
-        );
-      default:
-        return <Badge variant="outline">{status}</Badge>;
-    }
-  };
-
-  // Render accuracy metric with tooltip
-  const renderMetric = (label: string, value?: number, description?: string) => {
-    if (value === undefined) return null;
-    
-    return (
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div className="flex flex-col items-center space-y-1 p-3 bg-muted/30 rounded-md">
-              <span className="text-xs text-muted-foreground">{label}</span>
-              <span className="text-xl font-semibold">{value.toFixed(2)}</span>
-              <AlertTriangle className="h-3 w-3 text-muted-foreground" />
-            </div>
-          </TooltipTrigger>
-          <TooltipContent side="bottom">
-            <p className="max-w-xs text-xs">{description}</p>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-    );
-  };
-
+  const { formatDate, getRegionLabel, getPollutantDisplay, getFrequencyDisplay } = formatters;
+  
   return (
-    <Tabs defaultValue="details" className="w-full">
-      <TabsList className="grid w-full grid-cols-2">
-        <TabsTrigger value="details">Model Details</TabsTrigger>
-        <TabsTrigger value="metrics">Accuracy Metrics</TabsTrigger>
-      </TabsList>
-      
-      <TabsContent value="details">
-        <Card>
-          <CardContent className="pt-6 space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <span className="text-xs text-muted-foreground">Region</span>
-                <p className="font-medium">{formatters.getRegionLabel(model.region)}</p>
-              </div>
-              
-              <div className="space-y-1">
-                <span className="text-xs text-muted-foreground">Pollutant</span>
-                <p className="font-medium">{formatters.getPollutantDisplay(model.pollutant)}</p>
-              </div>
-              
-              <div className="space-y-1">
-                <span className="text-xs text-muted-foreground">Frequency</span>
-                <p className="font-medium">{formatters.getFrequencyDisplay(model.frequency)}</p>
-              </div>
-              
-              <div className="space-y-1">
-                <span className="text-xs text-muted-foreground">Forecast Periods</span>
-                <p className="font-medium">{model.forecast_periods}</p>
-              </div>
-              
-              <div className="space-y-1">
-                <span className="text-xs text-muted-foreground">Model Type</span>
-                <p className="font-medium">{model.model_type || "Prophet"}</p>
-              </div>
-              
-              <div className="space-y-1">
-                <span className="text-xs text-muted-foreground">Status</span>
-                <div>{getStatusBadge(model.status)}</div>
-              </div>
-              
-              <div className="space-y-1">
-                <span className="text-xs text-muted-foreground">Created At</span>
-                <div className="flex items-center">
-                  <Calendar className="h-3 w-3 mr-1 text-muted-foreground" />
-                  <p className="font-medium">{formatters.formatDate(model.created_at)}</p>
-                </div>
-              </div>
-              
-              {model.trained_by && (
-                <div className="space-y-1">
-                  <span className="text-xs text-muted-foreground">Trained By</span>
-                  <p className="font-medium">{model.trained_by}</p>
-                </div>
-              )}
-            </div>
-            
-            <div className="pt-4">
-              <Button className="w-full" onClick={() => window.location.href = `/forecast?region=${model.region}&pollutant=${model.pollutant}`}>
-                View in Forecast
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </TabsContent>
-      
-      <TabsContent value="metrics">
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
           <CardContent className="pt-6">
-            <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                {renderMetric(
-                  "Mean Absolute Error",
-                  model.accuracy_mae,
-                  "Average magnitude of errors in units. Lower values indicate better accuracy."
+            <h3 className="text-sm font-medium mb-2">Model Information</h3>
+            <Table>
+              <TableBody>
+                <TableRow>
+                  <TableCell className="py-2 font-medium">Region</TableCell>
+                  <TableCell className="py-2">{getRegionLabel(model.region)}</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell className="py-2 font-medium">Pollutant</TableCell>
+                  <TableCell className="py-2">{getPollutantDisplay(model.pollutant)}</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell className="py-2 font-medium">Frequency</TableCell>
+                  <TableCell className="py-2">{getFrequencyDisplay(model.frequency)}</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell className="py-2 font-medium">Forecast Periods</TableCell>
+                  <TableCell className="py-2">{model.forecast_periods}</TableCell>
+                </TableRow>
+                {model.model_type && (
+                  <TableRow>
+                    <TableCell className="py-2 font-medium">Model Type</TableCell>
+                    <TableCell className="py-2">{model.model_type}</TableCell>
+                  </TableRow>
                 )}
-                
-                {renderMetric(
-                  "Root Mean Squared Error",
-                  model.accuracy_rmse,
-                  "Standard deviation of prediction errors. More weight to larger errors."
-                )}
-              </div>
-              
-              <div className="space-y-1 pt-2">
-                <p className="text-sm font-medium">What do these metrics mean?</p>
-                <p className="text-xs text-muted-foreground">
-                  <strong>MAE (Mean Absolute Error):</strong> The average absolute difference between 
-                  predicted and actual values. Lower values indicate better accuracy.
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  <strong>RMSE (Root Mean Squared Error):</strong> The square root of the average squared 
-                  differences between predicted and actual values. Penalizes large errors more heavily.
-                </p>
-              </div>
-            </div>
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
-      </TabsContent>
-    </Tabs>
+        
+        <Card>
+          <CardContent className="pt-6">
+            <h3 className="text-sm font-medium mb-2">Training Details</h3>
+            <Table>
+              <TableBody>
+                <TableRow>
+                  <TableCell className="py-2 font-medium">Trained On</TableCell>
+                  <TableCell className="py-2">{formatDate(model.created_at)}</TableCell>
+                </TableRow>
+                {model.trained_by && (
+                  <TableRow>
+                    <TableCell className="py-2 font-medium">Trained By</TableCell>
+                    <TableCell className="py-2">{model.trained_by}</TableCell>
+                  </TableRow>
+                )}
+                <TableRow>
+                  <TableCell className="py-2 font-medium">Status</TableCell>
+                  <TableCell className="py-2">
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                      model.status === 'complete' ? 'bg-green-100 text-green-800' : 
+                      model.status === 'in-progress' ? 'bg-blue-100 text-blue-800' : 
+                      'bg-red-100 text-red-800'
+                    }`}>
+                      {model.status === 'complete' ? 'Ready' : 
+                       model.status === 'in-progress' ? 'Training' : 
+                       'Failed'}
+                    </span>
+                  </TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell className="py-2 font-medium">
+                    <div className="flex items-center space-x-1">
+                      <span>MAE</span>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info className="h-3 w-3 text-muted-foreground ml-1 cursor-help" />
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-xs">
+                            <p className="text-xs">
+                              Mean Absolute Error - Average absolute difference between predictions and actual values. Lower is better.
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+                  </TableCell>
+                  <TableCell className="py-2">
+                    {model.accuracy_mae !== undefined ? 
+                      model.accuracy_mae.toFixed(2) : 
+                      <span className="text-muted-foreground text-xs">Not available</span>
+                    }
+                  </TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell className="py-2 font-medium">
+                    <div className="flex items-center space-x-1">
+                      <span>RMSE</span>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info className="h-3 w-3 text-muted-foreground ml-1 cursor-help" />
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-xs">
+                            <p className="text-xs">
+                              Root Mean Square Error - Square root of the average of squared differences between predictions and actual values. More sensitive to outliers. Lower is better.
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+                  </TableCell>
+                  <TableCell className="py-2">
+                    {model.accuracy_rmse !== undefined ? 
+                      model.accuracy_rmse.toFixed(2) : 
+                      <span className="text-muted-foreground text-xs">Not available</span>
+                    }
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      </div>
+      
+      <Separator />
+      
+      <div className="text-sm text-muted-foreground">
+        <div className="flex items-center">
+          <AlertCircle className="h-4 w-4 mr-2" />
+          <p>
+            This model will be used for all {getPollutantDisplay(model.pollutant)} forecasts in {getRegionLabel(model.region)} with {getFrequencyDisplay(model.frequency).toLowerCase()} frequency.
+          </p>
+        </div>
+        {model.accuracy_mae !== undefined && model.accuracy_rmse !== undefined && (
+          <p className="mt-2 ml-6">
+            Based on the error metrics (MAE: {model.accuracy_mae.toFixed(2)}, RMSE: {model.accuracy_rmse.toFixed(2)}), this model has 
+            {model.accuracy_mae < 10 ? ' excellent ' : model.accuracy_mae < 20 ? ' good ' : ' moderate '}
+            accuracy for forecasting {getPollutantDisplay(model.pollutant)} levels.
+          </p>
+        )}
+      </div>
+    </div>
   );
 };
 

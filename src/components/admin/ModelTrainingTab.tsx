@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from "react";
 import { toast } from "@/components/ui/sonner";
 import { modelApi } from "@/lib/api";
@@ -342,8 +341,8 @@ const ModelTrainingTab: React.FC = () => {
         
         if (apiResponse && apiResponse.forecast && apiResponse.forecast.length > 0) {
           console.log("Using forecast data from API response:", apiResponse.forecast);
-          // Only take the first 6 forecast points for display
-          setForecastData(apiResponse.forecast.slice(0, 6));
+          // Pass the full forecast data from API response
+          setForecastData(apiResponse.forecast);
           setNoForecastAvailable(false);
         } else {
           console.log("No forecast data in response, using mock data");
@@ -491,16 +490,6 @@ const ModelTrainingTab: React.FC = () => {
     }
   };
 
-  // Fetch forecast data when parameters change
-  useEffect(() => {
-    // Debounce the request to avoid too many calls when changing parameters quickly
-    const timer = setTimeout(() => {
-      fetchForecastRange();
-    }, 500);
-    
-    return () => clearTimeout(timer);
-  }, [trainRegion, trainPollutant, trainFrequency, trainPeriods]);
-
   return (
     <div className="flex flex-col gap-4">
       {modelsToCompare.length > 0 && (
@@ -551,6 +540,8 @@ const ModelTrainingTab: React.FC = () => {
             isCheckingModel={isCheckingModel}
             availableFilters={availableFilters}
             filtersLoading={filtersLoading}
+            forecastLoading={forecastLoading}
+            onPreviewForecast={fetchForecastRange}
           />
         </ResizablePanel>
         
