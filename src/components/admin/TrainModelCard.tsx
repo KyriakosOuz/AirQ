@@ -8,11 +8,14 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { AlertCircle, RefreshCw, LineChart } from "lucide-react";
+import { AlertCircle, RefreshCw, LineChart, Info, Sliders } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Pollutant } from "@/lib/types";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { TrainingRecord } from "./RecentTrainingsCard";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 
 // Interface for form data
 interface TrainModelFormData {
@@ -21,6 +24,7 @@ interface TrainModelFormData {
   frequency: string;
   periods: number;
   overwrite: boolean;
+  useCustomRange: boolean;
 }
 
 // Interface for metadata filters from API
@@ -30,6 +34,15 @@ interface ModelMetadataFilters {
     pollutant: string;
     frequency: string;
   }>;
+}
+
+// Frequency option type
+interface FrequencyOption {
+  value: string;
+  label: string;
+  ranges: number[];
+  minPeriod: number;
+  maxPeriod: number;
 }
 
 // Props for the TrainModelCard component
@@ -44,11 +57,7 @@ interface TrainModelCardProps {
   setTrainPeriods: (periods: number) => void;
   trainLoading: boolean;
   onTrainModel: () => void;
-  frequencyOptions: Array<{
-    value: string;
-    label: string;
-    ranges: number[];
-  }>;
+  frequencyOptions: Array<FrequencyOption>;
   availableRanges: number[];
   overwriteModel: boolean;
   setOverwriteModel: (overwrite: boolean) => void;
@@ -86,6 +95,15 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
   onPreviewForecast,
   selectedModel
 }) => {
+  // State for custom period input
+  const [useCustomRange, setUseCustomRange] = useState(false);
+  const [customPeriodValue, setCustomPeriodValue] = useState<string>(trainPeriods.toString());
+
+  // Find the current frequency option
+  const currentFrequencyOption = React.useMemo(() => {
+    return frequencyOptions.find(opt => opt.value === trainFrequency) || frequencyOptions[0];
+  }, [frequencyOptions, trainFrequency]);
+  
   // Get available regions and pollutants from filters
   const availableRegions = React.useMemo(() => {
     if (!availableFilters) return [];
@@ -114,6 +132,59 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
     e.preventDefault();
     onTrainModel();
   };
+
+  // Handle custom period input change
+  const handleCustomPeriodChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setCustomPeriodValue(value);
+    
+    if (value && !isNaN(Number(value))) {
+      const numValue = parseInt(value, 10);
+      if (numValue >= currentFrequencyOption.minPeriod && 
+          numValue <= currentFrequencyOption.maxPeriod) {
+        setTrainPeriods(numValue);
+      }
+    }
+  };
+
+  // Toggle between preset and custom period input
+  const handleToggleCustomRange = (checked: boolean) => {
+    setUseCustomRange(checked);
+    if (!checked) {
+      // When switching back to preset, set value to closest available preset
+      const closestPreset = findClosestPreset(trainPeriods, availableRanges);
+      setTrainPeriods(closestPreset);
+      setCustomPeriodValue(closestPreset.toString());
+    }
+  };
+
+  // Find closest preset value to current custom value
+  const findClosestPreset = (value: number, presets: number[]): number => {
+    if (presets.length === 0) return value;
+    return presets.reduce((prev, curr) => {
+      return (Math.abs(curr - value) < Math.abs(prev - value)) ? curr : prev;
+    });
+  };
+
+  // When frequency changes, update periods to a valid value for that frequency
+  React.useEffect(() => {
+    if (!useCustomRange && availableRanges.length > 0) {
+      setTrainPeriods(availableRanges[0]);
+      setCustomPeriodValue(availableRanges[0].toString());
+    } else if (useCustomRange) {
+      // Validate current period is within new frequency's range
+      const newFrequencyOption = frequencyOptions.find(opt => opt.value === trainFrequency);
+      if (newFrequencyOption) {
+        if (trainPeriods < newFrequencyOption.minPeriod) {
+          setTrainPeriods(newFrequencyOption.minPeriod);
+          setCustomPeriodValue(newFrequencyOption.minPeriod.toString());
+        } else if (trainPeriods > newFrequencyOption.maxPeriod) {
+          setTrainPeriods(newFrequencyOption.maxPeriod);
+          setCustomPeriodValue(newFrequencyOption.maxPeriod.toString());
+        }
+      }
+    }
+  }, [trainFrequency, availableRanges, useCustomRange, frequencyOptions]);
   
   // Show selected model info if available
   const showSelectedModelInfo = selectedModel && selectedModel.status === "complete";
@@ -188,31 +259,100 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
             </p>
           </div>
           
-          {/* Periods Selection */}
-          <div className="space-y-2">
-            <Label htmlFor="periods">Forecast Periods</Label>
-            <Select 
-              value={trainPeriods.toString()} 
-              onValueChange={(value) => setTrainPeriods(Number(value))}
+          {/* Custom Range Toggle */}
+          <div className="flex items-center gap-2">
+            <Checkbox 
+              id="custom-range"
+              checked={useCustomRange}
+              onCheckedChange={handleToggleCustomRange}
               disabled={trainLoading}
+            />
+            <Label 
+              htmlFor="custom-range" 
+              className="text-sm font-normal cursor-pointer"
             >
-              <SelectTrigger id="periods">
-                <SelectValue placeholder="Select number of periods" />
-              </SelectTrigger>
-              <SelectContent>
-                {availableRanges.map(range => (
-                  <SelectItem key={range} value={range.toString()}>
-                    {range} {trainFrequency === "daily" ? "days" : 
-                             trainFrequency === "weekly" ? "weeks" : 
-                             trainFrequency === "monthly" ? "months" : "years"}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground mt-1">
-              The number of future time periods to forecast
-            </p>
+              Use custom period range
+            </Label>
           </div>
+
+          {/* Periods Selection - Conditional Rendering */}
+          {!useCustomRange ? (
+            // Dropdown for preset periods
+            <div className="space-y-2">
+              <Label htmlFor="periods">Forecast Periods</Label>
+              <Select 
+                value={trainPeriods.toString()} 
+                onValueChange={(value) => setTrainPeriods(Number(value))}
+                disabled={trainLoading}
+              >
+                <SelectTrigger id="periods">
+                  <SelectValue placeholder="Select number of periods" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableRanges.map(range => (
+                    <SelectItem key={range} value={range.toString()}>
+                      {range} {trainFrequency === "daily" ? "days" : 
+                              trainFrequency === "weekly" ? "weeks" : 
+                              trainFrequency === "monthly" ? "months" : "years"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                The number of future time periods to forecast
+              </p>
+            </div>
+          ) : (
+            // Input for custom period range
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <Label htmlFor="custom-periods">Custom Forecast Periods</Label>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="h-4 w-4 text-muted-foreground" />
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-xs">
+                      <p>Valid range for {currentFrequencyOption.label}: 
+                        {currentFrequencyOption.minPeriod} - {currentFrequencyOption.maxPeriod} {
+                          trainFrequency === "daily" ? "days" : 
+                          trainFrequency === "weekly" ? "weeks" : 
+                          trainFrequency === "monthly" ? "months" : "years"
+                        }
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              <div className="flex gap-2 items-center">
+                <Input
+                  id="custom-periods"
+                  type="number"
+                  value={customPeriodValue}
+                  onChange={handleCustomPeriodChange}
+                  className="w-full"
+                  min={currentFrequencyOption.minPeriod}
+                  max={currentFrequencyOption.maxPeriod}
+                  disabled={trainLoading}
+                />
+                <span className="text-sm">
+                  {trainFrequency === "daily" ? "days" : 
+                   trainFrequency === "weekly" ? "weeks" : 
+                   trainFrequency === "monthly" ? "months" : "years"}
+                </span>
+              </div>
+              {parseInt(customPeriodValue) < currentFrequencyOption.minPeriod || 
+               parseInt(customPeriodValue) > currentFrequencyOption.maxPeriod ? (
+                <p className="text-xs text-destructive mt-1">
+                  Value must be between {currentFrequencyOption.minPeriod} and {currentFrequencyOption.maxPeriod}
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground mt-1">
+                  The number of future time periods to forecast
+                </p>
+              )}
+            </div>
+          )}
           
           {/* Model Already Exists Warning */}
           {modelExists && !overwriteModel && (
@@ -262,7 +402,13 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
           {/* Train Model Button */}
           <Button 
             type="submit" 
-            disabled={trainLoading || isCheckingModel}
+            disabled={trainLoading || isCheckingModel || 
+              (useCustomRange && (
+                parseInt(customPeriodValue) < currentFrequencyOption.minPeriod || 
+                parseInt(customPeriodValue) > currentFrequencyOption.maxPeriod ||
+                !customPeriodValue
+              ))
+            }
             className="w-full"
           >
             {trainLoading ? (
