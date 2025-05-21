@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,7 +19,7 @@ interface ModelComparisonViewProps {
       }>;
     }[];
   };
-  onClose: () => void; // Changed from onBack to onClose
+  onClose: () => void;
   formatters: {
     getRegionLabel: (region: string) => string;
     getPollutantDisplay: (pollutant: string) => string;

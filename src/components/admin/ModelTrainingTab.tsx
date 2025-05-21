@@ -102,6 +102,12 @@ const ModelTrainingTab: React.FC = () => {
     try {
       setIsCheckingModel(true);
       
+      // First, check if data is available for training
+      if (!isDataAvailableForTraining()) {
+        setModelExists(false);
+        return;
+      }
+      
       const response = await modelApi.checkExists({
         region: trainRegion,
         pollutant: trainPollutant,
@@ -122,7 +128,7 @@ const ModelTrainingTab: React.FC = () => {
     } finally {
       setIsCheckingModel(false);
     }
-  }, [trainRegion, trainPollutant, trainFrequency]);
+  }, [trainRegion, trainPollutant, trainFrequency, isDataAvailableForTraining]);
   
   // Effect to check if a model exists when parameters change
   useEffect(() => {
@@ -153,6 +159,7 @@ const ModelTrainingTab: React.FC = () => {
       // Check if data is available for training
       if (!isDataAvailableForTraining()) {
         setTrainingError("No data available for the selected parameters");
+        toast.error("No data available for the selected parameters");
         return;
       }
       
@@ -408,7 +415,8 @@ const ModelTrainingTab: React.FC = () => {
   };
 
   // Format date helper
-  const formatDate = (dateString: string): string => {
+  const formatDate = (dateString?: string): string => {
+    if (!dateString) return "N/A";
     return new Date(dateString).toLocaleDateString("en-US", {
       year: "numeric",
       month: "short",
@@ -459,26 +467,28 @@ const ModelTrainingTab: React.FC = () => {
             onPreviewForecast={previewForecast}
           />
           
-          <RecentTrainingsCard 
-            recentTrainings={convertToTrainingRecords(models)}
-            formatters={formatters}
-            isLoading={modelsLoading}
-            onModelDeleted={fetchModels}
-            onViewDetails={(modelId) => {
-              const model = models.find(m => m.id === modelId);
-              if (model) setSelectedModel(model);
-            }}
-            onPreviewForecast={previewForecast}
-            modelsToCompare={selectedModels}
-            onToggleCompare={toggleModelSelection}
-            canSelectForComparison={(pollutant) => allowCrossPollutantComparison || !basePollutant || pollutant === basePollutant}
-            getDisabledTooltip={(pollutant) => {
-              if (!allowCrossPollutantComparison && basePollutant && pollutant !== basePollutant) {
-                return `This model cannot be compared with the selected ${getPollutantDisplay(basePollutant)} models. Enable cross-pollutant comparison to select it.`;
-              }
-              return "";
-            }}
-          />
+          <div className="lg:col-span-2">
+            <RecentTrainingsCard 
+              recentTrainings={convertToTrainingRecords(models)}
+              formatters={formatters}
+              isLoading={modelsLoading}
+              onModelDeleted={fetchModels}
+              onViewDetails={(modelId) => {
+                const model = models.find(m => m.id === modelId);
+                if (model) setSelectedModel(model);
+              }}
+              onPreviewForecast={previewForecast}
+              modelsToCompare={selectedModels}
+              onToggleCompare={toggleModelSelection}
+              canSelectForComparison={(pollutant) => allowCrossPollutantComparison || !basePollutant || pollutant === basePollutant}
+              getDisabledTooltip={(pollutant) => {
+                if (!allowCrossPollutantComparison && basePollutant && pollutant !== basePollutant) {
+                  return `This model cannot be compared with the selected ${getPollutantDisplay(basePollutant)} models. Enable cross-pollutant comparison to select it.`;
+                }
+                return "";
+              }}
+            />
+          </div>
           
           {selectedModel && (
             <ModelDetailsView 
@@ -487,6 +497,7 @@ const ModelTrainingTab: React.FC = () => {
                 status: selectedModel.status === "training" ? "in-progress" : selectedModel.status
               }}
               formatters={formatters}
+              onClose={() => setSelectedModel(null)}
             />
           )}
         </div>
