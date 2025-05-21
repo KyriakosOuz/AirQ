@@ -1,3 +1,4 @@
+
 import { toast } from "sonner";
 import { Pollutant, Region, Dataset, HealthTip, TrendChart, SeasonalityChart } from "@/lib/types";
 import { supabase } from "@/integrations/supabase/client";
@@ -54,6 +55,51 @@ const MOCK_DATA = {
   seasonality: {
     labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
     values: [40, 42, 45, 48, 50, 52, 55, 53, 48, 45, 43, 41]
+  },
+  model_comparison: {
+    models: [
+      {
+        id: "model-1",
+        region: "thessaloniki",
+        pollutant: "no2_conc",
+        frequency: "daily",
+        forecast: Array.from({ length: 10 }, (_, i) => ({
+          ds: new Date(Date.now() + i * 86400000).toISOString(),
+          yhat: 40 + Math.random() * 20
+        }))
+      },
+      {
+        id: "model-2",
+        region: "kalamaria",
+        pollutant: "no2_conc",
+        frequency: "daily",
+        forecast: Array.from({ length: 10 }, (_, i) => ({
+          ds: new Date(Date.now() + i * 86400000).toISOString(),
+          yhat: 30 + Math.random() * 15
+        }))
+      }
+    ]
+  },
+  model_metadata: {
+    available: [
+      { region: "thessaloniki", pollutant: "no2_conc", frequency: "daily" },
+      { region: "kalamaria", pollutant: "no2_conc", frequency: "daily" },
+      { region: "thessaloniki", pollutant: "o3_conc", frequency: "daily" },
+      { region: "kalamaria", pollutant: "o3_conc", frequency: "weekly" }
+    ]
+  },
+  model_info: {
+    id: "model-123",
+    region: "thessaloniki",
+    pollutant: "no2_conc",
+    frequency: "daily",
+    forecast_periods: 365,
+    created_at: new Date().toISOString(),
+    trained_by: "admin@airquality.org",
+    status: "complete",
+    accuracy_mae: 2.45,
+    accuracy_rmse: 3.12,
+    model_type: "Prophet"
   }
 };
 
@@ -133,6 +179,14 @@ export const fetchWithAuth = async <T>(
         return { success: true, data: MOCK_DATA.trend as T };
       } else if (endpoint.includes('/insights/seasonality')) {
         return { success: true, data: MOCK_DATA.seasonality as T };
+      } else if (endpoint.includes('/models/compare')) {
+        return { success: true, data: MOCK_DATA.model_comparison as T };
+      } else if (endpoint.includes('/models/metadata/filters')) {
+        return { success: true, data: MOCK_DATA.model_metadata as T };
+      } else if (endpoint.includes('/models/info/')) {
+        return { success: true, data: MOCK_DATA.model_info as T };
+      } else if (endpoint.includes('/models/check-exists')) {
+        return { success: true, data: { exists: Math.random() > 0.5 } as T };
       }
       return { success: false, error: "API is currently unavailable. Using offline mode." };
     }
@@ -176,6 +230,14 @@ export const fetchWithAuth = async <T>(
         return { success: true, data: MOCK_DATA.trend as T };
       } else if (endpoint.includes('/insights/seasonality')) {
         return { success: true, data: MOCK_DATA.seasonality as T };
+      } else if (endpoint.includes('/models/compare')) {
+        return { success: true, data: MOCK_DATA.model_comparison as T };
+      } else if (endpoint.includes('/models/metadata/filters')) {
+        return { success: true, data: MOCK_DATA.model_metadata as T };
+      } else if (endpoint.includes('/models/info/')) {
+        return { success: true, data: MOCK_DATA.model_info as T };
+      } else if (endpoint.includes('/models/check-exists')) {
+        return { success: true, data: { exists: Math.random() > 0.5 } as T };
       }
       return { success: false, error: "Invalid response format from server" };
     }
@@ -206,6 +268,14 @@ export const fetchWithAuth = async <T>(
         return { success: true, data: MOCK_DATA.trend as T };
       } else if (endpoint.includes('/insights/seasonality')) {
         return { success: true, data: MOCK_DATA.seasonality as T };
+      } else if (endpoint.includes('/models/compare')) {
+        return { success: true, data: MOCK_DATA.model_comparison as T };
+      } else if (endpoint.includes('/models/metadata/filters')) {
+        return { success: true, data: MOCK_DATA.model_metadata as T };
+      } else if (endpoint.includes('/models/info/')) {
+        return { success: true, data: MOCK_DATA.model_info as T };
+      } else if (endpoint.includes('/models/check-exists')) {
+        return { success: true, data: { exists: Math.random() > 0.5 } as T };
       }
       return { success: false, error: "Failed to parse server response" };
     }
@@ -240,6 +310,14 @@ export const fetchWithAuth = async <T>(
         return { success: true, data: MOCK_DATA.trend as T };
       } else if (endpoint.includes('/insights/seasonality')) {
         return { success: true, data: MOCK_DATA.seasonality as T };
+      } else if (endpoint.includes('/models/compare')) {
+        return { success: true, data: MOCK_DATA.model_comparison as T };
+      } else if (endpoint.includes('/models/metadata/filters')) {
+        return { success: true, data: MOCK_DATA.model_metadata as T };
+      } else if (endpoint.includes('/models/info/')) {
+        return { success: true, data: MOCK_DATA.model_info as T };
+      } else if (endpoint.includes('/models/check-exists')) {
+        return { success: true, data: { exists: Math.random() > 0.5 } as T };
       }
       return { success: false, error: data.detail || "API Error" };
     }
@@ -261,6 +339,14 @@ export const fetchWithAuth = async <T>(
         return { success: true, data: MOCK_DATA.trend as T };
       } else if (endpoint.includes('/insights/seasonality')) {
         return { success: true, data: MOCK_DATA.seasonality as T };
+      } else if (endpoint.includes('/models/compare')) {
+        return { success: true, data: MOCK_DATA.model_comparison as T };
+      } else if (endpoint.includes('/models/metadata/filters')) {
+        return { success: true, data: MOCK_DATA.model_metadata as T };
+      } else if (endpoint.includes('/models/info/')) {
+        return { success: true, data: MOCK_DATA.model_info as T };
+      } else if (endpoint.includes('/models/check-exists')) {
+        return { success: true, data: { exists: Math.random() > 0.5 } as T };
       }
       return { success: false, error: "Request timed out. Using offline data." };
     }
@@ -273,6 +359,14 @@ export const fetchWithAuth = async <T>(
       return { success: true, data: MOCK_DATA.trend as T };
     } else if (endpoint.includes('/insights/seasonality')) {
       return { success: true, data: MOCK_DATA.seasonality as T };
+    } else if (endpoint.includes('/models/compare')) {
+      return { success: true, data: MOCK_DATA.model_comparison as T };
+    } else if (endpoint.includes('/models/metadata/filters')) {
+      return { success: true, data: MOCK_DATA.model_metadata as T };
+    } else if (endpoint.includes('/models/info/')) {
+      return { success: true, data: MOCK_DATA.model_info as T };
+    } else if (endpoint.includes('/models/check-exists')) {
+      return { success: true, data: { exists: Math.random() > 0.5 } as T };
     }
     return { success: false, error: "Network error. Using offline data." };
   }
@@ -463,6 +557,43 @@ export const modelApi = {
         error: error instanceof Error ? error.message : "Unknown error occurred",
       };
     }
+  },
+
+  // Add method to check if a model exists
+  checkExists: async ({
+    region,
+    pollutant,
+    frequency
+  }: {
+    region: string;
+    pollutant: string;
+    frequency: string;
+  }) => {
+    const queryParams = new URLSearchParams({
+      region,
+      pollutant,
+      frequency
+    }).toString();
+    
+    return fetchWithAuth<{ exists: boolean }>(`/models/check-exists/?${queryParams}`);
+  },
+  
+  // Add method to get model info
+  getInfo: async (modelId: string) => {
+    return fetchWithAuth(`/models/info/${modelId}`);
+  },
+  
+  // Add method to compare models
+  compareModels: async (modelIds: string[]) => {
+    return fetchWithAuth('/models/compare/', {
+      method: "POST",
+      body: JSON.stringify({ model_ids: modelIds }),
+    });
+  },
+  
+  // Add method to get metadata filters
+  getMetadataFilters: async () => {
+    return fetchWithAuth('/models/metadata/filters');
   },
 };
 

@@ -9,13 +9,22 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Pollutant } from "@/lib/types";
-import { AlertCircle, Clock, RefreshCw } from "lucide-react";
+import { AlertCircle, Clock, InfoCircle, RefreshCw } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface FrequencyOption {
   value: string;
   label: string;
   ranges: number[];
+}
+
+interface FilterMetadata {
+  available: Array<{
+    region: string;
+    pollutant: string;
+    frequency: string;
+  }>;
 }
 
 interface TrainModelCardProps {
@@ -34,6 +43,10 @@ interface TrainModelCardProps {
   overwriteModel: boolean;
   setOverwriteModel: (value: boolean) => void;
   trainingError: string | null;
+  modelExists?: boolean;
+  isCheckingModel?: boolean;
+  availableFilters?: FilterMetadata | null;
+  filtersLoading?: boolean;
 }
 
 const TrainModelCard: React.FC<TrainModelCardProps> = ({
@@ -51,7 +64,11 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
   availableRanges,
   overwriteModel,
   setOverwriteModel,
-  trainingError
+  trainingError,
+  modelExists = false,
+  isCheckingModel = false,
+  availableFilters = null,
+  filtersLoading = false
 }) => {
   // Helper to get the frequency display label
   const getFrequencyLabel = (value: string): string => {
@@ -66,6 +83,25 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
     
     return `${period} ${freqOption.label.toLowerCase()}${period !== 1 ? 's' : ''}`;
   };
+
+  // Extract unique regions, pollutants, and frequencies from available filters
+  const extractUniqueValues = () => {
+    if (!availableFilters || !availableFilters.available) {
+      return {
+        regions: [],
+        pollutants: [],
+        frequencies: []
+      };
+    }
+
+    const regions = [...new Set(availableFilters.available.map(item => item.region))];
+    const pollutants = [...new Set(availableFilters.available.map(item => item.pollutant))];
+    const frequencies = [...new Set(availableFilters.available.map(item => item.frequency))];
+
+    return { regions, pollutants, frequencies };
+  };
+
+  const { regions, pollutants, frequencies } = extractUniqueValues();
   
   return (
     <Card className="h-full overflow-auto">
@@ -81,22 +117,41 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
       <CardContent className="space-y-3">
         <div className="space-y-1">
           <Label htmlFor="region" className="text-xs">Region</Label>
-          <RegionSelector value={trainRegion} onValueChange={setTrainRegion} />
+          <RegionSelector 
+            value={trainRegion} 
+            onValueChange={setTrainRegion} 
+            // Optional: Use available regions from metadata
+            regions={regions.length > 0 ? regions : undefined}
+            disabled={filtersLoading}
+          />
         </div>
         
         <div className="space-y-1">
           <Label htmlFor="pollutant" className="text-xs">Pollutant</Label>
-          <PollutantSelector value={trainPollutant} onValueChange={setTrainPollutant} />
+          <PollutantSelector 
+            value={trainPollutant} 
+            onValueChange={setTrainPollutant} 
+            // Optional: Use available pollutants from metadata
+            pollutants={pollutants.length > 0 ? pollutants.map(p => p as Pollutant) : undefined}
+            disabled={filtersLoading}
+          />
         </div>
         
         <div className="space-y-1">
           <Label htmlFor="frequency" className="text-xs">Frequency</Label>
-          <Select value={trainFrequency} onValueChange={setTrainFrequency}>
+          <Select 
+            value={trainFrequency} 
+            onValueChange={setTrainFrequency}
+            disabled={filtersLoading}
+          >
             <SelectTrigger id="frequency">
               <SelectValue placeholder="Select frequency" />
             </SelectTrigger>
             <SelectContent>
-              {frequencyOptions.map((option) => (
+              {(frequencies.length > 0 
+                ? frequencyOptions.filter(opt => frequencies.includes(opt.value)) 
+                : frequencyOptions
+              ).map((option) => (
                 <SelectItem key={option.value} value={option.value}>
                   {option.label}
                 </SelectItem>
@@ -107,7 +162,25 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
         
         <div className="space-y-2">
           <div className="flex justify-between items-center">
-            <Label htmlFor="periods" className="text-xs">Forecast Period</Label>
+            <div className="flex items-center space-x-2">
+              <Label htmlFor="periods" className="text-xs">Forecast Period</Label>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-5 w-5 rounded-full p-0">
+                      <AlertCircle className="h-3 w-3" />
+                      <span className="sr-only">Info</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="max-w-xs text-xs">
+                      The number of time periods to forecast into the future.
+                      Larger values may decrease accuracy but provide longer-term predictions.
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
             <span className="text-xs text-muted-foreground">
               {formatPeriodLabel(trainPeriods, trainFrequency)}
             </span>
@@ -148,10 +221,16 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
           </p>
         </div>
         
-        {/* New Retrain Option */}
+        {/* Retrain Option */}
         <div className="flex items-center justify-between space-x-2 pt-2 pb-1">
           <div className="space-y-0.5">
-            <Label htmlFor="retrain" className="text-xs">Retrain Model</Label>
+            <Label 
+              htmlFor="retrain" 
+              className={`text-xs ${modelExists ? "font-semibold text-amber-600" : ""}`}
+            >
+              Retrain Model
+              {modelExists && " (Recommended)"}
+            </Label>
             <p className="text-[10px] text-muted-foreground">
               Overwrite existing model if it already exists
             </p>
@@ -163,6 +242,16 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
           />
         </div>
         
+        {/* Display model exists warning */}
+        {modelExists && !overwriteModel && (
+          <Alert variant="warning" className="py-2 bg-amber-50 border-amber-200">
+            <AlertCircle className="h-4 w-4 text-amber-600" />
+            <AlertDescription className="text-xs text-amber-700">
+              A model with these parameters already exists. Enable "Retrain Model" to overwrite it.
+            </AlertDescription>
+          </Alert>
+        )}
+        
         {/* Display training error if present */}
         {trainingError && (
           <Alert variant="destructive" className="py-2">
@@ -172,18 +261,32 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
             </AlertDescription>
           </Alert>
         )}
+        
+        {/* Display loading indicator when checking model existence */}
+        {isCheckingModel && (
+          <div className="flex items-center justify-center py-2">
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent mr-2"></div>
+            <p className="text-xs text-muted-foreground">Checking if model exists...</p>
+          </div>
+        )}
       </CardContent>
       <CardFooter>
         <Button 
           className="w-full" 
-          disabled={trainLoading}
+          disabled={trainLoading || isCheckingModel}
           onClick={onTrainModel}
           size="sm"
+          variant={modelExists && !overwriteModel ? "outline" : "default"}
         >
           {trainLoading ? (
             <>
               <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
               Training...
+            </>
+          ) : isCheckingModel ? (
+            <>
+              <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+              Checking...
             </>
           ) : overwriteModel ? "Retrain Model" : "Train Model"}
         </Button>

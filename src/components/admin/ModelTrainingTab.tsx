@@ -9,6 +9,10 @@ import ForecastPreview, { ForecastDataPoint } from "./ForecastPreview";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { Card } from "@/components/ui/card";
 import { AlertCircle } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import ModelDetailsView from "./ModelDetailsView";
+import ModelComparisonView from "./ModelComparisonView";
+import { Button } from "@/components/ui/button";
 
 // Interface for model training API response
 interface ModelTrainingResponse {
@@ -33,6 +37,30 @@ interface ModelData {
   accuracy_rmse?: number;
 }
 
+// Interface for model metadata filters
+interface ModelMetadataFilters {
+  available: Array<{
+    region: string;
+    pollutant: string;
+    frequency: string;
+  }>;
+}
+
+// Interface for model details
+interface ModelDetails {
+  id: string;
+  region: string;
+  pollutant: string;
+  frequency: string;
+  forecast_periods: number;
+  created_at: string;
+  trained_by?: string;
+  status: string;
+  accuracy_mae?: number;
+  accuracy_rmse?: number;
+  model_type?: string;
+}
+
 // Frequency options with their display labels and available ranges
 const FREQUENCY_OPTIONS = [
   { value: "daily", label: "Daily", ranges: [7, 14, 30, 60, 90, 180, 365] },
@@ -48,7 +76,7 @@ const ModelTrainingTab: React.FC = () => {
   const [trainFrequency, setTrainFrequency] = useState("daily"); // Default: Daily
   const [trainPeriods, setTrainPeriods] = useState(365); // Default: 365 periods
   const [trainLoading, setTrainLoading] = useState(false);
-  const [overwriteModel, setOverwriteModel] = useState(false); // New state for the overwrite option
+  const [overwriteModel, setOverwriteModel] = useState(false); // State for the overwrite option
   
   // State for forecast data and training records
   const [forecastData, setForecastData] = useState<ForecastDataPoint[]>([]);
@@ -56,7 +84,21 @@ const ModelTrainingTab: React.FC = () => {
   const [modelsLoading, setModelsLoading] = useState(false);
   const [forecastLoading, setForecastLoading] = useState(false);
   const [noForecastAvailable, setNoForecastAvailable] = useState(false);
-  const [trainingError, setTrainingError] = useState<string | null>(null); // New state to track specific training errors
+  const [trainingError, setTrainingError] = useState<string | null>(null); // State to track specific training errors
+  
+  // New state for model existence check, details, and comparison
+  const [modelExists, setModelExists] = useState(false);
+  const [isCheckingModel, setIsCheckingModel] = useState(false);
+  const [modelDetailsOpen, setModelDetailsOpen] = useState(false);
+  const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
+  const [selectedModelDetails, setSelectedModelDetails] = useState<ModelDetails | null>(null);
+  const [modelDetailsLoading, setModelDetailsLoading] = useState(false);
+  const [modelsToCompare, setModelsToCompare] = useState<string[]>([]);
+  const [showComparison, setShowComparison] = useState(false);
+  const [comparisonData, setComparisonData] = useState<any>(null);
+  const [comparisonLoading, setComparisonLoading] = useState(false);
+  const [availableFilters, setAvailableFilters] = useState<ModelMetadataFilters | null>(null);
+  const [filtersLoading, setFiltersLoading] = useState(false);
   
   // Get available ranges for the selected frequency
   const availableRanges = useMemo(() => {
@@ -163,7 +205,58 @@ const ModelTrainingTab: React.FC = () => {
   // Fetch trained models on component mount and after training
   useEffect(() => {
     fetchTrainedModels();
+    fetchAvailableFilters();
   }, []);
+
+  // Fetch available filters for regions, pollutants, and frequencies
+  const fetchAvailableFilters = async () => {
+    setFiltersLoading(true);
+    try {
+      const response = await modelApi.getMetadataFilters();
+      if (response.success && response.data) {
+        console.log("Received filter metadata:", response.data);
+        setAvailableFilters(response.data as ModelMetadataFilters);
+      } else {
+        console.error("Failed to fetch filter metadata:", response.error);
+      }
+    } catch (error) {
+      console.error("Error fetching filter metadata:", error);
+    } finally {
+      setFiltersLoading(false);
+    }
+  };
+
+  // Check if a model already exists before training
+  const checkModelExists = async () => {
+    setIsCheckingModel(true);
+    setModelExists(false);
+    try {
+      const response = await modelApi.checkExists({
+        region: trainRegion,
+        pollutant: trainPollutant,
+        frequency: trainFrequency
+      });
+      
+      if (response.success && response.data) {
+        const exists = response.data.exists;
+        setModelExists(exists);
+        console.log(`Model exists check: ${exists}`);
+        
+        if (exists && !overwriteModel) {
+          toast.info("A model with these parameters already exists. Enable 'Retrain Model' to overwrite it.");
+          return true;
+        }
+      } else {
+        console.error("Failed to check if model exists:", response.error);
+      }
+      return false;
+    } catch (error) {
+      console.error("Error checking if model exists:", error);
+      return false;
+    } finally {
+      setIsCheckingModel(false);
+    }
+  };
 
   // Generate mock forecast data based on current parameters
   const generateMockForecastData = (periods: number): ForecastDataPoint[] => {
@@ -217,8 +310,14 @@ const ModelTrainingTab: React.FC = () => {
     return data;
   };
 
-  // Handle model training
+  // Handle model training with existence check
   const trainModel = async () => {
+    // First check if model exists
+    const exists = await checkModelExists();
+    if (exists && !overwriteModel) {
+      return; // Stop if model exists and overwrite not enabled
+    }
+    
     setTrainLoading(true);
     setTrainingError(null); // Clear any previous errors
     
@@ -256,6 +355,7 @@ const ModelTrainingTab: React.FC = () => {
         
         // Refresh the list of trained models
         fetchTrainedModels();
+        fetchAvailableFilters(); // Refresh available filters
       } else {
         // Handle specific error cases
         console.error("Training failed:", response.error);
@@ -279,6 +379,70 @@ const ModelTrainingTab: React.FC = () => {
       setNoForecastAvailable(true);
     } finally {
       setTrainLoading(false);
+    }
+  };
+
+  // Fetch model details when a model is selected
+  const fetchModelDetails = async (modelId: string) => {
+    setModelDetailsLoading(true);
+    try {
+      const response = await modelApi.getInfo(modelId);
+      if (response.success && response.data) {
+        console.log("Model details:", response.data);
+        setSelectedModelDetails(response.data as ModelDetails);
+        setModelDetailsOpen(true);
+      } else {
+        console.error("Failed to fetch model details:", response.error);
+        toast.error("Failed to fetch model details");
+      }
+    } catch (error) {
+      console.error("Error fetching model details:", error);
+      toast.error("Error loading model details");
+    } finally {
+      setModelDetailsLoading(false);
+    }
+  };
+
+  // Handle model selection for details view
+  const handleViewModelDetails = (modelId: string) => {
+    setSelectedModelId(modelId);
+    fetchModelDetails(modelId);
+  };
+
+  // Toggle model selection for comparison
+  const toggleModelForComparison = (modelId: string) => {
+    setModelsToCompare(prev => {
+      if (prev.includes(modelId)) {
+        return prev.filter(id => id !== modelId);
+      } else {
+        return [...prev, modelId];
+      }
+    });
+  };
+
+  // Compare selected models
+  const compareSelectedModels = async () => {
+    if (modelsToCompare.length < 2) {
+      toast.warning("Please select at least 2 models to compare");
+      return;
+    }
+    
+    setComparisonLoading(true);
+    try {
+      const response = await modelApi.compareModels(modelsToCompare);
+      if (response.success && response.data) {
+        console.log("Comparison data:", response.data);
+        setComparisonData(response.data);
+        setShowComparison(true);
+      } else {
+        console.error("Failed to compare models:", response.error);
+        toast.error("Failed to compare models");
+      }
+    } catch (error) {
+      console.error("Error comparing models:", error);
+      toast.error("Error comparing models");
+    } finally {
+      setComparisonLoading(false);
     }
   };
 
@@ -338,80 +502,147 @@ const ModelTrainingTab: React.FC = () => {
   }, [trainRegion, trainPollutant, trainFrequency, trainPeriods]);
 
   return (
-    <ResizablePanelGroup direction="horizontal" className="min-h-[600px]">
-      <ResizablePanel defaultSize={33} minSize={25}>
-        <TrainModelCard
-          trainRegion={trainRegion}
-          setTrainRegion={setTrainRegion}
-          trainPollutant={trainPollutant}
-          setTrainPollutant={setTrainPollutant}
-          trainFrequency={trainFrequency}
-          setTrainFrequency={setTrainFrequency}
-          trainPeriods={trainPeriods}
-          setTrainPeriods={setTrainPeriods}
-          trainLoading={trainLoading}
-          onTrainModel={trainModel}
-          frequencyOptions={FREQUENCY_OPTIONS}
-          availableRanges={availableRanges}
-          overwriteModel={overwriteModel}
-          setOverwriteModel={setOverwriteModel}
-          trainingError={trainingError}
-        />
-      </ResizablePanel>
-      
-      <ResizableHandle withHandle />
-      
-      <ResizablePanel defaultSize={67}>
-        <div className="h-full space-y-6 p-1">
-          <RecentTrainingsCard
-            recentTrainings={recentTrainings}
-            formatters={formatters}
-            isLoading={modelsLoading}
-            onModelDeleted={fetchTrainedModels}
-          />
-          
-          {forecastLoading && (
-            <Card className="col-span-2 flex items-center justify-center h-[300px]">
-              <div className="flex flex-col items-center justify-center">
-                <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-                <p className="mt-2 text-muted-foreground">Loading forecast data...</p>
-              </div>
-            </Card>
-          )}
-          
-          {!forecastLoading && forecastData && forecastData.length > 0 && (
-            <ForecastPreview
-              data={forecastData}
-              region={trainRegion}
-              pollutant={trainPollutant}
-              frequency={trainFrequency}
-              formatters={formatters}
-            />
-          )}
-          
-          {!forecastLoading && noForecastAvailable && (
-            <Card className="col-span-2 flex flex-col items-center justify-center h-[300px] p-6">
-              <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-xl font-semibold mb-2">No forecast available</h3>
-              <p className="text-muted-foreground text-center max-w-md mb-4">
-                No forecast model is available for {formatters.getPollutantDisplay(trainPollutant)} in {formatters.getRegionLabel(trainRegion)} with {formatters.getFrequencyDisplay(trainFrequency).toLowerCase()} frequency.
-              </p>
-              <p className="text-sm text-center text-muted-foreground">
-                Please train a model using the form on the left to generate forecasts.
-              </p>
-            </Card>
-          )}
-          
-          {!forecastLoading && !noForecastAvailable && (!forecastData || forecastData.length === 0) && (
-            <Card className="col-span-2 flex items-center justify-center h-[300px]">
-              <p className="text-muted-foreground">
-                Forecast preview will appear here after training a model
-              </p>
-            </Card>
-          )}
+    <div className="flex flex-col gap-4">
+      {modelsToCompare.length > 0 && (
+        <div className="bg-muted/30 rounded-lg p-3 flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <span className="text-sm font-medium">
+              {modelsToCompare.length} model{modelsToCompare.length !== 1 ? 's' : ''} selected for comparison
+            </span>
+          </div>
+          <div className="flex space-x-2">
+            <Button 
+              size="sm" 
+              variant="outline" 
+              onClick={() => setModelsToCompare([])}
+            >
+              Clear
+            </Button>
+            <Button 
+              size="sm" 
+              onClick={compareSelectedModels} 
+              disabled={modelsToCompare.length < 2 || comparisonLoading}
+            >
+              {comparisonLoading ? 'Comparing...' : 'Compare Models'}
+            </Button>
+          </div>
         </div>
-      </ResizablePanel>
-    </ResizablePanelGroup>
+      )}
+      
+      <ResizablePanelGroup direction="horizontal" className="min-h-[600px]">
+        <ResizablePanel defaultSize={33} minSize={25}>
+          <TrainModelCard
+            trainRegion={trainRegion}
+            setTrainRegion={setTrainRegion}
+            trainPollutant={trainPollutant}
+            setTrainPollutant={setTrainPollutant}
+            trainFrequency={trainFrequency}
+            setTrainFrequency={setTrainFrequency}
+            trainPeriods={trainPeriods}
+            setTrainPeriods={setTrainPeriods}
+            trainLoading={trainLoading}
+            onTrainModel={trainModel}
+            frequencyOptions={FREQUENCY_OPTIONS}
+            availableRanges={availableRanges}
+            overwriteModel={overwriteModel}
+            setOverwriteModel={setOverwriteModel}
+            trainingError={trainingError}
+            modelExists={modelExists}
+            isCheckingModel={isCheckingModel}
+            availableFilters={availableFilters}
+            filtersLoading={filtersLoading}
+          />
+        </ResizablePanel>
+        
+        <ResizableHandle withHandle />
+        
+        <ResizablePanel defaultSize={67}>
+          <div className="h-full space-y-6 p-1">
+            <RecentTrainingsCard
+              recentTrainings={recentTrainings}
+              formatters={formatters}
+              isLoading={modelsLoading}
+              onModelDeleted={fetchTrainedModels}
+              onViewDetails={handleViewModelDetails}
+              modelsToCompare={modelsToCompare}
+              onToggleCompare={toggleModelForComparison}
+            />
+            
+            {forecastLoading && (
+              <Card className="col-span-2 flex items-center justify-center h-[300px]">
+                <div className="flex flex-col items-center justify-center">
+                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+                  <p className="mt-2 text-muted-foreground">Loading forecast data...</p>
+                </div>
+              </Card>
+            )}
+            
+            {!forecastLoading && forecastData && forecastData.length > 0 && (
+              <ForecastPreview
+                data={forecastData}
+                region={trainRegion}
+                pollutant={trainPollutant}
+                frequency={trainFrequency}
+                formatters={formatters}
+              />
+            )}
+            
+            {!forecastLoading && noForecastAvailable && (
+              <Card className="col-span-2 flex flex-col items-center justify-center h-[300px] p-6">
+                <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
+                <h3 className="text-xl font-semibold mb-2">No forecast available</h3>
+                <p className="text-muted-foreground text-center max-w-md mb-4">
+                  No forecast model is available for {formatters.getPollutantDisplay(trainPollutant)} in {formatters.getRegionLabel(trainRegion)} with {formatters.getFrequencyDisplay(trainFrequency).toLowerCase()} frequency.
+                </p>
+                <p className="text-sm text-center text-muted-foreground">
+                  Please train a model using the form on the left to generate forecasts.
+                </p>
+              </Card>
+            )}
+            
+            {!forecastLoading && !noForecastAvailable && (!forecastData || forecastData.length === 0) && (
+              <Card className="col-span-2 flex items-center justify-center h-[300px]">
+                <p className="text-muted-foreground">
+                  Forecast preview will appear here after training a model
+                </p>
+              </Card>
+            )}
+            
+            {showComparison && comparisonData && (
+              <ModelComparisonView 
+                data={comparisonData}
+                onClose={() => setShowComparison(false)}
+                formatters={formatters}
+              />
+            )}
+          </div>
+        </ResizablePanel>
+      </ResizablePanelGroup>
+      
+      {/* Model details dialog */}
+      <Dialog open={modelDetailsOpen} onOpenChange={setModelDetailsOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Model Details</DialogTitle>
+            <DialogDescription>
+              Detailed information about the selected forecast model
+            </DialogDescription>
+          </DialogHeader>
+          {modelDetailsLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+              <p className="ml-2">Loading model details...</p>
+            </div>
+          ) : selectedModelDetails ? (
+            <ModelDetailsView model={selectedModelDetails} formatters={formatters} />
+          ) : (
+            <p className="text-muted-foreground text-center py-4">
+              No model details available
+            </p>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 };
 

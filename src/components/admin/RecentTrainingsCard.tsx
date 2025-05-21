@@ -1,376 +1,408 @@
 
-import React, { useState, useMemo } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import React from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, AlertCircle, Clock, Trash2, Search, ArrowDownAZ, ArrowUpAZ, ChevronDown, BadgeCheck, Info } from "lucide-react";
 import { TableSkeleton } from "@/components/ui/table-skeleton";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { toast } from "@/components/ui/sonner";
+import { AlertCircle, CheckCircle, ChevronDown, ChevronUp, Eye, Info, RefreshCw, Trash2 } from "lucide-react";
+import { Pollutant } from "@/lib/types";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { cn } from "@/lib/utils";
 import { modelApi } from "@/lib/api";
+import { toast } from "@/components/ui/sonner";
 
-// Interface for a training record
 export interface TrainingRecord {
-  id: string;            // Added model ID for deletion
+  id: string;
   region: string;
-  pollutant: string;
-  date: string; // ISO string
+  pollutant: Pollutant;
+  date: string;
   status: "complete" | "in-progress" | "failed";
-  frequency?: string; // Optional: frequency used (D, W, M, Y)
-  periods?: number;   // Optional: number of future periods
-  datasetSize?: string; // Optional: size of dataset used for training
-  accuracy_mae?: number; // Added: Mean Absolute Error
-  accuracy_rmse?: number; // Added: Root Mean Squared Error
+  frequency?: string;
+  periods?: number;
+  accuracy_mae?: number;
+  accuracy_rmse?: number;
 }
 
 interface RecentTrainingsCardProps {
   recentTrainings: TrainingRecord[];
   formatters: {
-    getRegionLabel: (regionValue: string) => string;
-    getPollutantDisplay: (pollutantCode: string) => string;
-    formatDate: (dateString?: string) => string;
+    formatDate: (date?: string) => string;
+    getRegionLabel: (region: string) => string;
+    getPollutantDisplay: (pollutant: string) => string;
+    getFrequencyDisplay: (frequency: string) => string;
   };
-  isLoading?: boolean;
-  onModelDeleted?: () => void; // Callback for when a model is deleted
+  isLoading: boolean;
+  onModelDeleted: () => void;
+  onViewDetails?: (modelId: string) => void;
+  modelsToCompare?: string[];
+  onToggleCompare?: (modelId: string) => void;
 }
-
-type SortOption = "newest" | "oldest" | "region-asc" | "region-desc";
 
 const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
   recentTrainings,
   formatters,
-  isLoading = false,
-  onModelDeleted
+  isLoading,
+  onModelDeleted,
+  onViewDetails,
+  modelsToCompare = [],
+  onToggleCompare
 }) => {
-  // State for confirmation dialog
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [modelToDelete, setModelToDelete] = useState<string | null>(null);
-  
-  // State for search and sort
-  const [searchText, setSearchText] = useState("");
-  const [sortOption, setSortOption] = useState<SortOption>("newest");
-  
-  // Helper function for badge styling
-  const getBadgeStyle = (status: string) => {
-    switch (status) {
-      case "complete":
-        return "bg-green-100 text-green-800 border-green-200";
-      case "in-progress":
-        return "bg-yellow-100 text-yellow-800 border-yellow-200";
-      case "failed":
-        return "bg-red-100 text-red-800 border-red-200";
-      default:
-        return "";
-    }
-  };
+  const [deletingId, setDeletingId] = React.useState<string | null>(null);
 
-  // Get accuracy class based on value
-  const getAccuracyClass = (value: number | undefined): string => {
-    if (value === undefined) return "text-gray-500";
-    if (value < 5) return "text-green-600";
-    if (value < 10) return "text-yellow-600";
-    return "text-red-600";
-  };
-
-  // Format frequency display
-  const getFrequencyLabel = (freq?: string) => {
-    if (!freq) return "Daily";
+  // Group models by region
+  const modelsByRegion = React.useMemo(() => {
+    const grouped: Record<string, TrainingRecord[]> = {};
     
-    const map: Record<string, string> = {
-      "D": "Daily",
-      "W": "Weekly", 
-      "M": "Monthly",
-      "Y": "Yearly"
-    };
+    recentTrainings.forEach(model => {
+      const regionKey = model.region || 'unknown';
+      if (!grouped[regionKey]) {
+        grouped[regionKey] = [];
+      }
+      grouped[regionKey].push(model);
+    });
     
-    return map[freq] || freq;
-  };
-
-  // Format forecast range
-  const getForecastRange = (frequency?: string, periods?: number) => {
-    if (!frequency || !periods) return "N/A";
-    
-    const unit = {
-      "D": "days",
-      "W": "weeks",
-      "M": "months",
-      "Y": "years"
-    }[frequency] || "periods";
-    
-    return `Next ${periods} ${unit}`;
-  };
-
-  // Helper function for status icon
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "complete":
-        return <CheckCircle size={14} className="mr-1" />;
-      case "in-progress":
-        return <Clock size={14} className="mr-1" />;
-      case "failed":
-        return <AlertCircle size={14} className="mr-1" />;
-      default:
-        return null;
-    }
-  };
+    // Sort regions alphabetically
+    return Object.keys(grouped).sort().reduce((acc, region) => {
+      acc[region] = grouped[region].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      return acc;
+    }, {} as Record<string, TrainingRecord[]>);
+  }, [recentTrainings]);
 
   // Handle model deletion
-  const handleDeleteConfirm = async () => {
-    if (!modelToDelete) return;
-    
+  const handleDeleteModel = async (modelId: string) => {
+    setDeletingId(modelId);
     try {
-      const response = await modelApi.delete(modelToDelete);
+      const response = await modelApi.delete(modelId);
       if (response.success) {
         toast.success("Model deleted successfully");
-        if (onModelDeleted) {
-          onModelDeleted();
-        }
+        onModelDeleted();
       } else {
         toast.error(response.error || "Failed to delete model");
       }
     } catch (error) {
       console.error("Error deleting model:", error);
-      toast.error("An error occurred while deleting the model");
-    }
-    
-    setDeleteDialogOpen(false);
-    setModelToDelete(null);
-  };
-
-  // Handle delete button click
-  const handleDeleteClick = (id: string) => {
-    setModelToDelete(id);
-    setDeleteDialogOpen(true);
-  };
-
-  // Get sort option label
-  const getSortOptionLabel = (option: SortOption): string => {
-    switch (option) {
-      case "newest": return "Newest First";
-      case "oldest": return "Oldest First";
-      case "region-asc": return "Region A–Z";
-      case "region-desc": return "Region Z–A";
-      default: return "Sort By";
+      toast.error("Failed to delete model");
+    } finally {
+      setDeletingId(null);
     }
   };
 
-  // Filter and sort trainings
-  const filteredAndSortedTrainings = useMemo(() => {
-    // First filter by search text
-    const filtered = searchText.trim() === "" 
-      ? recentTrainings
-      : recentTrainings.filter(training => 
-          formatters.getRegionLabel(training.region)
-            .toLowerCase()
-            .includes(searchText.toLowerCase()));
-    
-    // Then sort based on sortOption
-    return [...filtered].sort((a, b) => {
-      switch (sortOption) {
-        case "newest":
-          return new Date(b.date).getTime() - new Date(a.date).getTime();
-        case "oldest":
-          return new Date(a.date).getTime() - new Date(b.date).getTime();
-        case "region-asc":
-          return formatters.getRegionLabel(a.region).localeCompare(formatters.getRegionLabel(b.region));
-        case "region-desc":
-          return formatters.getRegionLabel(b.region).localeCompare(formatters.getRegionLabel(a.region));
-        default:
-          return 0;
-      }
-    });
-  }, [recentTrainings, searchText, sortOption, formatters]);
+  // Get status display badge
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "complete":
+        return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200"><CheckCircle className="mr-1 h-3 w-3" /> Complete</Badge>;
+      case "in-progress":
+        return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200"><RefreshCw className="mr-1 h-3 w-3 animate-spin" /> Training</Badge>;
+      case "failed":
+        return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200"><AlertCircle className="mr-1 h-3 w-3" /> Failed</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
+  };
 
-  return (
-    <TooltipProvider>
+  // Get accuracy metrics display
+  const getAccuracyMetrics = (model: TrainingRecord) => {
+    if (!model.accuracy_mae && !model.accuracy_rmse) return "Not available";
+    
+    return (
+      <div className="flex flex-col space-y-1">
+        {model.accuracy_mae !== undefined && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center space-x-1 text-xs">
+                  <span className="font-medium">MAE:</span>
+                  <span>{model.accuracy_mae.toFixed(2)}</span>
+                  <Info className="h-3 w-3 text-muted-foreground" />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                <p className="max-w-xs text-xs">
+                  Mean Absolute Error: Average magnitude of errors in units.
+                  Lower values indicate better accuracy.
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
+        
+        {model.accuracy_rmse !== undefined && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center space-x-1 text-xs">
+                  <span className="font-medium">RMSE:</span>
+                  <span>{model.accuracy_rmse.toFixed(2)}</span>
+                  <Info className="h-3 w-3 text-muted-foreground" />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                <p className="max-w-xs text-xs">
+                  Root Mean Squared Error: Standard deviation of prediction errors.
+                  More weight to larger errors.
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
+      </div>
+    );
+  };
+  
+  // Render loading skeleton
+  if (isLoading && recentTrainings.length === 0) {
+    return (
       <Card>
         <CardHeader>
-          <CardTitle>Recent Model Trainings</CardTitle>
-          <CardDescription>Recently trained forecasting models</CardDescription>
-          
-          {/* Filter and Sort Controls */}
-          <div className="mt-4 flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-grow max-w-md">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by region name..."
-                className="pl-9"
-                value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
-              />
-            </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="flex-shrink-0 min-w-[140px] justify-between">
-                  {getSortOptionLabel(sortOption)}
-                  <ChevronDown className="h-4 w-4 ml-2 opacity-50" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setSortOption("newest")}>
-                  <Clock className="mr-2 h-4 w-4" />
-                  Newest First
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setSortOption("oldest")}>
-                  <Clock className="mr-2 h-4 w-4" />
-                  Oldest First
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setSortOption("region-asc")}>
-                  <ArrowDownAZ className="mr-2 h-4 w-4" />
-                  Region A–Z
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setSortOption("region-desc")}>
-                  <ArrowUpAZ className="mr-2 h-4 w-4" />
-                  Region Z–A
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+          <CardTitle className="text-lg">Recent Trainings</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            {isLoading ? (
-              <TableSkeleton columns={7} rows={3} />
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Region</TableHead>
-                    <TableHead>Pollutant</TableHead>
-                    <TableHead>Frequency</TableHead>
-                    <TableHead>Forecast Range</TableHead>
-                    <TableHead>
-                      <div className="flex items-center">
-                        Accuracy
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Info className="h-3.5 w-3.5 ml-1 text-muted-foreground" />
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p className="text-xs">MAE: Mean Absolute Error</p>
-                            <p className="text-xs">RMSE: Root Mean Square Error</p>
-                            <p className="text-xs mt-1">Lower values indicate better accuracy</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </div>
-                    </TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="w-[80px]">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredAndSortedTrainings.length > 0 ? (
-                    filteredAndSortedTrainings.map((training, index) => (
-                      <TableRow key={index}>
-                        <TableCell>{formatters.getRegionLabel(training.region)}</TableCell>
-                        <TableCell>{formatters.getPollutantDisplay(training.pollutant)}</TableCell>
-                        <TableCell>{getFrequencyLabel(training.frequency)}</TableCell>
-                        <TableCell>{getForecastRange(training.frequency, training.periods)}</TableCell>
-                        <TableCell>
-                          {training.accuracy_mae !== undefined || training.accuracy_rmse !== undefined ? (
-                            <div className="space-y-1">
-                              {training.accuracy_mae !== undefined && (
-                                <div className="flex items-center">
-                                  <Badge variant="outline" className="py-0 h-5 text-xs font-normal">
-                                    <BadgeCheck className="mr-1 h-3 w-3" />
-                                    <span className={getAccuracyClass(training.accuracy_mae)}>
-                                      MAE: {training.accuracy_mae.toFixed(2)}
-                                    </span>
-                                  </Badge>
-                                </div>
-                              )}
-                              {training.accuracy_rmse !== undefined && (
-                                <div className="flex items-center">
-                                  <Badge variant="outline" className="py-0 h-5 text-xs font-normal">
-                                    <BadgeCheck className="mr-1 h-3 w-3" />
-                                    <span className={getAccuracyClass(training.accuracy_rmse)}>
-                                      RMSE: {training.accuracy_rmse.toFixed(2)}
-                                    </span>
-                                  </Badge>
-                                </div>
-                              )}
-                            </div>
-                          ) : (
-                            "N/A"
-                          )}
-                        </TableCell>
-                        <TableCell>{formatters.formatDate(training.date)}</TableCell>
-                        <TableCell>
-                          <Badge 
-                            variant="outline" 
-                            className={getBadgeStyle(training.status)}
-                          >
-                            {getStatusIcon(training.status)}
-                            {training.status.charAt(0).toUpperCase() + training.status.slice(1)}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-8 w-8 p-0"
-                            onClick={() => handleDeleteClick(training.id)}
-                          >
-                            <span className="sr-only">Delete</span>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={8} className="text-center text-muted-foreground py-6">
-                        {searchText.trim() !== "" ? "No models match your search" : "No recent model trainings"}
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            )}
-          </div>
+          <TableSkeleton columns={5} rows={3} />
         </CardContent>
       </Card>
-
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Model</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete this model? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteConfirm}>Delete</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </TooltipProvider>
+    );
+  }
+  
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-lg">Trained Models</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Tabs defaultValue="grouped" className="w-full">
+          <TabsList className="mb-4">
+            <TabsTrigger value="grouped">By Region</TabsTrigger>
+            <TabsTrigger value="flat">All Models</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="grouped">
+            {Object.keys(modelsByRegion).length > 0 ? (
+              <Accordion type="multiple" defaultValue={[Object.keys(modelsByRegion)[0]]}>
+                {Object.keys(modelsByRegion).map((region) => (
+                  <AccordionItem key={region} value={region}>
+                    <AccordionTrigger className="hover:no-underline">
+                      <div className="flex items-center space-x-2">
+                        <span>{formatters.getRegionLabel(region)}</span>
+                        <Badge variant="outline">
+                          {modelsByRegion[region].length}
+                        </Badge>
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              {onToggleCompare && (
+                                <TableHead className="w-10"></TableHead>
+                              )}
+                              <TableHead>Pollutant</TableHead>
+                              <TableHead>Frequency</TableHead>
+                              <TableHead>Status</TableHead>
+                              <TableHead>Metrics</TableHead>
+                              <TableHead>Created</TableHead>
+                              <TableHead className="w-[100px]">Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {modelsByRegion[region].map((model) => (
+                              <TableRow key={model.id} className={cn(model.status === "failed" && "bg-red-50/30")}>
+                                {onToggleCompare && (
+                                  <TableCell>
+                                    <Checkbox 
+                                      checked={modelsToCompare.includes(model.id)}
+                                      onCheckedChange={() => onToggleCompare(model.id)}
+                                      disabled={model.status !== "complete"}
+                                    />
+                                  </TableCell>
+                                )}
+                                <TableCell className="font-medium">
+                                  {formatters.getPollutantDisplay(model.pollutant)}
+                                </TableCell>
+                                <TableCell>
+                                  {model.frequency ? formatters.getFrequencyDisplay(model.frequency) : "N/A"}
+                                  {model.periods && <span className="text-xs text-muted-foreground ml-1">({model.periods})</span>}
+                                </TableCell>
+                                <TableCell>{getStatusBadge(model.status)}</TableCell>
+                                <TableCell>{getAccuracyMetrics(model)}</TableCell>
+                                <TableCell className="text-xs text-muted-foreground">
+                                  {formatters.formatDate(model.date)}
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex space-x-2">
+                                    {onViewDetails && (
+                                      <Button 
+                                        variant="outline" 
+                                        size="icon"
+                                        onClick={() => onViewDetails(model.id)}
+                                        disabled={model.status !== "complete"}
+                                      >
+                                        <Eye size={16} />
+                                      </Button>
+                                    )}
+                                    
+                                    <AlertDialog>
+                                      <AlertDialogTrigger asChild>
+                                        <Button 
+                                          variant="outline" 
+                                          size="icon"
+                                          disabled={deletingId === model.id}
+                                        >
+                                          {deletingId === model.id ? (
+                                            <RefreshCw size={16} className="animate-spin text-destructive" />
+                                          ) : (
+                                            <Trash2 size={16} className="text-destructive" />
+                                          )}
+                                        </Button>
+                                      </AlertDialogTrigger>
+                                      <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                          <AlertDialogTitle>Delete Model</AlertDialogTitle>
+                                          <AlertDialogDescription>
+                                            Are you sure you want to delete this model?
+                                            This action cannot be undone.
+                                          </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                          <AlertDialogAction
+                                            onClick={() => handleDeleteModel(model.id)}
+                                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                          >
+                                            Delete
+                                          </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                      </AlertDialogContent>
+                                    </AlertDialog>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                ))}
+              </Accordion>
+            ) : (
+              <div className="py-8 text-center text-muted-foreground">
+                <p>No trained models available</p>
+              </div>
+            )}
+          </TabsContent>
+          
+          <TabsContent value="flat">
+            {recentTrainings.length > 0 ? (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      {onToggleCompare && (
+                        <TableHead className="w-10"></TableHead>
+                      )}
+                      <TableHead>Region</TableHead>
+                      <TableHead>Pollutant</TableHead>
+                      <TableHead>Frequency</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Metrics</TableHead>
+                      <TableHead>Created</TableHead>
+                      <TableHead className="w-[100px]">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {recentTrainings.map((model) => (
+                      <TableRow key={model.id} className={cn(model.status === "failed" && "bg-red-50/30")}>
+                        {onToggleCompare && (
+                          <TableCell>
+                            <Checkbox 
+                              checked={modelsToCompare.includes(model.id)}
+                              onCheckedChange={() => onToggleCompare(model.id)}
+                              disabled={model.status !== "complete"}
+                            />
+                          </TableCell>
+                        )}
+                        <TableCell>{formatters.getRegionLabel(model.region)}</TableCell>
+                        <TableCell className="font-medium">
+                          {formatters.getPollutantDisplay(model.pollutant)}
+                        </TableCell>
+                        <TableCell>
+                          {model.frequency ? formatters.getFrequencyDisplay(model.frequency) : "N/A"}
+                          {model.periods && <span className="text-xs text-muted-foreground ml-1">({model.periods})</span>}
+                        </TableCell>
+                        <TableCell>{getStatusBadge(model.status)}</TableCell>
+                        <TableCell>{getAccuracyMetrics(model)}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {formatters.formatDate(model.date)}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex space-x-2">
+                            {onViewDetails && (
+                              <Button 
+                                variant="outline" 
+                                size="icon"
+                                onClick={() => onViewDetails(model.id)}
+                                disabled={model.status !== "complete"}
+                              >
+                                <Eye size={16} />
+                              </Button>
+                            )}
+                            
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button 
+                                  variant="outline" 
+                                  size="icon"
+                                  disabled={deletingId === model.id}
+                                >
+                                  {deletingId === model.id ? (
+                                    <RefreshCw size={16} className="animate-spin text-destructive" />
+                                  ) : (
+                                    <Trash2 size={16} className="text-destructive" />
+                                  )}
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete Model</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Are you sure you want to delete this model?
+                                    This action cannot be undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => handleDeleteModel(model.id)}
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  >
+                                    Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : (
+              <div className="py-8 text-center text-muted-foreground">
+                <p>No trained models available</p>
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
+      </CardContent>
+    </Card>
   );
 };
 
