@@ -21,7 +21,7 @@ export interface TrainingRecord {
   region: string;
   pollutant: Pollutant;
   date: string;
-  status: "complete" | "in-progress" | "failed";
+  status: "complete" | "ready" | "in-progress" | "failed";
   frequency?: string;
   periods?: number;
   accuracy_mae?: number;
@@ -96,6 +96,7 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "complete":
+      case "ready":
         return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200"><CheckCircle className="mr-1 h-3 w-3" /> Complete</Badge>;
       case "in-progress":
         return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200"><RefreshCw className="mr-1 h-3 w-3 animate-spin" /> Training</Badge>;
@@ -104,6 +105,11 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
+  };
+
+  // Function to check if a model is viewable (status is complete or ready)
+  const isModelViewable = (status: string) => {
+    return status === "complete" || status === "ready";
   };
 
   // Get accuracy metrics display
@@ -218,7 +224,7 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
                                     <Checkbox 
                                       checked={modelsToCompare.includes(model.id)}
                                       onCheckedChange={() => onToggleCompare(model.id)}
-                                      disabled={model.status !== "complete"}
+                                      disabled={!isModelViewable(model.status)}
                                     />
                                   </TableCell>
                                 )}
@@ -241,7 +247,7 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
                                         variant="outline" 
                                         size="icon"
                                         onClick={() => onViewDetails(model.id)}
-                                        disabled={model.status !== "complete"}
+                                        disabled={!isModelViewable(model.status)}
                                       >
                                         <Eye size={16} />
                                       </Button>
@@ -324,7 +330,7 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
                             <Checkbox 
                               checked={modelsToCompare.includes(model.id)}
                               onCheckedChange={() => onToggleCompare(model.id)}
-                              disabled={model.status !== "complete"}
+                              disabled={!isModelViewable(model.status)}
                             />
                           </TableCell>
                         )}
@@ -348,7 +354,7 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
                                 variant="outline" 
                                 size="icon"
                                 onClick={() => onViewDetails(model.id)}
-                                disabled={model.status !== "complete"}
+                                disabled={!isModelViewable(model.status)}
                               >
                                 <Eye size={16} />
                               </Button>
