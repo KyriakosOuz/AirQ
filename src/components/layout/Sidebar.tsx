@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -156,7 +155,7 @@ const DesktopSidebar: React.FC = () => {
                 variant="outline" 
                 size="icon" 
                 onClick={toggleSidebar}
-                className="h-7 w-7 rounded-full bg-background shadow-sm border-sidebar-border hover:bg-sidebar-accent"
+                className="h-7 w-7 rounded-full bg-background shadow-sm border-sidebar-border hover:bg-sidebar-accent hover:text-sidebar-primary"
               >
                 {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
                 <span className="sr-only">
