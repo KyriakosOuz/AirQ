@@ -6,6 +6,7 @@ import { Separator } from "@/components/ui/separator";
 import { AlertCircle, Info } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
+// Update the ModelDetails interface to match the one in ModelTrainingTab.tsx
 interface ModelDetails {
   id: string;
   region: string;

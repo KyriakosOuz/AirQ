@@ -1,4 +1,3 @@
-
 // Add the created_at field to the Dataset interface
 export interface Dataset {
   id: string;
@@ -102,3 +101,17 @@ export interface ForecastDataPoint {
   category?: string;
 }
 
+// Define the model details interface
+export interface ModelDetails {
+  id: string;
+  region: string;
+  pollutant: string;
+  frequency: string;
+  forecast_periods: number;
+  created_at: string;
+  trained_by?: string;
+  status: "complete" | "ready" | "in-progress" | "failed";
+  accuracy_mae?: number;
+  accuracy_rmse?: number;
+  model_type?: string;
+}

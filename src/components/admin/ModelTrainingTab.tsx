@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { toast } from "@/components/ui/sonner";
 import { modelApi } from "@/lib/api";
-import { Pollutant } from "@/lib/types";
+import { Pollutant, ModelDetails } from "@/lib/types";
 import TrainModelCard from "./TrainModelCard";
 import RecentTrainingsCard, { TrainingRecord } from "./RecentTrainingsCard";
 import ForecastPreview, { ForecastDataPoint } from "./ForecastPreview";
@@ -43,21 +43,6 @@ interface ModelMetadataFilters {
     pollutant: string;
     frequency: string;
   }>;
-}
-
-// Interface for model details
-interface ModelDetails {
-  id: string;
-  region: string;
-  pollutant: string;
-  frequency: string;
-  forecast_periods: number;
-  created_at: string;
-  trained_by?: string;
-  status: string;
-  accuracy_mae?: number;
-  accuracy_rmse?: number;
-  model_type?: string;
 }
 
 // Frequency options with their display labels and available ranges
