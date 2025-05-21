@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Pollutant } from "@/lib/types";
-import { AlertCircle, Clock, InfoCircle, RefreshCw } from "lucide-react";
+import { AlertCircle, Clock, RefreshCw } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -119,9 +118,7 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
           <Label htmlFor="region" className="text-xs">Region</Label>
           <RegionSelector 
             value={trainRegion} 
-            onValueChange={setTrainRegion} 
-            // Optional: Use available regions from metadata
-            regions={regions.length > 0 ? regions : undefined}
+            onValueChange={setTrainRegion}
             disabled={filtersLoading}
           />
         </div>
@@ -130,9 +127,7 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
           <Label htmlFor="pollutant" className="text-xs">Pollutant</Label>
           <PollutantSelector 
             value={trainPollutant} 
-            onValueChange={setTrainPollutant} 
-            // Optional: Use available pollutants from metadata
-            pollutants={pollutants.length > 0 ? pollutants.map(p => p as Pollutant) : undefined}
+            onValueChange={setTrainPollutant}
             disabled={filtersLoading}
           />
         </div>
