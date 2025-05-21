@@ -14,6 +14,7 @@ import ModelComparisonView from "./ModelComparisonView";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Badge } from "@/components/ui/badge";
 
 // Interface for model training API response
 interface ModelTrainingResponse {
