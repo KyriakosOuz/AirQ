@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -136,8 +137,8 @@ const DesktopSidebar: React.FC = () => {
   
   return (
     <SidebarComponent variant="sidebar" collapsible="icon">
-      <SidebarHeader className="p-4 flex items-center justify-between">
-        <div className="flex items-center">
+      <SidebarHeader className="p-4 flex items-center">
+        <div className="flex items-start">
           <img 
             src="/lovable-uploads/a95d6ea6-5b37-4d78-aa50-114b5e7537d2.png" 
             alt="AirQ Logo" 
