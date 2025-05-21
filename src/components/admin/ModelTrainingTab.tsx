@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -498,6 +497,7 @@ const ModelTrainingTab: React.FC = () => {
                 status: selectedModel.status === "training" ? "in-progress" : selectedModel.status
               }}
               formatters={formatters}
+              onClose={() => setSelectedModel(null)}
             />
           )}
         </div>
