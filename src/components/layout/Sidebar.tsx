@@ -27,7 +27,6 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarProvider,
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
@@ -53,21 +52,14 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 export const Sidebar: React.FC = () => {
   const location = useLocation();
   const isMobile = useIsMobile();
-  const { user, isAdmin, logout } = useUserStore();
-
-  // Get user initials for avatar
-  const getUserInitials = () => {
-    if (!user?.email) return "U";
-    const parts = user.email.split("@");
-    return parts[0].substring(0, 2).toUpperCase();
-  };
+  const { user, isAdmin } = useUserStore();
 
   // Mobile view uses Sheet component
   if (isMobile) {
     return (
       <Sheet>
         <SheetTrigger asChild>
-          <Button variant="ghost" size="icon" className="md:hidden">
+          <Button variant="ghost" size="icon" className="md:hidden fixed top-4 left-4 z-10">
             <Menu size={24} />
             <span className="sr-only">Toggle Menu</span>
           </Button>
@@ -79,12 +71,8 @@ export const Sidebar: React.FC = () => {
     );
   }
 
-  // Desktop view uses SidebarProvider component
-  return (
-    <SidebarProvider defaultOpen={true}>
-      <DesktopSidebar />
-    </SidebarProvider>
-  );
+  // Desktop view uses SidebarComponent directly
+  return <DesktopSidebar />;
 };
 
 // Mobile sidebar content
@@ -148,7 +136,7 @@ const DesktopSidebar: React.FC = () => {
   const isCollapsed = state === "collapsed";
   
   return (
-    <SidebarComponent>
+    <SidebarComponent variant="sidebar" collapsible="icon">
       <SidebarHeader className="flex items-center justify-between p-4">
         <div className="flex items-center overflow-hidden">
           <img 
@@ -159,12 +147,15 @@ const DesktopSidebar: React.FC = () => {
               isCollapsed ? "h-8 w-8" : "h-8"
             )}
           />
+          {!isCollapsed && (
+            <span className="ml-2 text-lg font-semibold">AirQ</span>
+          )}
         </div>
         <Button 
           variant="ghost" 
           size="sm" 
           onClick={toggleSidebar}
-          className="ml-auto h-8 w-8 p-0 text-sidebar-foreground"
+          className="h-8 w-8 p-0 text-sidebar-foreground"
         >
           {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
           <span className="sr-only">
@@ -190,18 +181,14 @@ const SidebarNavigation: React.FC = () => {
   const isCollapsed = state === "collapsed";
   
   return (
-    <>
-      <SidebarGroup>
-        <SidebarGroupLabel>Navigation</SidebarGroupLabel>
-        <SidebarGroupContent>
-          <SidebarMenu>
-            <TooltipProvider delayDuration={300}>
-              <NavigationLinks location={location} isAdmin={isAdmin} collapsed={isCollapsed} />
-            </TooltipProvider>
-          </SidebarMenu>
-        </SidebarGroupContent>
-      </SidebarGroup>
-    </>
+    <SidebarGroup>
+      <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+      <SidebarGroupContent>
+        <SidebarMenu>
+          <NavigationLinks location={location} isAdmin={isAdmin} collapsed={isCollapsed} />
+        </SidebarMenu>
+      </SidebarGroupContent>
+    </SidebarGroup>
   );
 };
 
@@ -255,21 +242,13 @@ const NavigationLinks: React.FC<{
       return (
         <Tooltip key={item.path}>
           <TooltipTrigger asChild>
-            <Link
-              to={item.path}
-              className={cn(
-                "flex h-9 w-9 items-center justify-center rounded-md transition-colors",
-                isActive 
-                  ? "bg-primary text-primary-foreground" 
-                  : "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                "relative"
-              )}
-            >
-              {isActive && (
-                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-4 bg-primary rounded-r-sm" />
-              )}
-              {item.icon}
-            </Link>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild tooltip={item.name} isActive={isActive}>
+                <Link to={item.path}>
+                  {item.icon}
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
           </TooltipTrigger>
           <TooltipContent side="right">{item.name}</TooltipContent>
         </Tooltip>
@@ -282,10 +261,7 @@ const NavigationLinks: React.FC<{
           asChild
           isActive={isActive}
         >
-          <Link to={item.path} className="relative">
-            {isActive && (
-              <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-4 bg-primary rounded-r-sm" />
-            )}
+          <Link to={item.path}>
             {item.icon}
             <span>{item.name}</span>
           </Link>
@@ -316,12 +292,6 @@ const UserProfileFooter: React.FC = () => {
   
   if (!user) return null;
   
-  const getUserInitials = () => {
-    if (!user.email) return "U";
-    const parts = user.email.split("@");
-    return parts[0].substring(0, 2).toUpperCase();
-  };
-  
   if (isCollapsed) {
     return (
       <SidebarFooter className="p-2">
@@ -331,7 +301,7 @@ const UserProfileFooter: React.FC = () => {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full">
                   <Avatar className="h-9 w-9">
-                    <AvatarFallback>{getUserInitials()}</AvatarFallback>
+                    <AvatarFallback>{getUserInitials(user)}</AvatarFallback>
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
@@ -363,7 +333,7 @@ const UserProfileFooter: React.FC = () => {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="p-0 h-10 w-10 rounded-full">
               <Avatar>
-                <AvatarFallback>{getUserInitials()}</AvatarFallback>
+                <AvatarFallback>{getUserInitials(user)}</AvatarFallback>
               </Avatar>
             </Button>
           </DropdownMenuTrigger>
