@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Pollutant } from "@/lib/types";
 import { toast } from "sonner";
@@ -295,6 +294,36 @@ const ModelTrainingTab: React.FC = () => {
     }
   };
 
+  // Create a model adapter function to convert TrainingRecord to the format expected by ModelComparisonView
+  const adaptModelsForComparison = () => {
+    return recentTrainings
+      .filter(model => modelsToCompare.includes(model.id))
+      .map(model => ({
+        id: model.id,
+        region: model.region,
+        pollutant: model.pollutant,
+        frequency: model.frequency || 'daily',
+        forecast: model.forecast || [] // Assuming an empty array if forecast is undefined
+      }));
+  };
+
+  // Convert a TrainingRecord to ModelDetails
+  const adaptModelToDetails = (model: TrainingRecord) => {
+    return {
+      id: model.id,
+      region: model.region,
+      pollutant: model.pollutant,
+      frequency: model.frequency || 'daily',
+      forecast_periods: model.forecast_periods || 0,
+      created_at: model.created_at || '',
+      trained_by: model.trained_by,
+      status: model.status || '',
+      accuracy_mae: model.accuracy_mae,
+      accuracy_rmse: model.accuracy_rmse,
+      model_type: model.model_type
+    };
+  };
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
@@ -356,7 +385,7 @@ const ModelTrainingTab: React.FC = () => {
       {/* Model Comparison Dialog */}
       {showComparison && (
         <ModelComparisonView
-          data={{ models: recentTrainings.filter(t => modelsToCompare.includes(t.id)) }}
+          data={{ models: adaptModelsForComparison() }}
           onClose={() => setShowComparison(false)}
           formatters={formatters}
         />
@@ -365,15 +394,19 @@ const ModelTrainingTab: React.FC = () => {
       {/* Model Details Dialog */}
       {showModelDetails && selectedModelId && (
         <ModelDetailsView
-          model={recentTrainings.find(t => t.id === selectedModelId) || { 
-            id: "", 
-            region: "", 
-            pollutant: "", 
-            frequency: "", 
-            forecast_periods: 0, 
-            created_at: "", 
-            status: "" 
-          }}
+          model={
+            recentTrainings.find(t => t.id === selectedModelId) 
+              ? adaptModelToDetails(recentTrainings.find(t => t.id === selectedModelId)!)
+              : { 
+                  id: "", 
+                  region: "", 
+                  pollutant: "", 
+                  frequency: "", 
+                  forecast_periods: 0, 
+                  created_at: "", 
+                  status: "" 
+                }
+          }
           formatters={formatters}
         />
       )}
