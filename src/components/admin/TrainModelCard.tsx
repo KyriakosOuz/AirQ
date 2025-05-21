@@ -98,7 +98,7 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
             <SelectContent>
               {frequencyOptions.map((option) => (
                 <SelectItem key={option.value} value={option.value}>
-                  {option.label} ({option.value})
+                  {option.label}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -142,9 +142,9 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
           )}
           
           <p className="text-xs text-muted-foreground">
-            Forecasting {trainPeriods} {trainFrequency === "D" ? "days" : 
-                          trainFrequency === "W" ? "weeks" : 
-                          trainFrequency === "M" ? "months" : "years"} ahead
+            Forecasting {trainPeriods} {trainFrequency === "daily" ? "days" : 
+                         trainFrequency === "weekly" ? "weeks" : 
+                         trainFrequency === "monthly" ? "months" : "years"} ahead
           </p>
         </div>
         

@@ -35,17 +35,17 @@ interface ModelData {
 
 // Frequency options with their display labels and available ranges
 const FREQUENCY_OPTIONS = [
-  { value: "D", label: "Daily", ranges: [7, 14, 30, 60, 90, 180, 365] },
-  { value: "W", label: "Weekly", ranges: [4, 12, 26, 52] },
-  { value: "M", label: "Monthly", ranges: [3, 6, 12, 24] },
-  { value: "Y", label: "Yearly", ranges: [1, 2, 3, 5] },
+  { value: "daily", label: "Daily", ranges: [7, 14, 30, 60, 90, 180, 365] },
+  { value: "weekly", label: "Weekly", ranges: [4, 12, 26, 52] },
+  { value: "monthly", label: "Monthly", ranges: [3, 6, 12, 24] },
+  { value: "yearly", label: "Yearly", ranges: [1, 2, 3, 5] },
 ];
 
 const ModelTrainingTab: React.FC = () => {
   // State for the training form
   const [trainRegion, setTrainRegion] = useState("thessaloniki");
   const [trainPollutant, setTrainPollutant] = useState<Pollutant>("no2_conc");
-  const [trainFrequency, setTrainFrequency] = useState("D"); // Default: Daily
+  const [trainFrequency, setTrainFrequency] = useState("daily"); // Default: Daily
   const [trainPeriods, setTrainPeriods] = useState(365); // Default: 365 periods
   const [trainLoading, setTrainLoading] = useState(false);
   const [overwriteModel, setOverwriteModel] = useState(false); // New state for the overwrite option
@@ -172,16 +172,16 @@ const ModelTrainingTab: React.FC = () => {
     
     let timeIncrement: number;
     switch (trainFrequency) {
-      case "D": 
+      case "daily": 
         timeIncrement = 86400000; // 1 day in ms
         break;
-      case "W":
+      case "weekly":
         timeIncrement = 604800000; // 1 week in ms
         break;
-      case "M":
+      case "monthly":
         timeIncrement = 2592000000; // ~30 days in ms
         break;
-      case "Y":
+      case "yearly":
         timeIncrement = 31536000000; // ~365 days in ms
         break;
       default:
