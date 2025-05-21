@@ -1,5 +1,6 @@
+
 // Import required packages and components
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -10,6 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { PollutantSelector } from "@/components/ui/pollutant-selector";
 import { AlertCircle, Clock, Info } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { modelApi } from '@/lib/api';
 
 // Updated interface for the frequency option
 export interface FrequencyOption {
@@ -25,6 +27,9 @@ interface ModelMetadataFilters {
     pollutant: string;
     frequency: string;
   }>;
+  regions?: string[];
+  pollutants?: string[];
+  frequencies?: string[];
 }
 
 // Interface for TrainModelCard props
@@ -75,6 +80,21 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
   forecastLoading,
   onPreviewForecast
 }) => {
+  // Check if there's data available for the selected parameters
+  const hasDataForParameters = () => {
+    if (!availableFilters || !availableFilters.available || availableFilters.available.length === 0) {
+      return false;
+    }
+
+    return availableFilters.available.some(
+      item => item.region === trainRegion && 
+              item.pollutant === trainPollutant && 
+              item.frequency === trainFrequency
+    );
+  };
+
+  const dataAvailable = hasDataForParameters();
+
   return (
     <Card className="col-span-1">
       <CardHeader>
@@ -84,12 +104,22 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {availableFilters && availableFilters.available.length === 0 && !filtersLoading && (
+        {availableFilters && availableFilters.available && availableFilters.available.length === 0 && !filtersLoading && (
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
             <AlertTitle>No Datasets Available</AlertTitle>
             <AlertDescription>
               Please upload datasets to train a model.
+            </AlertDescription>
+          </Alert>
+        )}
+        
+        {!dataAvailable && availableFilters && availableFilters.available && availableFilters.available.length > 0 && !filtersLoading && (
+          <Alert variant="warning">
+            <Info className="h-4 w-4" />
+            <AlertTitle>No Data Available</AlertTitle>
+            <AlertDescription>
+              No dataset available for the selected region, pollutant, and frequency.
             </AlertDescription>
           </Alert>
         )}
@@ -165,7 +195,13 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
         <Button 
           className="w-full" 
           onClick={onTrainModel} 
-          disabled={trainLoading || isCheckingModel || filtersLoading || (modelExists && !overwriteModel)}
+          disabled={
+            trainLoading || 
+            isCheckingModel || 
+            filtersLoading || 
+            (modelExists && !overwriteModel) || 
+            !dataAvailable
+          }
         >
           {trainLoading ? (
             <>

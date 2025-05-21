@@ -1,45 +1,18 @@
-import React, { useState, useMemo, useEffect } from "react";
-import { toast } from "@/components/ui/sonner";
-import { modelApi } from "@/lib/api";
-import { Pollutant } from "@/lib/types";
-import TrainModelCard from "./TrainModelCard";
-import RecentTrainingsCard, { TrainingRecord } from "./RecentTrainingsCard";
-import ForecastPreview, { ForecastDataPoint } from "./ForecastPreview";
-import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
-import { Card } from "@/components/ui/card";
-import { AlertCircle } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import ModelDetailsView from "./ModelDetailsView";
-import ModelComparisonView from "./ModelComparisonView";
+
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { modelApi } from "@/lib/api";
+import { toast } from "sonner";
+import { Pollutant } from "@/lib/types";
+import TrainModelCard, { FrequencyOption } from "./TrainModelCard"; 
+import RecentTrainingsCard from "./RecentTrainingsCard";
+import ModelDetailsView from "./ModelDetailsView";
+import ForecastPreview from "./ForecastPreview";
+import ModelComparisonView from "./ModelComparisonView";
 import { Badge } from "@/components/ui/badge";
 
-// Interface for model training API response
-interface ModelTrainingResponse {
-  message?: string;
-  trained_at?: string;
-  forecast?: ForecastDataPoint[];
-  accuracy_mae?: number;
-  accuracy_rmse?: number;
-}
-
-// Interface for model data from API
-interface ModelData {
-  id: string;
-  region: string;
-  pollutant: string;
-  model_type?: string;
-  frequency?: string;
-  forecast_periods?: number;
-  created_at: string;
-  status?: string;
-  accuracy_mae?: number;
-  accuracy_rmse?: number;
-}
-
-// Interface for model metadata filters - updating to ensure properties are always arrays
+// Interface for model metadata filters - ensuring properties are always arrays
 interface ModelMetadataFilters {
   available: Array<{
     region: string;
@@ -59,47 +32,53 @@ interface ModelDetails {
   frequency: string;
   forecast_periods: number;
   created_at: string;
-  trained_by?: string;
-  status: "complete" | "ready" | "in-progress" | "failed"; // Fixed to use string literals
+  status: "ready" | "training" | "failed";
+  model_type: string;
+  file_path: string;
   accuracy_mae?: number;
   accuracy_rmse?: number;
-  model_type?: string;
 }
 
-// Frequency options with their display labels and available ranges
-const FREQUENCY_OPTIONS = [
-  { value: "daily", label: "Daily", ranges: [7, 14, 30, 60, 90, 180, 365] },
-  { value: "weekly", label: "Weekly", ranges: [4, 12, 26, 52] },
-  { value: "monthly", label: "Monthly", ranges: [3, 6, 12, 24] },
-  { value: "yearly", label: "Yearly", ranges: [1, 2, 3, 5] },
+// Define the frequency options with their available ranges
+const FREQUENCY_OPTIONS: FrequencyOption[] = [
+  {
+    value: "daily",
+    label: "Daily",
+    ranges: [3, 7, 14, 30]
+  },
+  {
+    value: "weekly",
+    label: "Weekly",
+    ranges: [4, 8, 12, 24]
+  },
+  {
+    value: "monthly",
+    label: "Monthly",
+    ranges: [3, 6, 12, 24]
+  }
 ];
 
 const ModelTrainingTab: React.FC = () => {
-  // State for the training form
-  const [trainRegion, setTrainRegion] = useState("thessaloniki");
+  // State for model training form
+  const [trainRegion, setTrainRegion] = useState<string>("thessaloniki");
   const [trainPollutant, setTrainPollutant] = useState<Pollutant>("no2_conc");
-  const [trainFrequency, setTrainFrequency] = useState("daily"); // Default: Daily
-  const [trainPeriods, setTrainPeriods] = useState(365); // Default: 365 periods
-  const [trainLoading, setTrainLoading] = useState(false);
-  const [overwriteModel, setOverwriteModel] = useState(false); // State for the overwrite option
+  const [trainFrequency, setTrainFrequency] = useState<string>(FREQUENCY_OPTIONS[0].value);
+  const [trainPeriods, setTrainPeriods] = useState<number>(FREQUENCY_OPTIONS[0].ranges[0]);
+  const [overwriteModel, setOverwriteModel] = useState<boolean>(false);
+  const [trainingError, setTrainingError] = useState<string | null>(null);
+  const [trainLoading, setTrainLoading] = useState<boolean>(false);
+  const [forecastLoading, setForecastLoading] = useState<boolean>(false);
   
-  // State for forecast data and training records
-  const [forecastData, setForecastData] = useState<ForecastDataPoint[]>([]);
-  const [recentTrainings, setRecentTrainings] = useState<TrainingRecord[]>([]);
-  const [modelsLoading, setModelsLoading] = useState(false);
-  const [forecastLoading, setForecastLoading] = useState(false);
-  const [noForecastAvailable, setNoForecastAvailable] = useState(false);
-  const [trainingError, setTrainingError] = useState<string | null>(null); // State to track specific training errors
+  // State for models
+  const [models, setModels] = useState<ModelDetails[]>([]);
+  const [modelsLoading, setModelsLoading] = useState<boolean>(false);
+  const [selectedModel, setSelectedModel] = useState<ModelDetails | null>(null);
+  const [modelExists, setModelExists] = useState<boolean>(false);
+  const [isCheckingModel, setIsCheckingModel] = useState<boolean>(false);
   
-  // New state for model existence check, details, and comparison
-  const [modelExists, setModelExists] = useState(false);
-  const [isCheckingModel, setIsCheckingModel] = useState(false);
-  const [modelDetailsOpen, setModelDetailsOpen] = useState(false);
-  const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
-  const [selectedModelDetails, setSelectedModelDetails] = useState<ModelDetails | null>(null);
-  const [modelDetailsLoading, setModelDetailsLoading] = useState(false);
-  const [modelsToCompare, setModelsToCompare] = useState<string[]>([]);
-  const [allowCrossPollutantComparison, setAllowCrossPollutantComparison] = useState(false);
+  // State for comparing models
+  const [selectedModels, setSelectedModels] = useState<string[]>([]);
+  const [allowCrossPollutantComparison, setAllowCrossPollutantComparison] = useState<boolean>(false);
   const [basePollutant, setBasePollutant] = useState<string | null>(null);
   const [showComparison, setShowComparison] = useState(false);
   const [comparisonData, setComparisonData] = useState<any>(null);
@@ -114,116 +93,118 @@ const ModelTrainingTab: React.FC = () => {
   
   // Get available ranges for the selected frequency
   const availableRanges = useMemo(() => {
-    const selectedFreq = FREQUENCY_OPTIONS.find(opt => opt.value === trainFrequency);
-    return selectedFreq ? selectedFreq.ranges : [365];
+    const frequencyOption = FREQUENCY_OPTIONS.find(option => option.value === trainFrequency);
+    return frequencyOption ? frequencyOption.ranges : [];
   }, [trainFrequency]);
   
-  // Update periods when frequency changes to use the first available range
-  useEffect(() => {
-    if (availableRanges.length > 0) {
-      setTrainPeriods(availableRanges[0]);
-    }
-  }, [trainFrequency, availableRanges]);
-  
-  // Formatters for display values
-  const formatters = useMemo(() => ({
-    // Format date helper
-    formatDate: (dateString?: string): string => {
-      if (!dateString) return 'Unknown';
-      return new Date(dateString).toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-    },
-    
-    // Get region label from value
-    getRegionLabel: (regionValue: string): string => {
-      const regionMap: Record<string, string> = {
-        "thessaloniki": "Thessaloniki Center",
-        "kalamaria": "Kalamaria",
-        "pavlos-melas": "Pavlos Melas",
-        "neapoli-sykies": "Neapoli-Sykies",
-        "ampelokipoi-menemeni": "Ampelokipoi-Menemeni",
-        "panorama": "Panorama",
-        "pylaia-chortiatis": "Pylaia-Chortiatis",
-      };
-      
-      return regionMap[regionValue] || regionValue;
-    },
-    
-    // Get pollutant display name
-    getPollutantDisplay: (pollutantCode: string): string => {
-      const map: Record<string, string> = {
-        "no2_conc": "NO₂",
-        "o3_conc": "O₃",
-        "so2_conc": "SO₂",
-        "pm10_conc": "PM10",
-        "pm25_conc": "PM2.5",
-        "co_conc": "CO",
-        "no_conc": "NO",
-      };
-      return map[pollutantCode] || pollutantCode;
-    },
-
-    // Get frequency display name
-    getFrequencyDisplay: (freqCode: string): string => {
-      const freq = FREQUENCY_OPTIONS.find(f => f.value === freqCode);
-      return freq ? freq.label : freqCode;
-    }
-  }), []);
-
-  // Fetch trained models from API
-  const fetchTrainedModels = async () => {
-    setModelsLoading(true);
+  // Check if a model exists with the current parameters
+  const checkModelExists = useCallback(async () => {
     try {
-      console.log("Fetching trained models...");
+      setIsCheckingModel(true);
+      
+      const response = await modelApi.checkExists({
+        region: trainRegion,
+        pollutant: trainPollutant,
+        frequency: trainFrequency
+      });
+      
+      // Only set modelExists to true if the API explicitly says the model exists
+      if (response.success && response.data && response.data.exists === true) {
+        console.log("Model exists check:", response.data);
+        setModelExists(true);
+      } else {
+        console.log("Model does not exist or check failed:", response);
+        setModelExists(false);
+      }
+    } catch (error) {
+      console.error("Error checking if model exists:", error);
+      setModelExists(false); // Assume model doesn't exist on error
+    } finally {
+      setIsCheckingModel(false);
+    }
+  }, [trainRegion, trainPollutant, trainFrequency]);
+  
+  // Effect to check if a model exists when parameters change
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      checkModelExists();
+    }, 500);
+    
+    return () => clearTimeout(timer);
+  }, [trainRegion, trainPollutant, trainFrequency, checkModelExists]);
+  
+  // Check if data is available for training
+  const isDataAvailableForTraining = useCallback(() => {
+    if (!availableFilters || !availableFilters.available || !Array.isArray(availableFilters.available)) {
+      return false;
+    }
+
+    return availableFilters.available.some(
+      item => item.region === trainRegion && item.pollutant === trainPollutant && item.frequency === trainFrequency
+    );
+  }, [availableFilters, trainRegion, trainPollutant, trainFrequency]);
+
+  // Train a model with the current parameters
+  const trainModel = async () => {
+    try {
+      setTrainingError(null);
+      setTrainLoading(true);
+      
+      // Check if data is available for training
+      if (!isDataAvailableForTraining()) {
+        setTrainingError("No data available for the selected parameters");
+        return;
+      }
+      
+      // Train the model
+      const response = await modelApi.train({
+        region: trainRegion,
+        pollutant: trainPollutant,
+        frequency: trainFrequency,
+        periods: trainPeriods,
+        overwrite: overwriteModel
+      });
+      
+      if (response.success) {
+        toast.success("Model training started");
+        fetchModels();
+      } else {
+        setTrainingError(response.error || "Failed to train model");
+        toast.error(response.error || "Failed to train model");
+      }
+    } catch (error) {
+      console.error("Error training model:", error);
+      setTrainingError(error instanceof Error ? error.message : "Unknown error occurred");
+    } finally {
+      setTrainLoading(false);
+    }
+  };
+  
+  // Fetch the list of trained models
+  const fetchModels = useCallback(async () => {
+    console.log("Fetching trained models...");
+    try {
+      setModelsLoading(true);
       const response = await modelApi.list();
       
       if (response.success && response.data) {
         console.log("Received models data:", response.data);
-        
-        // Convert API model data to TrainingRecord format
-        const trainings: TrainingRecord[] = (response.data as ModelData[]).map(model => ({
-          id: model.id,
-          region: model.region,
-          pollutant: model.pollutant as Pollutant, // Ensure pollutant is cast to Pollutant type
-          date: model.created_at,
-          status: (model.status || "complete") as "complete" | "in-progress" | "failed", // Fix status type with proper casting
-          frequency: model.frequency,
-          periods: model.forecast_periods,
-          accuracy_mae: model.accuracy_mae,
-          accuracy_rmse: model.accuracy_rmse
-        }));
-        
-        // Sort by date, most recent first
-        trainings.sort((a, b) => {
-          return new Date(b.date).getTime() - new Date(a.date).getTime();
-        });
-        
-        setRecentTrainings(trainings);
+        setModels(response.data as ModelDetails[]);
       } else {
-        console.error("Failed to fetch trained models:", response.error);
+        console.error("Failed to fetch models:", response.error);
+        toast.error("Failed to fetch models");
       }
     } catch (error) {
-      console.error("Error fetching trained models:", error);
+      console.error("Error fetching models:", error);
     } finally {
       setModelsLoading(false);
     }
-  };
-  
-  // Fetch trained models on component mount and after training
-  useEffect(() => {
-    fetchTrainedModels();
-    fetchAvailableFilters();
   }, []);
-
-  // Fetch available filters for regions, pollutants, and frequencies
-  const fetchAvailableFilters = async () => {
-    setFiltersLoading(true);
+  
+  // Fetch model metadata filters
+  const fetchFilters = useCallback(async () => {
     try {
+      setFiltersLoading(true);
       const response = await modelApi.getMetadataFilters();
       if (response.success && response.data) {
         console.log("Received filter metadata:", response.data);
@@ -232,7 +213,7 @@ const ModelTrainingTab: React.FC = () => {
         
         // Create a properly structured ModelMetadataFilters object
         const processedFilters: ModelMetadataFilters = {
-          available: filterData.available || [],
+          available: Array.isArray(filterData.available) ? filterData.available : [],
           regions: Array.isArray(filterData.regions) ? filterData.regions : [],
           pollutants: Array.isArray(filterData.pollutants) ? filterData.pollutants : [],
           frequencies: Array.isArray(filterData.frequencies) ? filterData.frequencies : []
@@ -261,412 +242,166 @@ const ModelTrainingTab: React.FC = () => {
     } finally {
       setFiltersLoading(false);
     }
-  };
-
-  // Check if a model already exists before training
-  const checkModelExists = async () => {
-    setIsCheckingModel(true);
-    setModelExists(false);
+  }, []);
+  
+  // Fetch models and filters on component mount
+  useEffect(() => {
+    fetchModels();
+    fetchFilters();
+  }, [fetchModels, fetchFilters]);
+  
+  // Preview a forecast for a model
+  const previewForecast = async (modelId: string, periods?: number) => {
     try {
-      const response = await modelApi.checkExists({
-        region: trainRegion,
-        pollutant: trainPollutant,
-        frequency: trainFrequency
-      });
+      setSelectedModel(models.find(m => m.id === modelId) || null);
+      setForecastLoading(true);
       
+      const response = await modelApi.getModelPreview(modelId, periods || 6);
       if (response.success && response.data) {
-        const exists = response.data.exists;
-        setModelExists(exists);
-        console.log(`Model exists check: ${exists}`);
-        
-        if (exists && !overwriteModel) {
-          toast.info("A model with these parameters already exists. Enable 'Retrain Model' to overwrite it.");
-          return true;
-        }
-      } else {
-        console.error("Failed to check if model exists:", response.error);
-      }
-      return false;
-    } catch (error) {
-      console.error("Error checking if model exists:", error);
-      return false;
-    } finally {
-      setIsCheckingModel(false);
-    }
-  };
-
-  // Generate mock forecast data based on current parameters
-  const generateMockForecastData = (periods: number): ForecastDataPoint[] => {
-    const now = new Date();
-    const data: ForecastDataPoint[] = [];
-    
-    let timeIncrement: number;
-    switch (trainFrequency) {
-      case "daily": 
-        timeIncrement = 86400000; // 1 day in ms
-        break;
-      case "weekly":
-        timeIncrement = 604800000; // 1 week in ms
-        break;
-      case "monthly":
-        timeIncrement = 2592000000; // ~30 days in ms
-        break;
-      case "yearly":
-        timeIncrement = 31536000000; // ~365 days in ms
-        break;
-      default:
-        timeIncrement = 86400000;
-    }
-    
-    // Base value depends on pollutant
-    let baseValue = 30; // Default
-    switch (trainPollutant) {
-      case "no2_conc": baseValue = 35; break;
-      case "o3_conc": baseValue = 45; break;
-      case "so2_conc": baseValue = 5; break;
-      case "pm10_conc": baseValue = 25; break;
-      case "pm25_conc": baseValue = 15; break;
-      case "co_conc": baseValue = 300; break;
-      default: baseValue = 30;
-    }
-    
-    // Generate data points for the requested number of periods
-    for (let i = 0; i < periods; i++) {
-      const date = new Date(now.getTime() + (i * timeIncrement));
-      // Add some randomness to the forecast
-      const randomFactor = 0.2; // 20% variation
-      const yhat = baseValue * (1 + (Math.random() * randomFactor - randomFactor/2));
-      
-      // Add seasonal pattern for more realistic data
-      const seasonalFactor = i % 7 === 0 ? 1.1 : // Higher on same day each week
-                            i % 7 === 3 ? 0.9 : // Lower on another day
-                            1.0;
-      
-      const adjustedYhat = yhat * seasonalFactor;
-      
-      data.push({
-        ds: date.toISOString(),
-        yhat: adjustedYhat,
-        yhat_lower: adjustedYhat * 0.8, // 20% below forecast
-        yhat_upper: adjustedYhat * 1.2, // 20% above forecast
-      });
-    }
-    
-    return data;
-  };
-
-  // Handle model training with existence check
-  const trainModel = async () => {
-    // First check if model exists
-    const exists = await checkModelExists();
-    if (exists && !overwriteModel) {
-      return; // Stop if model exists and overwrite not enabled
-    }
-    
-    setTrainLoading(true);
-    setTrainingError(null); // Clear any previous errors
-    
-    try {
-      console.log(`Training model for ${trainRegion}, pollutant ${trainPollutant}, frequency ${trainFrequency}, periods ${trainPeriods}, overwrite: ${overwriteModel}`);
-      
-      const response = await modelApi.train({
-        pollutant: trainPollutant,
-        region: trainRegion,
-        frequency: trainFrequency,
-        periods: trainPeriods,
-        overwrite: overwriteModel // Add the overwrite flag to the API call
-      });
-      
-      console.log("Training response:", response);
-      
-      if (response.success) {
-        toast.success(`Model trained for ${formatters.getRegionLabel(trainRegion)} - ${formatters.getPollutantDisplay(trainPollutant)}`);
-        
-        // Handle the forecast data if available in the response
-        const apiResponse = response.data as ModelTrainingResponse;
-        
-        if (apiResponse && apiResponse.forecast && apiResponse.forecast.length > 0) {
-          console.log("Using forecast data from API response:", apiResponse.forecast);
-          // Pass the full forecast data from API response
-          setForecastData(apiResponse.forecast);
-          setNoForecastAvailable(false);
-        } else {
-          console.log("No forecast data in response, using mock data");
-          // Use mock data as fallback
-          const mockData = generateMockForecastData(6);
-          setForecastData(mockData);
-          setNoForecastAvailable(false);
-        }
-        
-        // Refresh the list of trained models
-        fetchTrainedModels();
-        fetchAvailableFilters(); // Refresh available filters
-      } else {
-        // Handle specific error cases
-        console.error("Training failed:", response.error);
-        
-        if (response.error && response.error.includes("already exists")) {
-          // Model already exists error - show specific message
-          setTrainingError("Model already exists. Use the 'Retrain' option to overwrite.");
-          toast.error("Model already exists. Use the 'Retrain' option to overwrite.");
-        } else {
-          // Generic error message for other errors
-          setTrainingError(response.error || "Training failed");
-          toast.error(response.error || "Training failed");
-        }
-        
-        setNoForecastAvailable(true);
+        toast.success("Forecast preview loaded");
       }
     } catch (error) {
-      console.error("Training error:", error);
-      toast.error("An error occurred during model training");
-      setTrainingError("An error occurred during model training");
-      setNoForecastAvailable(true);
+      console.error("Error fetching model preview:", error);
+      toast.error("Failed to load forecast preview");
     } finally {
-      setTrainLoading(false);
+      setForecastLoading(false);
     }
   };
-
-  // Fetch model details when a model is selected
-  const fetchModelDetails = async (modelId: string) => {
-    setModelDetailsLoading(true);
-    try {
-      const response = await modelApi.getInfo(modelId);
-      if (response.success && response.data) {
-        console.log("Model details:", response.data);
-        setSelectedModelDetails(response.data as ModelDetails);
-        setModelDetailsOpen(true);
-      } else {
-        console.error("Failed to fetch model details:", response.error);
-        toast.error("Failed to fetch model details");
+  
+  // Handle model selection for comparison
+  const toggleModelSelection = (modelId: string, pollutant: string) => {
+    // If this is the first model being selected, set the base pollutant
+    if (selectedModels.length === 0) {
+      setBasePollutant(pollutant);
+    }
+    
+    if (selectedModels.includes(modelId)) {
+      // If model is already selected, remove it from the selection
+      setSelectedModels(prev => prev.filter(id => id !== modelId));
+      
+      // If we removed all models, reset the base pollutant
+      if (selectedModels.length <= 1) {
+        setBasePollutant(null);
       }
-    } catch (error) {
-      console.error("Error fetching model details:", error);
-      toast.error("Error loading model details");
-    } finally {
-      setModelDetailsLoading(false);
-    }
-  };
-
-  // Handle model selection for details view
-  const handleViewModelDetails = (modelId: string) => {
-    setSelectedModelId(modelId);
-    fetchModelDetails(modelId);
-  };
-
-  // Toggle model selection for comparison
-  const toggleModelForComparison = (modelId: string, pollutant: string) => {
-    setModelsToCompare(prev => {
-      // If removing a model
-      if (prev.includes(modelId)) {
-        const newModels = prev.filter(id => id !== modelId);
-        
-        // If all models are removed, reset the base pollutant
-        if (newModels.length === 0) {
-          setBasePollutant(null);
+      
+      // If we removed the only model of the base pollutant type, find a new base pollutant
+      if (selectedModels.length > 0 && basePollutant === pollutant) {
+        const remainingModels = selectedModels.filter(id => id !== modelId);
+        if (remainingModels.length > 0) {
+          const newBaseModel = models.find(m => m.id === remainingModels[0]);
+          if (newBaseModel) {
+            setBasePollutant(newBaseModel.pollutant);
+          }
         }
-        
-        return newModels;
-      } 
-      // If adding a model
-      else {
-        // If this is the first model, set its pollutant as the base
-        if (prev.length === 0) {
-          setBasePollutant(pollutant);
-        }
-        
-        return [...prev, modelId];
       }
-    });
-  };
-
-  // Check if a model can be selected for comparison based on pollutant rules
-  const canSelectForComparison = (pollutant: string): boolean => {
-    // If cross-pollutant comparison is allowed, or no base pollutant is set, or pollutant matches base
-    return allowCrossPollutantComparison || basePollutant === null || pollutant === basePollutant;
-  };
-
-  // Get tooltip text for disabled model selection
-  const getDisabledTooltip = (pollutant: string): string => {
-    if (basePollutant && pollutant !== basePollutant) {
-      return `Only models with pollutant ${formatters.getPollutantDisplay(basePollutant)} can be compared. Enable cross-pollutant to override.`;
+    } else {
+      // If model is not selected, add it to the selection
+      setSelectedModels(prev => [...prev, modelId]);
     }
-    return "";
   };
-
+  
   // Compare selected models
-  const compareSelectedModels = async () => {
-    if (modelsToCompare.length < 2) {
-      toast.warning("Please select at least 2 models to compare");
+  const compareModels = async () => {
+    if (selectedModels.length < 2) {
+      toast.error("Select at least 2 models to compare");
       return;
     }
     
-    setComparisonLoading(true);
     try {
-      const response = await modelApi.compareModels(modelsToCompare);
+      setComparisonLoading(true);
+      const response = await modelApi.compareModels(selectedModels);
+      
       if (response.success && response.data) {
-        console.log("Comparison data:", response.data);
         setComparisonData(response.data);
         setShowComparison(true);
       } else {
-        console.error("Failed to compare models:", response.error);
-        toast.error("Failed to compare models");
+        toast.error(response.error || "Failed to compare models");
       }
     } catch (error) {
       console.error("Error comparing models:", error);
-      toast.error("Error comparing models");
+      toast.error("Failed to compare models");
     } finally {
       setComparisonLoading(false);
     }
   };
-
-  // When either frequency or range changes, fetch new forecast range
-  const fetchForecastRange = async () => {
-    if (!trainRegion || !trainPollutant || !trainFrequency || !trainPeriods) {
-      return;
-    }
-
-    setForecastLoading(true);
-    setNoForecastAvailable(false);
-    
+  
+  // Delete a model
+  const deleteModel = async (modelId: string) => {
     try {
-      console.log(`Fetching forecast range for ${trainRegion}, pollutant ${trainPollutant}, frequency ${trainFrequency}, periods ${trainPeriods}`);
+      const response = await modelApi.delete(modelId);
       
-      // Clear previous forecast data
-      setForecastData([]);
-      
-      // Call the forecast-range endpoint
-      const response = await modelApi.getForecastRange({
-        region: trainRegion,
-        pollutant: trainPollutant,
-        frequency: trainFrequency,
-        limit: trainPeriods
-      });
-      
-      if (response.success && response.data && response.data.forecast && response.data.forecast.length > 0) {
-        console.log("Received forecast data:", response.data.forecast);
-        setForecastData(response.data.forecast);
-      } else {
-        console.log("No forecast data in response or API error:", response.error);
-        setForecastData([]);
-        setNoForecastAvailable(true);
-      }
-    } catch (error) {
-      console.error("Error fetching forecast range:", error);
-      setForecastData([]);
-      setNoForecastAvailable(true);
-      
-      // Check if it's a 404 error (model not found)
-      if (error instanceof Error && error.message.includes("404")) {
-        console.log("Model not found (404)");
-      }
-    } finally {
-      setForecastLoading(false);
-    }
-  };
-
-  // New function to preview forecast with specific periods
-  const handlePreviewForecast = async (modelId: string, periods: number = 6) => {
-    setForecastLoading(true);
-    setNoForecastAvailable(false);
-    
-    try {
-      console.log(`Previewing forecast for model ${modelId} with ${periods} periods`);
-      
-      // Call the model preview endpoint
-      const response = await modelApi.getModelPreview(modelId, periods);
-      
-      if (response.success && response.data && response.data.forecast && response.data.forecast.length > 0) {
-        console.log(`Received forecast data with ${response.data.forecast.length} periods:`, response.data.forecast);
-        setForecastData(response.data.forecast);
+      if (response.success) {
+        toast.success("Model deleted successfully");
+        fetchModels();
         
-        // Also get model details to show proper labels
-        const modelDetails = await modelApi.getInfo(modelId);
-        if (modelDetails.success && modelDetails.data) {
-          const data = modelDetails.data as ModelDetails; // Type assertion
-          setTrainRegion(data.region);
-          setTrainPollutant(data.pollutant as Pollutant);
-          setTrainFrequency(data.frequency);
+        // Remove from selected models if it was selected
+        if (selectedModels.includes(modelId)) {
+          setSelectedModels(prev => prev.filter(id => id !== modelId));
+        }
+        
+        // Clear selected model if it was selected
+        if (selectedModel && selectedModel.id === modelId) {
+          setSelectedModel(null);
         }
       } else {
-        console.log("No forecast data in preview response:", response.error);
-        
-        // Use mock data as fallback
-        const mockData = generateMockForecastData(periods);
-        console.log(`Generated mock forecast data with ${periods} periods`);
-        setForecastData(mockData);
+        toast.error(response.error || "Failed to delete model");
       }
     } catch (error) {
-      console.error("Error getting forecast preview:", error);
-      
-      // Fallback to mock data
-      const mockData = generateMockForecastData(periods);
-      console.log(`Using fallback mock forecast data with ${periods} periods`);
-      setForecastData(mockData);
-    } finally {
-      setForecastLoading(false);
+      console.error("Error deleting model:", error);
+      toast.error("Failed to delete model");
     }
   };
+  
+  // Reset the comparison view
+  const resetComparison = () => {
+    setShowComparison(false);
+    setComparisonData(null);
+    setSelectedModels([]);
+    setBasePollutant(null);
+  };
 
+  // Check if a model can be selected for comparison based on pollutant restrictions
+  const canSelectModel = (model: ModelDetails) => {
+    if (allowCrossPollutantComparison) return true;
+    if (!basePollutant) return true;
+    return model.pollutant === basePollutant;
+  };
+
+  // Get the pollutant display name
+  const getPollutantDisplay = (pollutantCode: string): string => {
+    const map: Record<string, string> = {
+      "no2_conc": "NO₂",
+      "o3_conc": "O₃",
+      "so2_conc": "SO₂",
+      "pm10_conc": "PM10",
+      "pm25_conc": "PM2.5",
+      "co_conc": "CO",
+      "no_conc": "NO",
+    };
+    return map[pollutantCode] || pollutantCode;
+  };
+  
+  // Format date helper
+  const formatDate = (dateString: string): string => {
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+  
   return (
-    <div className="flex flex-col gap-4">
-      {modelsToCompare.length > 0 && (
-        <div className="bg-muted/30 rounded-lg p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div className="flex items-center space-x-2">
-            <span className="text-sm font-medium">
-              {modelsToCompare.length} model{modelsToCompare.length !== 1 ? 's' : ''} selected for comparison
-            </span>
-            {basePollutant && (
-              <Badge variant="outline" className="ml-2">
-                Base: {formatters.getPollutantDisplay(basePollutant)}
-              </Badge>
-            )}
-          </div>
-          <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
-            <div className="flex items-center space-x-2">
-              <Switch 
-                id="cross-pollutant"
-                checked={allowCrossPollutantComparison}
-                onCheckedChange={setAllowCrossPollutantComparison}
-              />
-              <label 
-                htmlFor="cross-pollutant" 
-                className="text-sm cursor-pointer flex items-center"
-              >
-                Allow cross-pollutant comparison
-                {allowCrossPollutantComparison && (
-                  <span className="ml-2 text-amber-500 text-xs flex items-center">
-                    ⚠️ Comparing different pollutants may not be meaningful
-                  </span>
-                )}
-              </label>
-            </div>
-            <div className="flex space-x-2 sm:ml-2">
-              <Button 
-                size="sm" 
-                variant="outline" 
-                onClick={() => {
-                  setModelsToCompare([]);
-                  setBasePollutant(null);
-                }}
-              >
-                Clear
-              </Button>
-              <Button 
-                size="sm" 
-                onClick={compareSelectedModels} 
-                disabled={modelsToCompare.length < 2 || comparisonLoading}
-              >
-                {comparisonLoading ? 'Comparing...' : 'Compare Models'}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+    <Tabs defaultValue="train" className="space-y-6">
+      <TabsList className="grid grid-cols-2">
+        <TabsTrigger value="train">Train Models</TabsTrigger>
+        <TabsTrigger value="compare">Compare Models</TabsTrigger>
+      </TabsList>
       
-      <ResizablePanelGroup direction="horizontal" className="min-h-[600px]">
-        <ResizablePanel defaultSize={33} minSize={25}>
-          <TrainModelCard
+      <TabsContent value="train" className="space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <TrainModelCard 
             trainRegion={trainRegion}
             setTrainRegion={setTrainRegion}
             trainPollutant={trainPollutant}
@@ -687,102 +422,173 @@ const ModelTrainingTab: React.FC = () => {
             availableFilters={availableFilters || { available: [], regions: [], pollutants: [], frequencies: [] }}
             filtersLoading={filtersLoading}
             forecastLoading={forecastLoading}
-            onPreviewForecast={() => {}}
+            onPreviewForecast={previewForecast}
           />
-        </ResizablePanel>
-        
-        <ResizableHandle withHandle />
-        
-        <ResizablePanel defaultSize={67}>
-          <div className="h-full space-y-6 p-1">
-            <RecentTrainingsCard
-              recentTrainings={recentTrainings}
-              formatters={formatters}
-              isLoading={modelsLoading}
-              onModelDeleted={fetchTrainedModels}
-              onViewDetails={handleViewModelDetails}
-              onPreviewForecast={handlePreviewForecast}
-              modelsToCompare={modelsToCompare}
-              onToggleCompare={(modelId, pollutant) => toggleModelForComparison(modelId, pollutant)}
-              canSelectForComparison={canSelectForComparison}
-              getDisabledTooltip={getDisabledTooltip}
+          
+          <RecentTrainingsCard 
+            models={models}
+            modelsLoading={modelsLoading}
+            onRefresh={fetchModels}
+            onSelect={(modelId) => {
+              const model = models.find(m => m.id === modelId);
+              if (model) setSelectedModel(model);
+            }}
+            onDelete={deleteModel}
+          />
+          
+          {selectedModel && (
+            <ModelDetailsView 
+              model={selectedModel}
+              onClose={() => setSelectedModel(null)}
+              onPreviewForecast={previewForecast}
+              forecastLoading={forecastLoading}
             />
-            
-            {forecastLoading && (
-              <Card className="col-span-2 flex items-center justify-center h-[300px]">
-                <div className="flex flex-col items-center justify-center">
-                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-                  <p className="mt-2 text-muted-foreground">Loading forecast data...</p>
-                </div>
-              </Card>
-            )}
-            
-            {!forecastLoading && forecastData && forecastData.length > 0 && (
-              <ForecastPreview
-                data={forecastData}
-                region={trainRegion}
-                pollutant={trainPollutant}
-                frequency={trainFrequency}
-                formatters={formatters}
-              />
-            )}
-            
-            {!forecastLoading && noForecastAvailable && (
-              <Card className="col-span-2 flex flex-col items-center justify-center h-[300px] p-6">
-                <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-xl font-semibold mb-2">No forecast available</h3>
-                <p className="text-muted-foreground text-center max-w-md mb-4">
-                  No forecast model is available for {formatters.getPollutantDisplay(trainPollutant)} in {formatters.getRegionLabel(trainRegion)} with {formatters.getFrequencyDisplay?.(trainFrequency).toLowerCase()} frequency.
-                </p>
-                <p className="text-sm text-center text-muted-foreground">
-                  Please train a model using the form on the left to generate forecasts.
-                </p>
-              </Card>
-            )}
-            
-            {!forecastLoading && !noForecastAvailable && (!forecastData || forecastData.length === 0) && (
-              <Card className="col-span-2 flex items-center justify-center h-[300px]">
-                <p className="text-muted-foreground">
-                  Forecast preview will appear here after training a model
-                </p>
-              </Card>
-            )}
-            
-            {showComparison && comparisonData && (
-              <ModelComparisonView 
-                data={comparisonData}
-                onClose={() => setShowComparison(false)}
-                formatters={formatters}
-              />
-            )}
-          </div>
-        </ResizablePanel>
-      </ResizablePanelGroup>
-      
-      {/* Model details dialog */}
-      <Dialog open={modelDetailsOpen} onOpenChange={setModelDetailsOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Model Details</DialogTitle>
-            <DialogDescription>
-              Detailed information about the selected forecast model
-            </DialogDescription>
-          </DialogHeader>
-          {modelDetailsLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-              <p className="ml-2">Loading model details...</p>
-            </div>
-          ) : selectedModelDetails ? (
-            <ModelDetailsView model={selectedModelDetails as ModelDetails} formatters={formatters} />
-          ) : (
-            <p className="text-muted-foreground text-center py-4">
-              No model details available
-            </p>
           )}
-        </DialogContent>
-      </Dialog>
-    </div>
+        </div>
+      </TabsContent>
+      
+      <TabsContent value="compare" className="space-y-6">
+        {showComparison && comparisonData ? (
+          <ModelComparisonView
+            data={comparisonData}
+            onBack={resetComparison}
+          />
+        ) : (
+          <div className="space-y-6">
+            <div className="flex flex-wrap justify-between items-center gap-4">
+              <div>
+                <h3 className="text-lg font-semibold">Select Models to Compare</h3>
+                <p className="text-sm text-muted-foreground">
+                  Choose two or more models to compare their forecasts
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center space-x-2">
+                  <label htmlFor="cross-pollutant" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                    Allow cross-pollutant comparison
+                  </label>
+                  <input
+                    type="checkbox"
+                    id="cross-pollutant"
+                    checked={allowCrossPollutantComparison}
+                    onChange={(e) => setAllowCrossPollutantComparison(e.target.checked)}
+                    className="h-4 w-4"
+                  />
+                </div>
+                <Button 
+                  variant="default"
+                  disabled={selectedModels.length < 2 || comparisonLoading}
+                  onClick={compareModels}
+                >
+                  {comparisonLoading ? "Comparing..." : "Compare Models"}
+                </Button>
+              </div>
+            </div>
+            
+            {!allowCrossPollutantComparison && basePollutant && (
+              <div className="bg-muted p-3 rounded-md">
+                <p className="text-sm flex items-center">
+                  <Info className="h-4 w-4 mr-2" />
+                  Only models with pollutant {getPollutantDisplay(basePollutant)} can be compared. Enable cross-pollutant to override.
+                </p>
+              </div>
+            )}
+            
+            {allowCrossPollutantComparison && selectedModels.length > 0 && (
+              <div className="bg-yellow-50 border border-yellow-200 p-3 rounded-md">
+                <p className="text-sm flex items-center text-yellow-800">
+                  <Info className="h-4 w-4 mr-2" />
+                  ⚠️ Comparing different pollutants may not provide meaningful results.
+                </p>
+              </div>
+            )}
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {modelsLoading ? (
+                Array(6).fill(null).map((_, i) => (
+                  <div key={i} className="border rounded-lg p-4 h-48 animate-pulse bg-muted" />
+                ))
+              ) : models.length === 0 ? (
+                <div className="col-span-full text-center py-8">
+                  <p className="text-muted-foreground">No models available for comparison</p>
+                </div>
+              ) : (
+                <>
+                  {/* Group models by pollutant */}
+                  {Array.from(new Set(models.map(model => model.pollutant))).map(pollutant => (
+                    <div key={pollutant} className="col-span-full mb-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <h3 className="text-md font-semibold">{getPollutantDisplay(pollutant)}</h3>
+                        <Badge variant="outline">{models.filter(m => m.pollutant === pollutant).length}</Badge>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {models
+                          .filter(model => model.pollutant === pollutant)
+                          .map(model => {
+                            const isSelected = selectedModels.includes(model.id);
+                            const isDisabled = !canSelectModel(model) && !isSelected;
+                            
+                            return (
+                              <div 
+                                key={model.id}
+                                onClick={() => !isDisabled && toggleModelSelection(model.id, model.pollutant)}
+                                className={`border rounded-lg p-4 cursor-pointer transition-colors ${
+                                  isSelected 
+                                    ? 'border-primary bg-primary/5' 
+                                    : isDisabled 
+                                      ? 'opacity-50 cursor-not-allowed' 
+                                      : 'hover:border-primary/50'
+                                }`}
+                              >
+                                <div className="flex justify-between items-start mb-2">
+                                  <h4 className="font-medium">
+                                    {model.region.charAt(0).toUpperCase() + model.region.slice(1)}
+                                  </h4>
+                                  <input 
+                                    type="checkbox"
+                                    checked={isSelected}
+                                    onChange={() => !isDisabled && toggleModelSelection(model.id, model.pollutant)}
+                                    disabled={isDisabled}
+                                    className="h-4 w-4"
+                                  />
+                                </div>
+                                <div className="space-y-1 text-sm">
+                                  <p className="flex justify-between">
+                                    <span className="text-muted-foreground">Pollutant:</span>
+                                    <span>{getPollutantDisplay(model.pollutant)}</span>
+                                  </p>
+                                  <p className="flex justify-between">
+                                    <span className="text-muted-foreground">Frequency:</span>
+                                    <span>{model.frequency}</span>
+                                  </p>
+                                  <p className="flex justify-between">
+                                    <span className="text-muted-foreground">Periods:</span>
+                                    <span>{model.forecast_periods}</span>
+                                  </p>
+                                  <p className="flex justify-between">
+                                    <span className="text-muted-foreground">Created:</span>
+                                    <span>{formatDate(model.created_at)}</span>
+                                  </p>
+                                  {model.accuracy_mae && (
+                                    <p className="flex justify-between">
+                                      <span className="text-muted-foreground">Accuracy:</span>
+                                      <span>MAE: {model.accuracy_mae.toFixed(2)}</span>
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                      </div>
+                    </div>
+                  ))}
+                </>
+              )}
+            </div>
+          </div>
+        )}
+      </TabsContent>
+    </Tabs>
   );
 };
 
