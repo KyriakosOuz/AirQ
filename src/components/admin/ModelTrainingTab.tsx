@@ -39,13 +39,16 @@ interface ModelData {
   accuracy_rmse?: number;
 }
 
-// Interface for model metadata filters
+// Interface for model metadata filters - updating to ensure properties are always arrays
 interface ModelMetadataFilters {
   available: Array<{
     region: string;
     pollutant: string;
     frequency: string;
   }>;
+  regions?: string[];
+  pollutants?: string[];
+  frequencies?: string[];
 }
 
 // Interface for model details - adding specific status types
@@ -101,7 +104,12 @@ const ModelTrainingTab: React.FC = () => {
   const [showComparison, setShowComparison] = useState(false);
   const [comparisonData, setComparisonData] = useState<any>(null);
   const [comparisonLoading, setComparisonLoading] = useState(false);
-  const [availableFilters, setAvailableFilters] = useState<ModelMetadataFilters | null>(null);
+  const [availableFilters, setAvailableFilters] = useState<ModelMetadataFilters | null>({
+    available: [],
+    regions: [],
+    pollutants: [],
+    frequencies: []
+  });
   const [filtersLoading, setFiltersLoading] = useState(false);
   
   // Get available ranges for the selected frequency
@@ -219,12 +227,37 @@ const ModelTrainingTab: React.FC = () => {
       const response = await modelApi.getMetadataFilters();
       if (response.success && response.data) {
         console.log("Received filter metadata:", response.data);
-        setAvailableFilters(response.data as ModelMetadataFilters);
+        // Process the data to ensure we always have arrays for regions, pollutants, and frequencies
+        const filterData = response.data as any;
+        
+        // Create a properly structured ModelMetadataFilters object
+        const processedFilters: ModelMetadataFilters = {
+          available: filterData.available || [],
+          regions: Array.isArray(filterData.regions) ? filterData.regions : [],
+          pollutants: Array.isArray(filterData.pollutants) ? filterData.pollutants : [],
+          frequencies: Array.isArray(filterData.frequencies) ? filterData.frequencies : []
+        };
+        
+        setAvailableFilters(processedFilters);
       } else {
         console.error("Failed to fetch filter metadata:", response.error);
+        // Set default empty arrays to prevent length access on undefined
+        setAvailableFilters({
+          available: [],
+          regions: [],
+          pollutants: [],
+          frequencies: []
+        });
       }
     } catch (error) {
       console.error("Error fetching filter metadata:", error);
+      // Set default empty arrays to prevent length access on undefined
+      setAvailableFilters({
+          available: [],
+          regions: [],
+          pollutants: [],
+          frequencies: []
+      });
     } finally {
       setFiltersLoading(false);
     }
@@ -651,7 +684,7 @@ const ModelTrainingTab: React.FC = () => {
             trainingError={trainingError}
             modelExists={modelExists}
             isCheckingModel={isCheckingModel}
-            availableFilters={availableFilters}
+            availableFilters={availableFilters || { available: [], regions: [], pollutants: [], frequencies: [] }}
             filtersLoading={filtersLoading}
             forecastLoading={forecastLoading}
             onPreviewForecast={() => {}}
