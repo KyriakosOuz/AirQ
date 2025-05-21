@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -6,11 +5,12 @@ import { modelApi } from "@/lib/api";
 import { toast } from "sonner";
 import { Pollutant } from "@/lib/types";
 import TrainModelCard, { FrequencyOption } from "./TrainModelCard"; 
-import RecentTrainingsCard from "./RecentTrainingsCard";
+import RecentTrainingsCard, { TrainingRecord } from "./RecentTrainingsCard";
 import ModelDetailsView from "./ModelDetailsView";
 import ForecastPreview from "./ForecastPreview";
 import ModelComparisonView from "./ModelComparisonView";
 import { Badge } from "@/components/ui/badge";
+import { Info } from "lucide-react";
 
 // Interface for model metadata filters - ensuring properties are always arrays
 interface ModelMetadataFilters {
@@ -381,6 +381,32 @@ const ModelTrainingTab: React.FC = () => {
     return map[pollutantCode] || pollutantCode;
   };
   
+  // Get the region display name
+  const getRegionLabel = (region: string): string => {
+    return region.charAt(0).toUpperCase() + region.slice(1);
+  };
+
+  // Get the frequency display name
+  const getFrequencyDisplay = (frequency: string): string => {
+    const option = FREQUENCY_OPTIONS.find(opt => opt.value === frequency);
+    return option ? option.label : frequency.charAt(0).toUpperCase() + frequency.slice(1);
+  };
+
+  // Convert ModelDetails to TrainingRecord for RecentTrainingsCard
+  const convertToTrainingRecords = (models: ModelDetails[]): TrainingRecord[] => {
+    return models.map(model => ({
+      id: model.id,
+      region: model.region,
+      pollutant: model.pollutant as Pollutant,
+      date: model.created_at,
+      status: model.status === "training" ? "in-progress" : model.status,
+      frequency: model.frequency,
+      periods: model.forecast_periods,
+      accuracy_mae: model.accuracy_mae,
+      accuracy_rmse: model.accuracy_rmse
+    }));
+  };
+
   // Format date helper
   const formatDate = (dateString: string): string => {
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -390,6 +416,14 @@ const ModelTrainingTab: React.FC = () => {
       hour: "2-digit",
       minute: "2-digit",
     });
+  };
+
+  // Formatters object for components
+  const formatters = {
+    formatDate,
+    getRegionLabel,
+    getPollutantDisplay,
+    getFrequencyDisplay
   };
   
   return (
@@ -426,22 +460,33 @@ const ModelTrainingTab: React.FC = () => {
           />
           
           <RecentTrainingsCard 
-            models={models}
-            modelsLoading={modelsLoading}
-            onRefresh={fetchModels}
-            onSelect={(modelId) => {
+            recentTrainings={convertToTrainingRecords(models)}
+            formatters={formatters}
+            isLoading={modelsLoading}
+            onModelDeleted={fetchModels}
+            onViewDetails={(modelId) => {
               const model = models.find(m => m.id === modelId);
               if (model) setSelectedModel(model);
             }}
-            onDelete={deleteModel}
+            onPreviewForecast={previewForecast}
+            modelsToCompare={selectedModels}
+            onToggleCompare={toggleModelSelection}
+            canSelectForComparison={(pollutant) => allowCrossPollutantComparison || !basePollutant || pollutant === basePollutant}
+            getDisabledTooltip={(pollutant) => {
+              if (!allowCrossPollutantComparison && basePollutant && pollutant !== basePollutant) {
+                return `This model cannot be compared with the selected ${getPollutantDisplay(basePollutant)} models. Enable cross-pollutant comparison to select it.`;
+              }
+              return "";
+            }}
           />
           
           {selectedModel && (
             <ModelDetailsView 
-              model={selectedModel}
-              onClose={() => setSelectedModel(null)}
-              onPreviewForecast={previewForecast}
-              forecastLoading={forecastLoading}
+              model={{
+                ...selectedModel,
+                status: selectedModel.status === "training" ? "in-progress" : selectedModel.status
+              }}
+              formatters={formatters}
             />
           )}
         </div>
@@ -451,7 +496,8 @@ const ModelTrainingTab: React.FC = () => {
         {showComparison && comparisonData ? (
           <ModelComparisonView
             data={comparisonData}
-            onBack={resetComparison}
+            onClose={resetComparison}
+            formatters={formatters}
           />
         ) : (
           <div className="space-y-6">
@@ -513,76 +559,73 @@ const ModelTrainingTab: React.FC = () => {
                   <p className="text-muted-foreground">No models available for comparison</p>
                 </div>
               ) : (
-                <>
-                  {/* Group models by pollutant */}
-                  {Array.from(new Set(models.map(model => model.pollutant))).map(pollutant => (
-                    <div key={pollutant} className="col-span-full mb-4">
-                      <div className="flex items-center gap-2 mb-2">
-                        <h3 className="text-md font-semibold">{getPollutantDisplay(pollutant)}</h3>
-                        <Badge variant="outline">{models.filter(m => m.pollutant === pollutant).length}</Badge>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {models
-                          .filter(model => model.pollutant === pollutant)
-                          .map(model => {
-                            const isSelected = selectedModels.includes(model.id);
-                            const isDisabled = !canSelectModel(model) && !isSelected;
-                            
-                            return (
-                              <div 
-                                key={model.id}
-                                onClick={() => !isDisabled && toggleModelSelection(model.id, model.pollutant)}
-                                className={`border rounded-lg p-4 cursor-pointer transition-colors ${
-                                  isSelected 
-                                    ? 'border-primary bg-primary/5' 
-                                    : isDisabled 
-                                      ? 'opacity-50 cursor-not-allowed' 
-                                      : 'hover:border-primary/50'
-                                }`}
-                              >
-                                <div className="flex justify-between items-start mb-2">
-                                  <h4 className="font-medium">
-                                    {model.region.charAt(0).toUpperCase() + model.region.slice(1)}
-                                  </h4>
-                                  <input 
-                                    type="checkbox"
-                                    checked={isSelected}
-                                    onChange={() => !isDisabled && toggleModelSelection(model.id, model.pollutant)}
-                                    disabled={isDisabled}
-                                    className="h-4 w-4"
-                                  />
-                                </div>
-                                <div className="space-y-1 text-sm">
-                                  <p className="flex justify-between">
-                                    <span className="text-muted-foreground">Pollutant:</span>
-                                    <span>{getPollutantDisplay(model.pollutant)}</span>
-                                  </p>
-                                  <p className="flex justify-between">
-                                    <span className="text-muted-foreground">Frequency:</span>
-                                    <span>{model.frequency}</span>
-                                  </p>
-                                  <p className="flex justify-between">
-                                    <span className="text-muted-foreground">Periods:</span>
-                                    <span>{model.forecast_periods}</span>
-                                  </p>
-                                  <p className="flex justify-between">
-                                    <span className="text-muted-foreground">Created:</span>
-                                    <span>{formatDate(model.created_at)}</span>
-                                  </p>
-                                  {model.accuracy_mae && (
-                                    <p className="flex justify-between">
-                                      <span className="text-muted-foreground">Accuracy:</span>
-                                      <span>MAE: {model.accuracy_mae.toFixed(2)}</span>
-                                    </p>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })}
-                      </div>
+                Array.from(new Set(models.map(model => model.pollutant))).map(pollutant => (
+                  <div key={pollutant} className="col-span-full mb-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <h3 className="text-md font-semibold">{getPollutantDisplay(pollutant)}</h3>
+                      <Badge variant="outline">{models.filter(m => m.pollutant === pollutant).length}</Badge>
                     </div>
-                  ))}
-                </>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {models
+                        .filter(model => model.pollutant === pollutant)
+                        .map(model => {
+                          const isSelected = selectedModels.includes(model.id);
+                          const isDisabled = !canSelectModel(model) && !isSelected;
+                          
+                          return (
+                            <div 
+                              key={model.id}
+                              onClick={() => !isDisabled && toggleModelSelection(model.id, model.pollutant)}
+                              className={`border rounded-lg p-4 cursor-pointer transition-colors ${
+                                isSelected 
+                                  ? 'border-primary bg-primary/5' 
+                                  : isDisabled 
+                                    ? 'opacity-50 cursor-not-allowed' 
+                                    : 'hover:border-primary/50'
+                              }`}
+                            >
+                              <div className="flex justify-between items-start mb-2">
+                                <h4 className="font-medium">
+                                  {model.region.charAt(0).toUpperCase() + model.region.slice(1)}
+                                </h4>
+                                <input 
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={() => !isDisabled && toggleModelSelection(model.id, model.pollutant)}
+                                  disabled={isDisabled}
+                                  className="h-4 w-4"
+                                />
+                              </div>
+                              <div className="space-y-1 text-sm">
+                                <p className="flex justify-between">
+                                  <span className="text-muted-foreground">Pollutant:</span>
+                                  <span>{getPollutantDisplay(model.pollutant)}</span>
+                                </p>
+                                <p className="flex justify-between">
+                                  <span className="text-muted-foreground">Frequency:</span>
+                                  <span>{model.frequency}</span>
+                                </p>
+                                <p className="flex justify-between">
+                                  <span className="text-muted-foreground">Periods:</span>
+                                  <span>{model.forecast_periods}</span>
+                                </p>
+                                <p className="flex justify-between">
+                                  <span className="text-muted-foreground">Created:</span>
+                                  <span>{formatDate(model.created_at)}</span>
+                                </p>
+                                {model.accuracy_mae && (
+                                  <p className="flex justify-between">
+                                    <span className="text-muted-foreground">Accuracy:</span>
+                                    <span>MAE: {model.accuracy_mae.toFixed(2)}</span>
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  </div>
+                ))
               )}
             </div>
           </div>
