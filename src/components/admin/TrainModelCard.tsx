@@ -1,30 +1,25 @@
 
-import React, { useState } from 'react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
+import React from 'react';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { PollutantSelector } from "@/components/ui/pollutant-selector";
-import { RegionSelector } from "@/components/ui/region-selector";
 import { Label } from "@/components/ui/label";
+import { RegionSelector } from "@/components/ui/region-selector";
+import { PollutantSelector } from "@/components/ui/pollutant-selector";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
-import { AlertCircle, RefreshCw, LineChart } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Pollutant } from "@/lib/types";
+import { AlertCircle, Clock, RefreshCw, LineChart } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { TrainingRecord } from "./RecentTrainingsCard";
 
-// Interface for form data
-interface TrainModelFormData {
-  region: string;
-  pollutant: Pollutant;
-  frequency: string;
-  periods: number;
-  overwrite: boolean;
+interface FrequencyOption {
+  value: string;
+  label: string;
+  ranges: number[];
 }
 
-// Interface for metadata filters from API
-interface ModelMetadataFilters {
+interface FilterMetadata {
   available: Array<{
     region: string;
     pollutant: string;
@@ -32,34 +27,28 @@ interface ModelMetadataFilters {
   }>;
 }
 
-// Props for the TrainModelCard component
 interface TrainModelCardProps {
   trainRegion: string;
-  setTrainRegion: (region: string) => void;
+  setTrainRegion: (value: string) => void;
   trainPollutant: Pollutant;
-  setTrainPollutant: (pollutant: Pollutant) => void;
+  setTrainPollutant: (value: Pollutant) => void;
   trainFrequency: string;
-  setTrainFrequency: (frequency: string) => void;
+  setTrainFrequency: (value: string) => void;
   trainPeriods: number;
-  setTrainPeriods: (periods: number) => void;
+  setTrainPeriods: (value: number) => void;
   trainLoading: boolean;
   onTrainModel: () => void;
-  frequencyOptions: Array<{
-    value: string;
-    label: string;
-    ranges: number[];
-  }>;
+  frequencyOptions: FrequencyOption[];
   availableRanges: number[];
   overwriteModel: boolean;
-  setOverwriteModel: (overwrite: boolean) => void;
+  setOverwriteModel: (value: boolean) => void;
   trainingError: string | null;
-  modelExists: boolean;
-  isCheckingModel: boolean;
-  availableFilters: ModelMetadataFilters | null;
-  filtersLoading: boolean;
-  forecastLoading: boolean;
-  onPreviewForecast: () => void;
-  selectedModel?: TrainingRecord | null;
+  modelExists?: boolean;
+  isCheckingModel?: boolean;
+  availableFilters?: FilterMetadata | null;
+  filtersLoading?: boolean;
+  forecastLoading?: boolean;
+  onPreviewForecast?: () => void;
 }
 
 const TrainModelCard: React.FC<TrainModelCardProps> = ({
@@ -78,252 +67,274 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
   overwriteModel,
   setOverwriteModel,
   trainingError,
-  modelExists,
-  isCheckingModel,
-  availableFilters,
-  filtersLoading,
-  forecastLoading,
-  onPreviewForecast,
-  selectedModel
+  modelExists = false,
+  isCheckingModel = false,
+  availableFilters = null,
+  filtersLoading = false,
+  forecastLoading = false,
+  onPreviewForecast
 }) => {
-  // Get available regions and pollutants from filters
-  const availableRegions = React.useMemo(() => {
-    if (!availableFilters) return [];
-    
-    const regions = new Set<string>();
-    availableFilters.available.forEach(item => {
-      regions.add(item.region);
-    });
-    
-    return Array.from(regions);
-  }, [availableFilters]);
-  
-  const availablePollutants = React.useMemo(() => {
-    if (!availableFilters) return [];
-    
-    const pollutants = new Set<string>();
-    availableFilters.available.forEach(item => {
-      pollutants.add(item.pollutant);
-    });
-    
-    return Array.from(pollutants) as Pollutant[];
-  }, [availableFilters]);
-
-  // Handle form submission
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onTrainModel();
+  // Helper to get the frequency display label
+  const getFrequencyLabel = (value: string): string => {
+    const option = frequencyOptions.find(opt => opt.value === value);
+    return option ? option.label : value;
   };
-  
-  // Show selected model info if available
-  const showSelectedModelInfo = selectedModel && selectedModel.status === "complete";
-  
-  // Determine if preview button should be enabled
-  const isPreviewEnabled = selectedModel 
-    ? selectedModel.status === "complete"  // For selected model: only if complete
-    : modelExists && !trainLoading && !forecastLoading;  // For form params: if model exists and not loading
+
+  // Format period label based on frequency
+  const formatPeriodLabel = (period: number, frequency: string): string => {
+    const freqOption = frequencyOptions.find(f => f.value === frequency);
+    if (!freqOption) return `${period}`;
+    
+    return `${period} ${freqOption.label.toLowerCase()}${period !== 1 ? 's' : ''}`;
+  };
+
+  // Extract unique regions, pollutants, and frequencies from available filters
+  const extractUniqueValues = () => {
+    if (!availableFilters || !availableFilters.available) {
+      return {
+        regions: [],
+        pollutants: [],
+        frequencies: []
+      };
+    }
+
+    const regions = [...new Set(availableFilters.available.map(item => item.region))];
+    const pollutants = [...new Set(availableFilters.available.map(item => item.pollutant))];
+    const frequencies = [...new Set(availableFilters.available.map(item => item.frequency))];
+
+    return { regions, pollutants, frequencies };
+  };
+
+  const { regions, pollutants, frequencies } = extractUniqueValues();
   
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Train Forecasting Model</CardTitle>
-        <CardDescription>Create and train a new forecasting model for air quality prediction</CardDescription>
+    <Card className="h-full overflow-auto">
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center text-lg">
+          <Clock className="mr-2 h-4 w-4" />
+          Train Model
+        </CardTitle>
+        <CardDescription className="text-xs">
+          Create a new forecasting model
+        </CardDescription>
       </CardHeader>
-      <form onSubmit={handleSubmit}>
-        <CardContent className="space-y-4">
-          {/* Selected Model Info */}
-          {showSelectedModelInfo && (
-            <Alert variant="default" className="bg-blue-50 mb-4">
-              <AlertCircle className="h-5 w-5" />
-              <AlertTitle>Selected Model</AlertTitle>
-              <AlertDescription className="text-xs">
-                You've selected a model: {selectedModel.region} / {selectedModel.pollutant} / {selectedModel.frequency}
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {/* Region Selection */}
-          <div className="space-y-2">
-            <Label htmlFor="region-selector">Region</Label>
-            <RegionSelector 
-              value={trainRegion} 
-              onValueChange={setTrainRegion}
-              disabled={trainLoading || filtersLoading}
-              regions={availableRegions}
-            />
-          </div>
-          
-          {/* Pollutant Selection */}
-          <div className="space-y-2">
-            <Label htmlFor="pollutant-selector">Pollutant</Label>
-            <PollutantSelector
-              value={trainPollutant}
-              onValueChange={setTrainPollutant}
-              disabled={trainLoading || filtersLoading}
-              pollutants={availablePollutants}
-            />
-          </div>
-          
-          {/* Frequency Selection */}
-          <div className="space-y-2">
-            <Label htmlFor="frequency">Forecast Frequency</Label>
-            <Select 
-              value={trainFrequency} 
-              onValueChange={setTrainFrequency}
-              disabled={trainLoading}
-            >
-              <SelectTrigger id="frequency">
-                <SelectValue placeholder="Select frequency" />
-              </SelectTrigger>
-              <SelectContent>
-                {frequencyOptions.map(option => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground mt-1">
-              How often the forecast values will be calculated
-            </p>
-          </div>
-          
-          {/* Periods Selection */}
-          <div className="space-y-2">
-            <Label htmlFor="periods">Forecast Periods</Label>
-            <Select 
-              value={trainPeriods.toString()} 
-              onValueChange={(value) => setTrainPeriods(Number(value))}
-              disabled={trainLoading}
-            >
-              <SelectTrigger id="periods">
-                <SelectValue placeholder="Select number of periods" />
-              </SelectTrigger>
-              <SelectContent>
-                {availableRanges.map(range => (
-                  <SelectItem key={range} value={range.toString()}>
-                    {range} {trainFrequency === "daily" ? "days" : 
-                             trainFrequency === "weekly" ? "weeks" : 
-                             trainFrequency === "monthly" ? "months" : "years"}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground mt-1">
-              The number of future time periods to forecast
-            </p>
-          </div>
-          
-          {/* Model Already Exists Warning */}
-          {modelExists && !overwriteModel && (
-            <Alert variant="warning" className="mt-4">
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Model Already Exists</AlertTitle>
-              <AlertDescription className="text-xs">
-                A model with these parameters already exists. 
-                Use "Retrain Model" option below to overwrite it.
-              </AlertDescription>
-            </Alert>
-          )}
-          
-          {/* Error Alert */}
-          {trainingError && (
-            <Alert variant="destructive" className="mt-4">
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Training Error</AlertTitle>
-              <AlertDescription className="text-xs">
-                {trainingError}
-              </AlertDescription>
-            </Alert>
-          )}
-          
-          <Separator className="my-4" />
-          
-          {/* Overwrite Option */}
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label htmlFor="overwrite" className="text-sm font-medium">
-                Retrain Model
-              </Label>
-              <p className="text-xs text-muted-foreground">
-                Overwrite existing model if one exists
-              </p>
-            </div>
-            <Switch
-              id="overwrite"
-              checked={overwriteModel}
-              onCheckedChange={setOverwriteModel}
-              disabled={trainLoading}
-            />
-          </div>
-          
-        </CardContent>
-        <CardFooter className="flex flex-col">
-          {/* Train Model Button */}
-          <Button 
-            type="submit" 
-            disabled={trainLoading || isCheckingModel}
-            className="w-full"
+      <CardContent className="space-y-3">
+        <div className="space-y-1">
+          <Label htmlFor="region" className="text-xs">Region</Label>
+          <RegionSelector 
+            value={trainRegion} 
+            onValueChange={setTrainRegion}
+            disabled={filtersLoading}
+            regions={regions}
+          />
+        </div>
+        
+        <div className="space-y-1">
+          <Label htmlFor="pollutant" className="text-xs">Pollutant</Label>
+          <PollutantSelector 
+            value={trainPollutant} 
+            onValueChange={setTrainPollutant}
+            disabled={filtersLoading}
+            pollutants={pollutants as Pollutant[]}
+          />
+        </div>
+        
+        <div className="space-y-1">
+          <Label htmlFor="frequency" className="text-xs">Frequency</Label>
+          <Select 
+            value={trainFrequency} 
+            onValueChange={setTrainFrequency}
+            disabled={filtersLoading}
           >
-            {trainLoading ? (
-              <>
-                <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                Training...
-              </>
-            ) : isCheckingModel ? (
-              <>
-                <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                Checking...
-              </>
-            ) : overwriteModel ? "Retrain Model" : "Train Model"}
-          </Button>
-          
-          {/* Preview Forecast Button with enhanced behavior */}
-          {onPreviewForecast && (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="w-full mt-2">
-                    <Button 
-                      variant="outline" 
-                      disabled={!isPreviewEnabled}
-                      onClick={onPreviewForecast}
-                      className="w-full"
-                      size="sm"
-                      type="button"
-                    >
-                      {forecastLoading ? (
-                        <>
-                          <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                          Loading...
-                        </>
-                      ) : (
-                        <>
-                          <LineChart className="mr-2 h-4 w-4" />
-                          Preview Forecast
-                        </>
-                      )}
+            <SelectTrigger id="frequency">
+              <SelectValue placeholder="Select frequency" />
+            </SelectTrigger>
+            <SelectContent>
+              {(frequencies.length > 0 
+                ? frequencyOptions.filter(opt => frequencies.includes(opt.value)) 
+                : frequencyOptions
+              ).map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        
+        <div className="space-y-2">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center space-x-2">
+              <Label htmlFor="periods" className="text-xs">Forecast Period</Label>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-5 w-5 rounded-full p-0">
+                      <AlertCircle className="h-3 w-3" />
+                      <span className="sr-only">Info</span>
                     </Button>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent side="top">
-                  {trainLoading ? (
-                    "Please wait for training to complete"
-                  ) : forecastLoading ? (
-                    "Loading forecast data..."
-                  ) : selectedModel ? (
-                    "Preview forecast for selected model"
-                  ) : !modelExists ? (
-                    "No model available yet. Train a model first."
-                  ) : (
-                    "Preview forecast data for current parameters"
-                  )}
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="max-w-xs text-xs">
+                      The number of time periods to forecast into the future.
+                      Larger values may decrease accuracy but provide longer-term predictions.
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+            <span className="text-xs text-muted-foreground">
+              {formatPeriodLabel(trainPeriods, trainFrequency)}
+            </span>
+          </div>
+          
+          {availableRanges.length > 5 ? (
+            <Slider
+              id="periods" 
+              min={Math.min(...availableRanges)}
+              max={Math.max(...availableRanges)}
+              step={1}
+              value={[trainPeriods]}
+              onValueChange={(values) => setTrainPeriods(values[0])}
+              className="py-2"
+            />
+          ) : (
+            <Select
+              value={trainPeriods.toString()}
+              onValueChange={(value) => setTrainPeriods(parseInt(value))}
+            >
+              <SelectTrigger id="period-range">
+                <SelectValue placeholder="Select period" />
+              </SelectTrigger>
+              <SelectContent>
+                {availableRanges.map((range) => (
+                  <SelectItem key={range} value={range.toString()}>
+                    {formatPeriodLabel(range, trainFrequency)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           )}
-        </CardFooter>
-      </form>
+          
+          <p className="text-xs text-muted-foreground">
+            Forecasting {trainPeriods} {trainFrequency === "daily" ? "days" : 
+                         trainFrequency === "weekly" ? "weeks" : 
+                         trainFrequency === "monthly" ? "months" : "years"} ahead
+          </p>
+        </div>
+        
+        {/* Retrain Option */}
+        <div className="flex items-center justify-between space-x-2 pt-2 pb-1">
+          <div className="space-y-0.5">
+            <Label 
+              htmlFor="retrain" 
+              className={`text-xs ${modelExists ? "font-semibold text-amber-600" : ""}`}
+            >
+              Retrain Model
+              {modelExists && " (Recommended)"}
+            </Label>
+            <p className="text-[10px] text-muted-foreground">
+              Overwrite existing model if it already exists
+            </p>
+          </div>
+          <Switch
+            id="retrain"
+            checked={overwriteModel}
+            onCheckedChange={setOverwriteModel}
+          />
+        </div>
+        
+        {/* Display model exists warning */}
+        {modelExists && !overwriteModel && (
+          <Alert variant="warning" className="py-2 bg-amber-50 border-amber-200">
+            <AlertCircle className="h-4 w-4 text-amber-600" />
+            <AlertDescription className="text-xs text-amber-700">
+              A model with these parameters already exists. Enable "Retrain Model" to overwrite it.
+            </AlertDescription>
+          </Alert>
+        )}
+        
+        {/* Display training error if present */}
+        {trainingError && (
+          <Alert variant="destructive" className="py-2">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription className="text-xs">
+              {trainingError}
+            </AlertDescription>
+          </Alert>
+        )}
+        
+        {/* Display loading indicator when checking model existence */}
+        {isCheckingModel && (
+          <div className="flex items-center justify-center py-2">
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent mr-2"></div>
+            <p className="text-xs text-muted-foreground">Checking if model exists...</p>
+          </div>
+        )}
+      </CardContent>
+      <CardFooter className="flex flex-col">
+        <Button 
+          className="w-full" 
+          disabled={trainLoading || isCheckingModel}
+          onClick={onTrainModel}
+          size="sm"
+          variant={modelExists && !overwriteModel ? "outline" : "default"}
+        >
+          {trainLoading ? (
+            <>
+              <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+              Training...
+            </>
+          ) : isCheckingModel ? (
+            <>
+              <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+              Checking...
+            </>
+          ) : overwriteModel ? "Retrain Model" : "Train Model"}
+        </Button>
+        
+        {/* Preview Forecast Button with enhanced behavior */}
+        {onPreviewForecast && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="w-full mt-2">
+                  <Button 
+                    variant="outline" 
+                    disabled={trainLoading || forecastLoading || !modelExists}
+                    onClick={onPreviewForecast}
+                    className="w-full"
+                    size="sm"
+                  >
+                    {forecastLoading ? (
+                      <>
+                        <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                        Loading...
+                      </>
+                    ) : (
+                      <>
+                        <LineChart className="mr-2 h-4 w-4" />
+                        Preview Forecast
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                {trainLoading ? (
+                  "Please wait for training to complete"
+                ) : forecastLoading ? (
+                  "Loading forecast data..."
+                ) : !modelExists ? (
+                  "No model available yet. Train a model first."
+                ) : (
+                  "Preview forecast data for current parameters"
+                )}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
+      </CardFooter>
     </Card>
   );
 };
