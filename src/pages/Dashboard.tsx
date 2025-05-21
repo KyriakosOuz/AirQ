@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -227,7 +228,7 @@ const Dashboard: React.FC = () => {
       <div className="flex flex-col space-y-2">
         <h1 className="text-3xl font-bold tracking-tight">Air Quality Dashboard</h1>
         <p className="text-muted-foreground">
-          Monitor air quality in Thessaloniki and get personalized health recommendations.
+          Monitor air quality and get personalized health recommendations.
         </p>
       </div>
       

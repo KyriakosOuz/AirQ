@@ -76,7 +76,7 @@ export const Sidebar: React.FC = () => {
             <span className="text-white font-bold">AQ</span>
           </div>
           {!collapsed && (
-            <h1 className="ml-2 font-bold text-lg">ThessAir</h1>
+            <h1 className="ml-2 font-bold text-lg">AirQ</h1>
           )}
         </div>
         {!isMobile && (

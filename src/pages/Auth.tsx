@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { z } from "zod";
@@ -163,9 +164,9 @@ const Auth: React.FC = () => {
               <span className="text-white font-bold text-lg">AQ</span>
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold text-center">ThessAir</CardTitle>
+          <CardTitle className="text-2xl font-bold text-center">AirQ</CardTitle>
           <CardDescription className="text-center">
-            Air Quality Monitoring for Thessaloniki
+            Air Quality Monitoring
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -266,7 +267,7 @@ const Auth: React.FC = () => {
         </CardContent>
         <CardFooter className="flex flex-col gap-2">
           <p className="text-sm text-muted-foreground text-center">
-            Monitoring air quality for a healthier Thessaloniki
+            Monitoring air quality for a healthier environment
           </p>
           <p className="text-xs text-muted-foreground text-center">
             Note: For development, email verification is disabled. You can login immediately after registration.
