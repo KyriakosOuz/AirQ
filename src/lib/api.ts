@@ -398,7 +398,8 @@ export const modelApi = {
     pollutant: string; 
     region: string; 
     frequency?: string; 
-    periods?: number; 
+    periods?: number;
+    overwrite?: boolean; // Added overwrite parameter
   }) => {
     const queryParams = new URLSearchParams(trainData as any).toString();
     return fetchWithAuth(`/models/train/?${queryParams}`, {
