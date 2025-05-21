@@ -1,9 +1,10 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Pollutant } from "@/lib/types";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Trash2, Eye, BarChart2, CheckCircle2, Clock, AlertTriangle, LineChart, ChevronUp, ChevronDown, Info } from "lucide-react";
+import { Trash2, Eye, BarChart2, CheckCircle2, Clock, AlertTriangle, LineChart, ChevronUp, ChevronDown, Info, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import {
@@ -15,12 +16,15 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { modelApi } from "@/lib/api";
 import { toast } from "@/components/ui/sonner";
 import { TableSkeleton } from "@/components/ui/table-skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Checkbox } from "@/components/ui/checkbox";
+import { cn } from "@/lib/utils";
 
 // Training record definition for model data
 export interface TrainingRecord {
@@ -242,7 +246,7 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
                                   {formatters.getPollutantDisplay(model.pollutant)}
                                 </TableCell>
                                 <TableCell>
-                                  {model.frequency ? formatters.getFrequencyDisplay(model.frequency) : "N/A"}
+                                  {model.frequency ? formatters.getFrequencyDisplay?.(model.frequency) : "N/A"}
                                   {model.periods && <span className="text-xs text-muted-foreground ml-1">({model.periods})</span>}
                                 </TableCell>
                                 <TableCell>{getStatusBadge(model.status)}</TableCell>
@@ -363,7 +367,7 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
                           {formatters.getPollutantDisplay(model.pollutant)}
                         </TableCell>
                         <TableCell>
-                          {model.frequency ? formatters.getFrequencyDisplay(model.frequency) : "N/A"}
+                          {model.frequency ? formatters.getFrequencyDisplay?.(model.frequency) : "N/A"}
                           {model.periods && <span className="text-xs text-muted-foreground ml-1">({model.periods})</span>}
                         </TableCell>
                         <TableCell>{getStatusBadge(model.status)}</TableCell>
