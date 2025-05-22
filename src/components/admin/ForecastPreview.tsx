@@ -1,11 +1,11 @@
 
-import React from "react";
+import React, { useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { format, parseISO } from "date-fns";
-import { Pollutant } from "@/lib/types";
+import { Pollutant, AqiLevel } from "@/lib/types";
 import { Button } from "@/components/ui/button";
-import { Download, GitCompare } from "lucide-react";
+import { Download, GitCompare, Info } from "lucide-react";
 import { 
   DropdownMenu,
   DropdownMenuContent,
@@ -13,6 +13,24 @@ import {
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
+import { AqiBadge } from "@/components/ui/aqi-badge";
+import { 
+  Table, 
+  TableHeader,
+  TableRow,
+  TableHead,
+  TableBody,
+  TableCell
+} from "@/components/ui/table";
+import { AQI_THRESHOLDS, getAqiDescription } from "@/lib/aqi-utils";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 
 // Interface for forecast data point
 export interface ForecastDataPoint {
@@ -71,7 +89,8 @@ const ForecastPreview: React.FC<ForecastPreviewProps> = ({
     date: formatXAxisLabel(point.ds),
     value: Number(point.yhat.toFixed(2)),
     lower: Number(point.yhat_lower.toFixed(2)),
-    upper: Number(point.yhat_upper.toFixed(2))
+    upper: Number(point.yhat_upper.toFixed(2)),
+    category: point.category || "Unknown",
   }));
   
   // Get pollutant unit for display
@@ -80,16 +99,57 @@ const ForecastPreview: React.FC<ForecastPreviewProps> = ({
     return "µg/m³";
   };
   
+  // Get the dominant AQI category from the forecast data
+  const getDominantCategory = (): AqiLevel | null => {
+    if (!data || data.length === 0) return null;
+    
+    const categoryCounts: Record<string, number> = {};
+    
+    data.forEach(item => {
+      if (item.category) {
+        const category = item.category.toLowerCase();
+        categoryCounts[category] = (categoryCounts[category] || 0) + 1;
+      }
+    });
+    
+    let dominantCategory = null;
+    let maxCount = 0;
+    
+    for (const [category, count] of Object.entries(categoryCounts)) {
+      if (count > maxCount) {
+        maxCount = count;
+        dominantCategory = category;
+      }
+    }
+    
+    return dominantCategory as AqiLevel || null;
+  };
+  
+  // Calculate the average predicted value
+  const averagePrediction = useMemo(() => {
+    if (!data || data.length === 0) return 0;
+    const sum = data.reduce((acc, point) => acc + point.yhat, 0);
+    return Number((sum / data.length).toFixed(2));
+  }, [data]);
+
+  // Get thresholds for current pollutant
+  const pollutantThresholds = useMemo(() => {
+    return AQI_THRESHOLDS[pollutant] || [];
+  }, [pollutant]);
+  
+  const dominantCategory = getDominantCategory();
+  
   // Handle CSV download
   const downloadCSV = () => {
     try {
       // Create CSV content
-      const headers = ["Date", "Forecast", "Lower Bound", "Upper Bound"];
+      const headers = ["Date", "Forecast", "Lower Bound", "Upper Bound", "Category"];
       const rows = data.map(d => [
         format(parseISO(d.ds), 'yyyy-MM-dd'),
         d.yhat.toFixed(2),
         d.yhat_lower.toFixed(2),
-        d.yhat_upper.toFixed(2)
+        d.yhat_upper.toFixed(2),
+        d.category || "Unknown"
       ]);
       
       const csvContent = [
@@ -124,29 +184,92 @@ const ForecastPreview: React.FC<ForecastPreviewProps> = ({
   return (
     <Card className="col-span-2">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <div>
-          <CardTitle>Forecast Preview</CardTitle>
+        <div className="flex flex-col">
+          <div className="flex items-center space-x-2">
+            <CardTitle>Forecast Preview</CardTitle>
+            {dominantCategory && (
+              <AqiBadge level={dominantCategory} />
+            )}
+          </div>
           <CardDescription>
             {data.length}-period forecast for {formatters.getPollutantDisplay(pollutant)} in {formatters.getRegionLabel(region)}
           </CardDescription>
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm">
-              Options
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={downloadCSV}>
-              <Download className="mr-2 h-4 w-4" />
-              <span>Download CSV</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={initiateComparison}>
-              <GitCompare className="mr-2 h-4 w-4" />
-              <span>Compare Forecast</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex space-x-2">
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Info className="mr-2 h-4 w-4" />
+                AQI Guide
+              </Button>
+            </SheetTrigger>
+            <SheetContent>
+              <SheetHeader>
+                <SheetTitle>AQI Categories for {formatters.getPollutantDisplay(pollutant)}</SheetTitle>
+                <SheetDescription>
+                  Reference values for air quality categories
+                </SheetDescription>
+              </SheetHeader>
+              <div className="py-4">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Range (µg/m³)</TableHead>
+                      <TableHead>Category</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {pollutantThresholds.map((threshold, index) => {
+                      const [value, category] = threshold;
+                      const prevValue = index > 0 ? pollutantThresholds[index-1][0] : 0;
+                      const aqiLevel = category as AqiLevel;
+                      
+                      return (
+                        <TableRow key={index}>
+                          <TableCell>
+                            {prevValue} - {value === Infinity ? "∞" : value}
+                          </TableCell>
+                          <TableCell>
+                            <AqiBadge level={aqiLevel} />
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+                
+                {dominantCategory && (
+                  <div className="mt-6 p-4 rounded-md bg-gray-50 border">
+                    <h4 className="text-sm font-medium mb-1">Current Forecast</h4>
+                    <p className="text-sm text-muted-foreground mb-1">
+                      Average predicted value: <strong>{averagePrediction} µg/m³</strong>
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {getAqiDescription(dominantCategory)}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </SheetContent>
+          </Sheet>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                Options
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={downloadCSV}>
+                <Download className="mr-2 h-4 w-4" />
+                <span>Download CSV</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={initiateComparison}>
+                <GitCompare className="mr-2 h-4 w-4" />
+                <span>Compare Forecast</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </CardHeader>
       <CardContent>
         <div className="h-[300px] w-full">
@@ -171,9 +294,34 @@ const ForecastPreview: React.FC<ForecastPreviewProps> = ({
                 }}
               />
               <Tooltip 
-                contentStyle={{ backgroundColor: '#ffffff', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}
-                formatter={(value: number) => [`${value} ${getPollutantUnit(pollutant)}`, 'Value']}
-                labelFormatter={(label) => `Date: ${label}`}
+                content={(props) => {
+                  const { active, payload } = props;
+                  if (active && payload && payload.length) {
+                    const data = payload[0].payload;
+                    const category = data.category?.toLowerCase() || "moderate";
+                    
+                    return (
+                      <div className="rounded-lg border bg-background p-2 shadow-md">
+                        <div className="grid grid-cols-2 gap-2">
+                          <span className="text-xs font-medium">Date:</span>
+                          <span className="text-xs">{data.date}</span>
+                          
+                          <span className="text-xs font-medium">Value:</span>
+                          <span className="text-xs">{data.value} µg/m³</span>
+                          
+                          <span className="text-xs font-medium">Range:</span>
+                          <span className="text-xs">{data.lower} - {data.upper} µg/m³</span>
+                          
+                          <span className="text-xs font-medium">Category:</span>
+                          <span className="text-xs">
+                            <AqiBadge level={category as AqiLevel} showLabel={true} className="px-1 py-0" />
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  }
+                  return null;
+                }}
               />
               <defs>
                 <linearGradient id="colorUpper" x1="0" y1="0" x2="0" y2="1">
@@ -216,19 +364,30 @@ const ForecastPreview: React.FC<ForecastPreviewProps> = ({
             </AreaChart>
           </ResponsiveContainer>
         </div>
-        <div className="flex justify-center space-x-4 mt-2">
-          <div className="flex items-center">
-            <div className="h-3 w-3 bg-[#2563eb] rounded-full mr-1"></div>
-            <span className="text-xs">Forecast</span>
+        <div className="flex flex-col space-y-4 mt-4">
+          <div className="flex justify-center space-x-4">
+            <div className="flex items-center">
+              <div className="h-3 w-3 bg-[#2563eb] rounded-full mr-1"></div>
+              <span className="text-xs">Forecast</span>
+            </div>
+            <div className="flex items-center">
+              <div className="h-3 w-3 bg-[#82ca9d] rounded-full mr-1"></div>
+              <span className="text-xs">Upper Bound</span>
+            </div>
+            <div className="flex items-center">
+              <div className="h-3 w-3 bg-[#8884d8] rounded-full mr-1"></div>
+              <span className="text-xs">Lower Bound</span>
+            </div>
           </div>
-          <div className="flex items-center">
-            <div className="h-3 w-3 bg-[#82ca9d] rounded-full mr-1"></div>
-            <span className="text-xs">Upper Bound</span>
-          </div>
-          <div className="flex items-center">
-            <div className="h-3 w-3 bg-[#8884d8] rounded-full mr-1"></div>
-            <span className="text-xs">Lower Bound</span>
-          </div>
+          
+          {dominantCategory && (
+            <div className="p-3 rounded-md bg-gray-50 border">
+              <p className="text-xs leading-relaxed">
+                <span className="font-medium">Air Quality Forecast: </span>
+                {getAqiDescription(dominantCategory)}
+              </p>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>

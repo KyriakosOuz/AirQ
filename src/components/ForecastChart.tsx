@@ -8,13 +8,16 @@ import {
   YAxis,
   CartesianGrid,
   ResponsiveContainer,
+  Tooltip,
 } from "recharts";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer, ChartTooltipContent, ChartTooltip } from "@/components/ui/chart";
 import { aqiChartConfig } from "@/lib/chart-config";
-import { Forecast } from "@/lib/types";
+import { Forecast, AqiLevel, Pollutant } from "@/lib/types";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { cn } from "@/lib/utils";
+import { AqiBadge } from "@/components/ui/aqi-badge";
+import { getAqiDescription } from "@/lib/aqi-utils";
 
 interface ForecastChartProps {
   data: Forecast[];
@@ -30,13 +33,15 @@ const ForecastChart: React.FC<ForecastChartProps> = ({ data, region, pollutant }
       const yhat = typeof item.yhat === 'number' ? Number(item.yhat.toFixed(2)) : 0;
       const yhat_lower = typeof item.yhat_lower === 'number' ? Number(item.yhat_lower.toFixed(2)) : 0;
       const yhat_upper = typeof item.yhat_upper === 'number' ? Number(item.yhat_upper.toFixed(2)) : 0;
+      const category = item.category || "Unknown";
       
       return {
         ...item,
         date: format(parseISO(item.ds), "MMM dd"),
         value: yhat,
         lower: yhat_lower,
-        upper: yhat_upper
+        upper: yhat_upper,
+        category
       };
     });
   }, [data]);
@@ -72,17 +77,54 @@ const ForecastChart: React.FC<ForecastChartProps> = ({ data, region, pollutant }
     return "";
   };
 
+  // Get the dominant AQI category from the forecast data
+  const getDominantCategory = (): AqiLevel | null => {
+    if (!data || data.length === 0 || !data[0].category) return null;
+    
+    const categoryCounts: Record<string, number> = {};
+    
+    data.forEach(item => {
+      if (item.category) {
+        const category = item.category.toLowerCase();
+        categoryCounts[category] = (categoryCounts[category] || 0) + 1;
+      }
+    });
+    
+    let dominantCategory = null;
+    let maxCount = 0;
+    
+    for (const [category, count] of Object.entries(categoryCounts)) {
+      if (count > maxCount) {
+        maxCount = count;
+        dominantCategory = category;
+      }
+    }
+    
+    return dominantCategory as AqiLevel || null;
+  };
+
   const pollutantDisplay = getDisplayName(pollutant);
   const regionDisplay = region.charAt(0).toUpperCase() + region.slice(1).replace(/-/g, " ");
   const frequencyDisplay = getFrequencyDisplay(data);
+  const dominantCategory = getDominantCategory();
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Forecast: {pollutantDisplay} in {regionDisplay}</CardTitle>
-        <CardDescription>
-          {frequencyDisplay} prediction for {data.length} periods
-        </CardDescription>
+        <div className="flex flex-row justify-between items-start">
+          <div>
+            <CardTitle>Forecast: {pollutantDisplay} in {regionDisplay}</CardTitle>
+            <CardDescription>
+              {frequencyDisplay} prediction for {data.length} periods
+            </CardDescription>
+          </div>
+          {dominantCategory && (
+            <div className="flex flex-col items-end">
+              <AqiBadge level={dominantCategory} className="mb-1" />
+              <span className="text-xs text-muted-foreground">Dominant AQI Category</span>
+            </div>
+          )}
+        </div>
       </CardHeader>
       <CardContent>
         <AspectRatio ratio={16/9} className="bg-background">
@@ -145,18 +187,33 @@ const ForecastChart: React.FC<ForecastChartProps> = ({ data, region, pollutant }
                     }
                   }}
                 />
-                <ChartTooltip
-                  content={
-                    <ChartTooltipContent 
-                      formatter={(value: any, name: string) => {
-                        // Safely format the tooltip value
-                        const formattedValue = typeof value === 'number' ? 
-                          `${parseFloat(value.toString()).toFixed(2)} µg/m³` : 
-                          '-- µg/m³';
-                        return [formattedValue, name];
-                      }}
-                    />
-                  }
+                <Tooltip
+                  content={({ active, payload }) => {
+                    if (active && payload && payload.length) {
+                      const data = payload[0].payload;
+                      return (
+                        <div className="rounded-lg border bg-background p-2 shadow-md">
+                          <div className="grid grid-cols-2 gap-1">
+                            <span className="text-xs font-medium">Date:</span>
+                            <span className="text-xs">{data.date}</span>
+                            
+                            <span className="text-xs font-medium">Value:</span>
+                            <span className="text-xs">{data.value} µg/m³</span>
+                            
+                            <span className="text-xs font-medium">Category:</span>
+                            <span className="text-xs">
+                              <AqiBadge 
+                                level={data.category?.toLowerCase() as AqiLevel || "moderate"} 
+                                showLabel={true}
+                                className="px-1 py-0"
+                              />
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  }}
                 />
                 <Area
                   type="monotone"
@@ -186,15 +243,27 @@ const ForecastChart: React.FC<ForecastChartProps> = ({ data, region, pollutant }
             </ResponsiveContainer>
           </ChartContainer>
         </AspectRatio>
-        <div className="flex justify-center space-x-4 mt-4">
-          <div className="flex items-center">
-            <div className={cn("h-3 w-3 rounded-full mr-1", "bg-[#8884d8]")}></div>
-            <span className="text-xs">Forecast</span>
+        
+        <div className="flex flex-col mt-4 space-y-3">
+          <div className="flex justify-center space-x-4">
+            <div className="flex items-center">
+              <div className={cn("h-3 w-3 rounded-full mr-1", "bg-[#8884d8]")}></div>
+              <span className="text-xs">Forecast</span>
+            </div>
+            <div className="flex items-center">
+              <div className={cn("h-3 w-3 rounded-full mr-1", "bg-[#82ca9d]")}></div>
+              <span className="text-xs">Confidence Interval</span>
+            </div>
           </div>
-          <div className="flex items-center">
-            <div className={cn("h-3 w-3 rounded-full mr-1", "bg-[#82ca9d]")}></div>
-            <span className="text-xs">Confidence Interval</span>
-          </div>
+          
+          {dominantCategory && (
+            <div className="p-3 rounded-md bg-gray-50 border mt-2">
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                <span className="font-medium">Air Quality Forecast: </span>
+                {getAqiDescription(dominantCategory)}
+              </p>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>
