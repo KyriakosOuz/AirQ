@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -306,9 +305,15 @@ const UserProfileFooter: React.FC = () => {
           <TooltipTrigger asChild>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-9 w-9 rounded-full group"
+                >
                   <Avatar className="h-9 w-9">
-                    <AvatarFallback>{getUserInitials(user)}</AvatarFallback>
+                    <AvatarFallback className="group-hover:text-black transition-colors">
+                      {getUserInitials(user)}
+                    </AvatarFallback>
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
@@ -338,9 +343,14 @@ const UserProfileFooter: React.FC = () => {
       <div className="flex items-center gap-2">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="p-0 h-10 w-10 rounded-full">
+            <Button 
+              variant="ghost" 
+              className="p-0 h-10 w-10 rounded-full group"
+            >
               <Avatar>
-                <AvatarFallback>{getUserInitials(user)}</AvatarFallback>
+                <AvatarFallback className="group-hover:text-black transition-colors">
+                  {getUserInitials(user)}
+                </AvatarFallback>
               </Avatar>
             </Button>
           </DropdownMenuTrigger>
