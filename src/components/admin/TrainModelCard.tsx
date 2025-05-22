@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,13 +8,14 @@ import { PollutantSelector } from "@/components/ui/pollutant-selector";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
-import { Pollutant } from "@/lib/types";
+import { Pollutant, Forecast } from "@/lib/types";
 import { AlertCircle, Clock, RefreshCw, LineChart } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { FREQUENCY_OPTIONS, ModelMetadataFilters } from '@/lib/model-utils';
 import { useDatasetAvailability } from '@/hooks/use-dataset-availability';
 import { TrainingRecord } from './RecentTrainingsCard';
+import ForecastChart from "@/components/ForecastChart";
 
 interface TrainModelCardProps {
   trainRegion: string;
@@ -37,7 +39,8 @@ interface TrainModelCardProps {
   filtersLoading?: boolean;
   forecastLoading?: boolean;
   onPreviewForecast?: () => void;
-  selectedPreviewModel?: TrainingRecord | null; // NEW: Add selected model prop
+  selectedPreviewModel?: TrainingRecord | null; 
+  forecastData?: Forecast[] | null; // Add forecastData prop to display forecast
 }
 
 const TrainModelCard: React.FC<TrainModelCardProps> = ({
@@ -62,7 +65,8 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
   filtersLoading = false,
   forecastLoading = false,
   onPreviewForecast,
-  selectedPreviewModel = null
+  selectedPreviewModel = null,
+  forecastData = null // Add forecastData parameter
 }) => {
   // Use our custom hook to check dataset availability
   const { isAvailable: datasetAvailable, isLoading: datasetCheckLoading } = 
@@ -105,11 +109,11 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
   const isTrainingDisabled = trainLoading || isCheckingModel || 
     datasetCheckLoading || !datasetAvailable;
   
-  // NEW: Determine if preview button should be enabled
+  // Determine if preview button should be enabled
   const isPreviewDisabled = trainLoading || forecastLoading || 
     (!selectedPreviewModel && !modelExists);
     
-  // NEW: Get tooltip message for preview button
+  // Get tooltip message for preview button
   const getPreviewTooltipMessage = () => {
     if (trainLoading) return "Please wait for training to complete";
     if (forecastLoading) return "Loading forecast data...";
@@ -117,6 +121,10 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
     if (!modelExists) return "No model available. Either select a model from the list or train a new one.";
     return "Preview forecast data for current parameters";
   };
+  
+  // Determine which region and pollutant to use for the chart
+  const chartRegion = selectedPreviewModel ? selectedPreviewModel.region : trainRegion;
+  const chartPollutant = selectedPreviewModel ? selectedPreviewModel.pollutant : trainPollutant;
   
   return (
     <Card className="h-full overflow-auto">
@@ -322,6 +330,17 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
             </div>
           </Alert>
         )}
+        
+        {/* Show forecast chart if data is available */}
+        {forecastData && forecastData.length > 0 && (
+          <div className="mt-4">
+            <ForecastChart 
+              data={forecastData}
+              region={chartRegion}
+              pollutant={chartPollutant}
+            />
+          </div>
+        )}
       </CardContent>
       <CardFooter className="flex flex-col">
         <Button 
@@ -352,7 +371,7 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
         )}
         
         {/* Preview Forecast Button with enhanced behavior */}
-        {onPreviewForecast && (
+        {onPreviewForecast && !forecastData && (
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -388,6 +407,19 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
+        )}
+        
+        {/* Hide the preview button if forecast data is being shown */}
+        {forecastData && forecastData.length > 0 && (
+          <Button 
+            variant="outline"
+            onClick={() => onPreviewForecast && onPreviewForecast()}
+            className="w-full mt-2"
+            size="sm"
+          >
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Update Forecast
+          </Button>
         )}
       </CardFooter>
     </Card>
