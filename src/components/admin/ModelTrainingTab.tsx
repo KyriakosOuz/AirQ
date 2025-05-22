@@ -447,37 +447,35 @@ const ModelTrainingTab: React.FC = () => {
         </div>
       )}
       
+      <div className="w-full">
+        <TrainModelCard
+          trainRegion={trainRegion}
+          setTrainRegion={setTrainRegion}
+          trainPollutant={trainPollutant}
+          setTrainPollutant={setTrainPollutant}
+          trainFrequency={trainFrequency}
+          setTrainFrequency={setTrainFrequency}
+          trainPeriods={trainPeriods}
+          setTrainPeriods={setTrainPeriods}
+          trainLoading={trainLoading}
+          onTrainModel={trainModel}
+          frequencyOptions={FREQUENCY_OPTIONS}
+          availableRanges={availableRanges}
+          overwriteModel={overwriteModel}
+          setOverwriteModel={setOverwriteModel}
+          trainingError={trainingError}
+          modelExists={modelExists}
+          isCheckingModel={isCheckingModel}
+          availableFilters={availableFilters}
+          filtersLoading={filtersLoading}
+          forecastLoading={forecastLoading}
+          onPreviewForecast={fetchForecastRange}
+          selectedPreviewModel={selectedPreviewModel}
+        />
+      </div>
+      
       <ResizablePanelGroup direction="horizontal" className="min-h-[600px]">
-        <ResizablePanel defaultSize={33} minSize={25}>
-          <TrainModelCard
-            trainRegion={trainRegion}
-            setTrainRegion={setTrainRegion}
-            trainPollutant={trainPollutant}
-            setTrainPollutant={setTrainPollutant}
-            trainFrequency={trainFrequency}
-            setTrainFrequency={setTrainFrequency}
-            trainPeriods={trainPeriods}
-            setTrainPeriods={setTrainPeriods}
-            trainLoading={trainLoading}
-            onTrainModel={trainModel}
-            frequencyOptions={FREQUENCY_OPTIONS}
-            availableRanges={availableRanges}
-            overwriteModel={overwriteModel}
-            setOverwriteModel={setOverwriteModel}
-            trainingError={trainingError}
-            modelExists={modelExists}
-            isCheckingModel={isCheckingModel}
-            availableFilters={availableFilters}
-            filtersLoading={filtersLoading}
-            forecastLoading={forecastLoading}
-            onPreviewForecast={fetchForecastRange}
-            selectedPreviewModel={selectedPreviewModel} // NEW: Pass the selected model
-          />
-        </ResizablePanel>
-        
-        <ResizableHandle withHandle />
-        
-        <ResizablePanel defaultSize={67}>
+        <ResizablePanel defaultSize={100} minSize={50}>
           <div className="h-full space-y-6 p-1">
             <RecentTrainingsCard
               recentTrainings={recentTrainings}
@@ -487,8 +485,8 @@ const ModelTrainingTab: React.FC = () => {
               onViewDetails={handleViewModelDetails}
               modelsToCompare={modelsToCompare}
               onToggleCompare={toggleModelForComparison}
-              onSelectForPreview={handleSelectModelForPreview} // NEW: Pass the preview selection handler
-              selectedPreviewModel={selectedPreviewModel ? selectedPreviewModel.id : null} // NEW: Pass the selected model ID
+              onSelectForPreview={handleSelectModelForPreview}
+              selectedPreviewModel={selectedPreviewModel ? selectedPreviewModel.id : null}
             />
             
             {forecastLoading && (
@@ -548,7 +546,6 @@ const ModelTrainingTab: React.FC = () => {
         </ResizablePanel>
       </ResizablePanelGroup>
       
-      {/* Model details dialog */}
       <Dialog open={modelDetailsOpen} onOpenChange={setModelDetailsOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
