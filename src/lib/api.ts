@@ -1,3 +1,4 @@
+
 import { toast } from "sonner";
 import { Pollutant, Region, Dataset, HealthTip, TrendChart, SeasonalityChart } from "@/lib/types";
 import { supabase } from "@/integrations/supabase/client";
@@ -560,7 +561,15 @@ export const modelApi = {
     });
   },
   
-  // Add the getForecastRange method
+  // Add new model preview method
+  getModelPreview: async (modelId: string, limit?: number) => {
+    const queryParams = limit ? new URLSearchParams({ limit: limit.toString() }).toString() : '';
+    const endpoint = `/models/preview/${modelId}${queryParams ? `?${queryParams}` : ''}`;
+    
+    return fetchWithAuth(`${endpoint}`);
+  },
+  
+  // Original forecast range method (kept for backward compatibility)
   getForecastRange: async ({
     region,
     pollutant,

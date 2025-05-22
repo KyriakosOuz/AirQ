@@ -32,6 +32,7 @@ interface ForecastPreviewProps {
     getRegionLabel: (regionValue: string) => string;
     getPollutantDisplay: (pollutantCode: string) => string;
   };
+  modelId?: string; // Add modelId prop to support preview by model ID
 }
 
 const ForecastPreview: React.FC<ForecastPreviewProps> = ({
@@ -40,6 +41,7 @@ const ForecastPreview: React.FC<ForecastPreviewProps> = ({
   pollutant,
   frequency = "D",
   formatters,
+  modelId, // New prop
 }) => {
   // Format X-axis labels based on frequency
   const formatXAxisLabel = (dateStr: string) => {
@@ -47,12 +49,16 @@ const ForecastPreview: React.FC<ForecastPreviewProps> = ({
     
     switch (frequency) {
       case "D":
+      case "daily":
         return format(date, 'MMM dd');
       case "W":
+      case "weekly":
         return `Week ${format(date, 'w')}`;
       case "M":
+      case "monthly":
         return format(date, 'MMM yyyy');
       case "Y":
+      case "yearly":
         return format(date, 'yyyy');
       default:
         return format(date, 'MMM dd');
