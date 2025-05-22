@@ -62,6 +62,7 @@ interface ForecastVisualizationProps {
   pollutant: string;
   frequency: string;
   periods: number;
+  forecastMode: "periods" | "daterange";
 }
 
 const ForecastVisualization: React.FC<ForecastVisualizationProps> = ({
@@ -70,7 +71,8 @@ const ForecastVisualization: React.FC<ForecastVisualizationProps> = ({
   chartType,
   pollutant,
   frequency,
-  periods
+  periods,
+  forecastMode
 }) => {
   // Function to get display name for pollutant
   const getPollutantDisplay = (pollutantCode: string): string => {
@@ -94,6 +96,16 @@ const ForecastVisualization: React.FC<ForecastVisualizationProps> = ({
       case "M": return "Monthly";
       default: return freq;
     }
+  };
+  
+  // Get date range for display in the subtitle
+  const getDateRangeText = (dataPoints: any[]): string => {
+    if (dataPoints.length < 2) return "";
+    
+    const startDate = new Date(dataPoints[0].ds);
+    const endDate = new Date(dataPoints[dataPoints.length - 1].ds);
+    
+    return `${format(startDate, "MMM d, yyyy")} to ${format(endDate, "MMM d, yyyy")}`;
   };
   
   if (loading) {
@@ -123,7 +135,11 @@ const ForecastVisualization: React.FC<ForecastVisualizationProps> = ({
           {getPollutantDisplay(pollutant)} Forecast
         </CardTitle>
         <CardDescription>
-          {getFrequencyDisplay(frequency)} forecast for the next {periods} {frequency === "D" ? "days" : frequency === "W" ? "weeks" : "months"}
+          {forecastMode === "periods" ? (
+            `${getFrequencyDisplay(frequency)} forecast for the next ${periods} ${frequency === "D" ? "days" : frequency === "W" ? "weeks" : "months"}`
+          ) : (
+            `Date range forecast: ${getDateRangeText(data)}`
+          )}
         </CardDescription>
       </CardHeader>
       <CardContent>

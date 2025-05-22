@@ -675,6 +675,8 @@ export const predictionApi = {
     region: string;
     frequency?: string;
     periods?: number;
+    start_date?: string;
+    end_date?: string;
   }) => {
     const queryParams = new URLSearchParams(params as any).toString();
     return fetchWithAuth<{
