@@ -104,7 +104,7 @@ const ForecastControls: React.FC<ForecastControlsProps> = ({
           </div>
           
           {/* Forecast Mode Toggle */}
-          <div className="space-y-2 col-span-1 lg:col-span-2">
+          <div className="space-y-2">
             <div className="flex items-center gap-1">
               <label className="text-sm font-medium">Forecast Mode</label>
               <TooltipProvider>
@@ -131,7 +131,7 @@ const ForecastControls: React.FC<ForecastControlsProps> = ({
           </div>
           
           {/* Update Button */}
-          <div className="flex items-end">
+          <div className="flex items-end lg:col-span-2">
             <Button 
               onClick={onUpdateForecast}
               className="w-full"
@@ -152,60 +152,101 @@ const ForecastControls: React.FC<ForecastControlsProps> = ({
         {/* Show different controls based on the forecast mode */}
         {forecastMode === "periods" ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-            {/* Frequency Selector */}
-            <div className="space-y-2">
-              <div className="flex items-center gap-1">
-                <label className="text-sm font-medium">Frequency</label>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span><Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" /></span>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p className="w-[200px] text-xs">Choose how frequently forecast data is presented: daily, weekly, or monthly intervals</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
-              <Select value={frequency} onValueChange={onFrequencyChange}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select frequency" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="D">Daily</SelectItem>
-                  <SelectItem value="W">Weekly</SelectItem>
-                  <SelectItem value="M">Monthly</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            {/* Forecast Range Slider */}
-            <div className="space-y-2">
-              <div className="flex justify-between">
+            {/* Frequency and Forecast Range in a more compact layout */}
+            <div className="space-y-4">
+              <div className="space-y-2">
                 <div className="flex items-center gap-1">
-                  <label className="text-sm font-medium">Forecast Range</label>
+                  <label className="text-sm font-medium">Frequency</label>
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <span><Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" /></span>
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p className="w-[200px] text-xs">Adjust how far into the future you want to see forecasts</p>
+                        <p className="w-[200px] text-xs">Choose how frequently forecast data is presented: daily, weekly, or monthly intervals</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
                 </div>
-                <span className="text-sm text-muted-foreground">
-                  {periods} {frequencyDisplay}
-                </span>
+                <Select value={frequency} onValueChange={onFrequencyChange}>
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="Select frequency" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="D">Daily</SelectItem>
+                    <SelectItem value="W">Weekly</SelectItem>
+                    <SelectItem value="M">Monthly</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-              <Slider
-                value={[periods]}
-                min={frequency === "D" ? 7 : frequency === "W" ? 4 : 3}
-                max={frequency === "D" ? 60 : frequency === "W" ? 24 : 12}
-                step={1}
-                onValueChange={(value) => onPeriodsChange(value[0])}
-              />
+              
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <div className="flex items-center gap-1">
+                    <label className="text-sm font-medium">Forecast Range</label>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span><Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" /></span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="w-[200px] text-xs">Adjust how far into the future you want to see forecasts</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
+                  <span className="text-sm text-muted-foreground">
+                    {periods} {frequencyDisplay}
+                  </span>
+                </div>
+                <div className="px-1">
+                  <Slider
+                    value={[periods]}
+                    min={frequency === "D" ? 7 : frequency === "W" ? 4 : 3}
+                    max={frequency === "D" ? 60 : frequency === "W" ? 24 : 12}
+                    step={1}
+                    onValueChange={(value) => onPeriodsChange(value[0])}
+                    className="w-full"
+                  />
+                </div>
+              </div>
+            </div>
+            
+            {/* Chart Type Toggle buttons moved to right side */}
+            <div className="flex flex-col justify-end">
+              <div className="space-y-2">
+                <div className="flex items-center gap-1">
+                  <label className="text-sm font-medium">Chart Type</label>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span><Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" /></span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p className="w-[200px] text-xs">Choose between bar chart or line chart visualization</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+                <div className="flex gap-2">
+                  <Button 
+                    variant={chartType === "bar" ? "default" : "outline"}
+                    size="sm" 
+                    onClick={() => onChartTypeChange("bar")}
+                    className="flex-1"
+                  >
+                    Bar Chart
+                  </Button>
+                  <Button 
+                    variant={chartType === "line" ? "default" : "outline"}
+                    size="sm" 
+                    onClick={() => onChartTypeChange("line")}
+                    className="flex-1"
+                  >
+                    Line Chart
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
         ) : (
@@ -230,7 +271,7 @@ const ForecastControls: React.FC<ForecastControlsProps> = ({
                   <Button
                     variant={"outline"}
                     className={cn(
-                      "w-full justify-start text-left font-normal",
+                      "w-full justify-start text-left font-normal h-9",
                       !startDate && "text-muted-foreground"
                     )}
                   >
@@ -270,7 +311,7 @@ const ForecastControls: React.FC<ForecastControlsProps> = ({
                   <Button
                     variant={"outline"}
                     className={cn(
-                      "w-full justify-start text-left font-normal",
+                      "w-full justify-start text-left font-normal h-9",
                       !endDate && "text-muted-foreground"
                     )}
                   >
@@ -289,29 +330,45 @@ const ForecastControls: React.FC<ForecastControlsProps> = ({
                 </PopoverContent>
               </Popover>
             </div>
+            
+            {/* Chart Type Toggle for date range mode */}
+            <div className="md:col-span-2">
+              <div className="space-y-2">
+                <div className="flex items-center gap-1">
+                  <label className="text-sm font-medium">Chart Type</label>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span><Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" /></span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p className="w-[200px] text-xs">Choose between bar chart or line chart visualization</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+                <div className="flex gap-2">
+                  <Button 
+                    variant={chartType === "bar" ? "default" : "outline"}
+                    size="sm" 
+                    onClick={() => onChartTypeChange("bar")}
+                    className="flex-1"
+                  >
+                    Bar Chart
+                  </Button>
+                  <Button 
+                    variant={chartType === "line" ? "default" : "outline"}
+                    size="sm" 
+                    onClick={() => onChartTypeChange("line")}
+                    className="flex-1"
+                  >
+                    Line Chart
+                  </Button>
+                </div>
+              </div>
+            </div>
           </div>
         )}
-        
-        {/* Chart Type Toggle (Line/Bar) */}
-        <div className="mt-4 flex items-center space-x-4">
-          <span className="text-sm font-medium">Chart Type:</span>
-          <div className="flex space-x-2">
-            <Button 
-              variant={chartType === "bar" ? "default" : "outline"}
-              size="sm" 
-              onClick={() => onChartTypeChange("bar")}
-            >
-              Bar Chart
-            </Button>
-            <Button 
-              variant={chartType === "line" ? "default" : "outline"}
-              size="sm" 
-              onClick={() => onChartTypeChange("line")}
-            >
-              Line Chart
-            </Button>
-          </div>
-        </div>
       </CardContent>
     </Card>
   );
