@@ -1,4 +1,3 @@
-
 // Add the created_at field to the Dataset interface
 export interface Dataset {
   id: string;
@@ -101,4 +100,3 @@ export interface ForecastDataPoint {
   yhat_upper: number;
   category?: string;
 }
-
