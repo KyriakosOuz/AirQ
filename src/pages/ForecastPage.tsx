@@ -8,7 +8,7 @@ import { useUserStore } from "@/stores/userStore";
 import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
-// Import our new components
+// Import our components
 import ForecastControls from "@/components/forecasts/ForecastControls";
 import ForecastVisualization from "@/components/forecasts/ForecastVisualization";
 import AQISummaryCard from "@/components/forecasts/AQISummaryCard";
@@ -34,11 +34,10 @@ const ForecastPage: React.FC = () => {
   const [region, setRegion] = useState("thessaloniki");
   const [pollutant, setPollutant] = useState<Pollutant>("no2_conc");
   const [frequency, setFrequency] = useState("D"); // Default to daily
-  const [periods, setPeriods] = useState(7); // Default to 7 days
+  const [periods, setPeriods] = useState(7); // Kept for backward compatibility
   const [chartType, setChartType] = useState<"bar" | "line">("bar");
   
-  // New state for date range mode
-  const [forecastMode, setForecastMode] = useState<"periods" | "daterange">("periods");
+  // Date range state
   const [startDate, setStartDate] = useState<Date | undefined>(new Date());
   const [endDate, setEndDate] = useState<Date | undefined>(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)); // Default to 30 days ahead
   
@@ -64,41 +63,29 @@ const ForecastPage: React.FC = () => {
     setLoading(true);
     setInitialLoad(false);
     try {
-      let response;
-      
-      if (forecastMode === "periods") {
-        // Use periods-based forecast
-        response = await predictionApi.getForecastWithRisk({
-          region, 
-          pollutant,
-          frequency,
-          periods
-        });
-      } else {
-        // Use date-range based forecast
-        if (!startDate || !endDate) {
-          toast.error("Please select both start and end dates");
-          setLoading(false);
-          return;
-        }
-        
-        const start = formatDateForApi(startDate);
-        const end = formatDateForApi(endDate);
-        
-        // Check if dates are valid
-        if (startDate > endDate) {
-          toast.error("Start date must be before end date");
-          setLoading(false);
-          return;
-        }
-        
-        response = await predictionApi.getForecastWithRisk({
-          region, 
-          pollutant,
-          start_date: start,
-          end_date: end
-        });
+      // Check if dates are valid
+      if (!startDate || !endDate) {
+        toast.error("Please select both start and end dates");
+        setLoading(false);
+        return;
       }
+      
+      if (startDate > endDate) {
+        toast.error("Start date must be before end date");
+        setLoading(false);
+        return;
+      }
+      
+      const start = formatDateForApi(startDate);
+      const end = formatDateForApi(endDate);
+      
+      const response = await predictionApi.getForecastWithRisk({
+        region, 
+        pollutant,
+        frequency,
+        start_date: start,
+        end_date: end
+      });
       
       if (response.success && response.data) {
         const { forecast, current } = response.data;
@@ -145,26 +132,11 @@ const ForecastPage: React.FC = () => {
   // Handler for frequency change
   const handleFrequencyChange = (value: string) => {
     setFrequency(value);
-    
-    // Reset periods to default based on frequency
-    if (value === "D") setPeriods(7);
-    if (value === "W") setPeriods(4);
-    if (value === "M") setPeriods(3);
-  };
-  
-  // Handler for periods change
-  const handlePeriodsChange = (value: number) => {
-    setPeriods(value);
   };
   
   // Handler for chart type change
   const handleChartTypeChange = (type: "bar" | "line") => {
     setChartType(type);
-  };
-  
-  // Handler for forecast mode change
-  const handleForecastModeChange = (mode: "periods" | "daterange") => {
-    setForecastMode(mode);
   };
   
   // Handler for start date change
@@ -194,15 +166,15 @@ const ForecastPage: React.FC = () => {
         periods={periods}
         chartType={chartType}
         loading={loading}
-        forecastMode={forecastMode}
+        forecastMode="daterange"
         startDate={startDate}
         endDate={endDate}
         onRegionChange={handleRegionChange}
         onPollutantChange={handlePollutantChange}
         onFrequencyChange={handleFrequencyChange}
-        onPeriodsChange={handlePeriodsChange}
+        onPeriodsChange={() => {}} // Empty handler as we don't use periods anymore
         onChartTypeChange={handleChartTypeChange}
-        onForecastModeChange={handleForecastModeChange}
+        onForecastModeChange={() => {}} // Empty handler as we don't switch modes anymore
         onStartDateChange={handleStartDateChange}
         onEndDateChange={handleEndDateChange}
         onUpdateForecast={loadForecastData}
@@ -237,7 +209,7 @@ const ForecastPage: React.FC = () => {
           pollutant={pollutant}
           frequency={frequency}
           periods={periods}
-          forecastMode={forecastMode}
+          forecastMode="daterange"
         />
       )}
       
