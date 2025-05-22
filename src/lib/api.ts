@@ -669,6 +669,31 @@ export const predictionApi = {
       category: string; 
     }>>(`/models/predict/?${queryParams}`, {}, 8000);
   },
+  
+  // New method to get forecast with risk assessment
+  getForecastWithRisk: async (params: { 
+    pollutant: string; 
+    region: string;
+    frequency?: string;
+    periods?: number;
+  }) => {
+    const queryParams = new URLSearchParams(params as any).toString();
+    return fetchWithAuth<{
+      forecast: Array<{
+        ds: string;
+        yhat: number;
+        category: string;
+        risk_score: number;
+      }>,
+      current: {
+        ds: string;
+        yhat: number;
+        category: string;
+        risk_score: number;
+      }
+    }>(`/forecast/risk-timeline/?${queryParams}`, {}, 8000);
+  },
+  
   compare: async (compareData: { pollutant: string; regions: string[] }) => {
     return fetchWithAuth("/models/predict/compare/", {
       method: "POST",

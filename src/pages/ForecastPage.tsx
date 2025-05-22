@@ -4,314 +4,292 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { RegionSelector } from "@/components/ui/region-selector";
 import { PollutantSelector } from "@/components/ui/pollutant-selector";
 import { predictionApi } from "@/lib/api";
-import { Forecast, Pollutant, aqiLevelLabels, stringToAqiLevel } from "@/lib/types";
+import { Pollutant } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { format } from "date-fns";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { CalendarIcon, AlertCircle, RefreshCw } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { toast } from "sonner";
-import { AqiBadge } from "@/components/ui/aqi-badge";
 import { Slider } from "@/components/ui/slider";
-import ForecastChart from "@/components/ForecastChart";
+import { AlertCircle, RefreshCw } from "lucide-react";
+import { toast } from "sonner";
+import { useUserStore } from "@/stores/userStore";
+import {
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Cell,
+  TooltipProps
+} from 'recharts';
+import { format } from "date-fns";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
+// Risk Score color mapping
+const RISK_COLORS = [
+  "#22c55e", // Green (0)
+  "#eab308", // Yellow (1)
+  "#f97316", // Orange (2)
+  "#ef4444", // Red (3)
+  "#9333ea"  // Purple (4)
+];
+
+// Risk score to description mapping
+const RISK_DESCRIPTIONS = [
+  "Low risk",
+  "Moderate risk",
+  "Medium risk",
+  "High risk",
+  "Very high risk"
+];
+
+// Simple health advice based on risk score and user health conditions
+const getHealthAdvice = (riskScore: number, profile: any) => {
+  if (!profile) {
+    return "Sign in and complete your health profile for personalized recommendations.";
+  }
+
+  if (riskScore >= 3 && profile.has_asthma) {
+    return "⚠️ You may experience breathing difficulty due to asthma. Consider staying indoors today.";
+  }
+  
+  if (riskScore >= 2 && profile.has_lung_disease) {
+    return "⚠️ Your lung condition may be aggravated. Limit outdoor activities and keep medication accessible.";
+  }
+  
+  if (riskScore >= 2 && profile.has_heart_disease) {
+    return "⚠️ Heart symptoms may worsen. Avoid physical exertion outdoors and monitor your symptoms closely.";
+  }
+  
+  if (riskScore >= 3 && profile.age && profile.age > 65) {
+    return "⚠️ Older adults are more sensitive to air pollution. Consider staying indoors with windows closed.";
+  }
+  
+  if (riskScore >= 2 && profile.is_smoker) {
+    return "⚠️ The combination of smoking and air pollution increases respiratory risks. Consider reducing smoking today.";
+  }
+  
+  if (riskScore >= 1 && profile.has_diabetes) {
+    return "⚠️ Air pollution may affect blood sugar levels. Monitor your glucose more frequently today.";
+  }
+  
+  // General advice based on risk score
+  switch (riskScore) {
+    case 0:
+      return "Air quality is good. Enjoy outdoor activities as normal.";
+    case 1:
+      return "Air quality is acceptable. Unusually sensitive people should consider reducing prolonged outdoor exertion.";
+    case 2:
+      return "Members of sensitive groups may experience health effects. Consider reducing prolonged outdoor activities.";
+    case 3:
+      return "Everyone may begin to experience health effects. Limit time spent outdoors, especially if you feel symptoms.";
+    case 4:
+      return "Health alert: Everyone may experience more serious health effects. Avoid outdoor activities and wear a mask if going outside is necessary.";
+    default:
+      return "Monitor air quality and adjust activities accordingly.";
+  }
+};
+
+// Custom tooltip for the forecast chart
+const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    return (
+      <div className="bg-background border rounded-md p-3 shadow-md">
+        <p className="font-medium">{format(new Date(data.ds), "MMM d, yyyy")}</p>
+        <p className="text-sm text-muted-foreground">{data.pollutant_display} Level: {data.yhat.toFixed(1)} μg/m³</p>
+        <p className="text-sm" style={{ color: RISK_COLORS[data.risk_score] }}>
+          {data.category} ({RISK_DESCRIPTIONS[data.risk_score]})
+        </p>
+      </div>
+    );
+  }
+  return null;
+};
+
+// Main ForecastPage component
 const ForecastPage: React.FC = () => {
+  // State hooks for user inputs
   const [region, setRegion] = useState("thessaloniki");
   const [pollutant, setPollutant] = useState<Pollutant>("no2_conc");
   const [frequency, setFrequency] = useState("D"); // Default to daily
-  const [periodMode, setPeriodMode] = useState<"periods" | "daterange">("periods");
   const [periods, setPeriods] = useState(7); // Default to 7 days
-  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
-  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
-  const [forecasts, setForecasts] = useState<Forecast[]>([]);
+  const [chartType, setChartType] = useState<"bar" | "line">("bar");
+  
+  // State for API data
   const [loading, setLoading] = useState(false);
-  const [usingFallbackModel, setUsingFallbackModel] = useState(false);
-  const [noModelAvailable, setNoModelAvailable] = useState(false);
+  const [forecastData, setForecastData] = useState<any[]>([]);
+  const [currentData, setCurrentData] = useState<any>(null);
+  
+  // Get user profile from store
+  const { profile } = useUserStore();
 
-  // Frequency options
-  const frequencyOptions = [
-    { value: "D", label: "Daily" },
-    { value: "W", label: "Weekly" },
-    { value: "M", label: "Monthly" },
-    { value: "Y", label: "Yearly" }
-  ];
-
-  // Period options based on frequency
-  const periodOptions = {
-    "D": [7, 14, 30, 60, 90, 365],
-    "W": [4, 8, 12, 24, 52],
-    "M": [3, 6, 12, 24],
-    "Y": [1, 2, 3, 5]
-  };
-
-  // Load forecasts when component mounts
+  // Load forecast data when component mounts
   useEffect(() => {
-    loadForecasts();
+    loadForecastData();
   }, []); 
-
-  const loadForecasts = async () => {
-    setLoading(true);
-    setUsingFallbackModel(false); // Reset fallback status
-    setNoModelAvailable(false); // Reset no model status
-    setForecasts([]); // Clear previous forecasts
-    
-    try {
-      // Build the query parameters
-      const params: {
-        pollutant: string;
-        region: string;
-        frequency: string;
-        limit?: number;
-        start_date?: string;
-        end_date?: string;
-      } = {
-        pollutant,
-        region,
-        frequency
-      };
-
-      // Add either periods or date range
-      if (periodMode === "periods") {
-        params.limit = periods;
-      } else if (startDate && endDate) {
-        params.start_date = format(startDate, "yyyy-MM-dd");
-        params.end_date = format(endDate, "yyyy-MM-dd");
-      }
-
-      console.log(`Fetching forecast for ${region}, pollutant ${pollutant}, frequency ${frequency}, periods ${periods}`);
-      const response = await predictionApi.forecast(params);
-
-      if (response.success && Array.isArray(response.data) && response.data.length > 0) {
-        console.log(`Received ${response.data.length} forecast data points`);
-        
-        // Validate and sanitize data to prevent undefined values
-        const validatedData = response.data.map(forecast => ({
-          ...forecast,
-          // Ensure numeric values or provide defaults
-          yhat: typeof forecast.yhat === 'number' ? forecast.yhat : 0,
-          yhat_lower: typeof forecast.yhat_lower === 'number' ? forecast.yhat_lower : 0,
-          yhat_upper: typeof forecast.yhat_upper === 'number' ? forecast.yhat_upper : 0,
-          // Ensure category has a valid value
-          category: forecast.category || "Unknown"
-        }));
-        
-        setForecasts(validatedData);
-        
-        // Check if response metadata indicates a fallback model was used
-        if (response.meta?.using_fallback_model) {
-          console.log("Using fallback model for forecast");
-          setUsingFallbackModel(true);
-        }
-      } else {
-        console.error("Failed to load forecasts or empty forecast data:", response.error);
-        console.log("Response data:", JSON.stringify(response));
-        toast.error(`No forecast model available for ${getPollutantDisplay(pollutant)}`);
-        setNoModelAvailable(true);
-      }
-    } catch (error) {
-      console.error("Error loading forecasts:", error);
-      toast.error(`No forecast model available for ${getPollutantDisplay(pollutant)}`);
-      setNoModelAvailable(true);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Get the latest forecast for displaying current AQI
-  const latestForecast = forecasts.length > 0 ? forecasts[0] : null;
-
-  // Handler for region change
-  const handleRegionChange = (value: string) => {
-    setRegion(value);
-  };
-
-  // Handler for pollutant change
-  const handlePollutantChange = (value: Pollutant) => {
-    setPollutant(value);
-  };
-
-  // Format date for display
-  const formatForecastDate = (dateStr: string) => {
-    try {
-      const date = new Date(dateStr);
-      return format(date, "MMM d");
-    } catch {
-      return dateStr;
-    }
-  };
-
-  // Get pollutant display name
+  
+  // Function to get display name for pollutant
   const getPollutantDisplay = (pollutantCode: string): string => {
     const map: Record<string, string> = {
       "no2_conc": "NO₂",
       "o3_conc": "O₃",
       "so2_conc": "SO₂",
-      "pm10_conc": "PM10",
-      "pm25_conc": "PM2.5",
       "co_conc": "CO",
-      "no_conc": "NO",
+      "no_conc": "NO"
     };
     return map[pollutantCode] || pollutantCode;
   };
-
-  // Get region display name
+  
+  // Function to load forecast data from API
+  const loadForecastData = async () => {
+    setLoading(true);
+    try {
+      const response = await predictionApi.getForecastWithRisk({
+        region, 
+        pollutant,
+        frequency,
+        periods
+      });
+      
+      if (response.success && response.data) {
+        const { forecast, current } = response.data;
+        
+        // Enhance forecast data with additional display properties
+        const enhancedForecast = forecast.map(item => ({
+          ...item,
+          pollutant_display: getPollutantDisplay(pollutant)
+        }));
+        
+        setForecastData(enhancedForecast);
+        
+        // Enhance current data with the pollutant display name
+        if (current) {
+          setCurrentData({
+            ...current,
+            pollutant_display: getPollutantDisplay(pollutant)
+          });
+        }
+        
+        toast.success(`Updated forecast for ${getPollutantDisplay(pollutant)} in ${region}`);
+      } else {
+        toast.error("Failed to load forecast data");
+        console.error("Failed to load forecast:", response.error);
+      }
+    } catch (error) {
+      toast.error("Error loading forecast data");
+      console.error("Error loading forecast:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Handler for region change
+  const handleRegionChange = (value: string) => {
+    setRegion(value);
+  };
+  
+  // Handler for pollutant change
+  const handlePollutantChange = (value: Pollutant) => {
+    setPollutant(value);
+  };
+  
+  // Handler for frequency change
+  const handleFrequencyChange = (value: string) => {
+    setFrequency(value);
+    
+    // Reset periods to default based on frequency
+    if (value === "D") setPeriods(7);
+    if (value === "W") setPeriods(4);
+    if (value === "M") setPeriods(3);
+  };
+  
+  // Get region display name (capitalize first letter)
   const getRegionDisplay = (regionValue: string): string => {
     return regionValue.charAt(0).toUpperCase() + regionValue.slice(1).replace(/-/g, " ");
   };
-
-  // Update periods when frequency changes
-  useEffect(() => {
-    // Set the first available period option for this frequency
-    const availableOptions = periodOptions[frequency as keyof typeof periodOptions] || [];
-    if (availableOptions.length > 0) {
-      setPeriods(availableOptions[0]);
+  
+  // Get frequency display name
+  const getFrequencyDisplay = (freq: string): string => {
+    switch (freq) {
+      case "D": return "Daily";
+      case "W": return "Weekly";
+      case "M": return "Monthly";
+      default: return freq;
     }
-  }, [frequency]);
-
+  };
+  
+  // Get health advice for the user based on current air quality
+  const getPersonalizedInsight = () => {
+    if (!currentData) return "Loading personalized insights...";
+    return getHealthAdvice(currentData.risk_score, profile);
+  };
+  
   return (
     <div className="space-y-6">
       <div className="flex flex-col space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight">Air Quality Forecast</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Personal Air Quality Forecast</h1>
         <p className="text-muted-foreground">
-          View predicted air quality levels for upcoming periods.
+          View personalized air quality forecasts with health risk assessments based on your profile.
         </p>
       </div>
 
+      {/* Input Controls Section */}
       <Card className="overflow-hidden border-border/40 shadow-sm">
-        <CardContent className="p-0">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 p-4 bg-muted/30">
+        <CardContent className="p-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            {/* Region Selector */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Region</label>
               <RegionSelector value={region} onValueChange={handleRegionChange} />
             </div>
-
+            
+            {/* Pollutant Selector */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Pollutant</label>
               <PollutantSelector value={pollutant} onValueChange={handlePollutantChange} />
             </div>
-
+            
+            {/* Frequency Selector */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Frequency</label>
-              <Select value={frequency} onValueChange={setFrequency}>
+              <Select value={frequency} onValueChange={handleFrequencyChange}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select frequency" />
                 </SelectTrigger>
                 <SelectContent>
-                  {frequencyOptions.map(option => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="D">Daily</SelectItem>
+                  <SelectItem value="W">Weekly</SelectItem>
+                  <SelectItem value="M">Monthly</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-
+            
+            {/* Forecast Range Slider */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Forecast Range</label>
-              <Tabs defaultValue="periods" onValueChange={(value) => setPeriodMode(value as any)}>
-                <TabsList className="grid grid-cols-2 h-9">
-                  <TabsTrigger value="periods" className="text-xs">Periods</TabsTrigger>
-                  <TabsTrigger value="daterange" className="text-xs">Date Range</TabsTrigger>
-                </TabsList>
-                <TabsContent value="periods" className="pt-2">
-                  {frequency === "D" && (
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <span className="text-xs">{periods} days</span>
-                        <span className="text-xs">{periodOptions.D.slice(-1)[0]} days</span>
-                      </div>
-                      <Slider 
-                        value={[periods]} 
-                        min={periodOptions.D[0]} 
-                        max={periodOptions.D.slice(-1)[0]} 
-                        step={1} 
-                        onValueChange={(value) => setPeriods(value[0])} 
-                        className="py-1"
-                      />
-                    </div>
-                  )}
-                  {frequency !== "D" && (
-                    <Select 
-                      value={periods.toString()} 
-                      onValueChange={(val) => setPeriods(parseInt(val))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select periods" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {periodOptions[frequency as keyof typeof periodOptions]?.map(option => (
-                          <SelectItem key={option} value={option.toString()}>
-                            {option} {frequency === "W" ? "weeks" : 
-                                   frequency === "M" ? "months" : "years"}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                </TabsContent>
-                <TabsContent value="daterange" className="pt-2 space-y-2">
-                  <div className="grid gap-2">
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className={cn(
-                            "justify-start text-left font-normal w-full text-sm",
-                            !startDate && "text-muted-foreground"
-                          )}
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {startDate ? format(startDate, "PPP") : "Start Date"}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0">
-                        <Calendar
-                          mode="single"
-                          selected={startDate}
-                          onSelect={setStartDate}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className={cn(
-                            "justify-start text-left font-normal w-full text-sm",
-                            !endDate && "text-muted-foreground"
-                          )}
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {endDate ? format(endDate, "PPP") : "End Date"}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0">
-                        <Calendar
-                          mode="single"
-                          selected={endDate}
-                          onSelect={setEndDate}
-                          initialFocus
-                          disabled={(date) => 
-                            (startDate ? date < startDate : false)
-                          }
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                </TabsContent>
-              </Tabs>
+              <div className="flex justify-between">
+                <label className="text-sm font-medium">Forecast Range</label>
+                <span className="text-sm text-muted-foreground">
+                  {periods} {frequency === "D" ? "days" : frequency === "W" ? "weeks" : "months"}
+                </span>
+              </div>
+              <Slider
+                value={[periods]}
+                min={frequency === "D" ? 7 : frequency === "W" ? 4 : 3}
+                max={frequency === "D" ? 365 : frequency === "W" ? 52 : 12}
+                step={frequency === "D" ? 1 : 1}
+                onValueChange={(value) => setPeriods(value[0])}
+              />
             </div>
-
+            
+            {/* Update Button */}
             <div className="flex items-end">
               <Button 
-                onClick={loadForecasts} 
-                className="w-full" 
-                disabled={loading || (periodMode === "daterange" && (!startDate || !endDate))}
+                onClick={loadForecastData}
+                className="w-full"
+                disabled={loading}
               >
                 {loading ? (
                   <>
@@ -324,124 +302,197 @@ const ForecastPage: React.FC = () => {
               </Button>
             </div>
           </div>
+          
+          {/* Chart Type Toggle (Line/Bar) */}
+          <div className="mt-4 flex items-center space-x-4">
+            <span className="text-sm font-medium">Chart Type:</span>
+            <div className="flex space-x-2">
+              <Button 
+                variant={chartType === "bar" ? "default" : "outline"}
+                size="sm" 
+                onClick={() => setChartType("bar")}
+              >
+                Bar Chart
+              </Button>
+              <Button 
+                variant={chartType === "line" ? "default" : "outline"}
+                size="sm" 
+                onClick={() => setChartType("line")}
+              >
+                Line Chart
+              </Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
-      {noModelAvailable && (
-        <Alert variant="destructive" className="bg-red-50 dark:bg-red-950/30 border-red-300 dark:border-red-800">
-          <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
-          <AlertDescription className="text-red-800 dark:text-red-300">
-            No forecast model is available for {getPollutantDisplay(pollutant)} in {getRegionDisplay(region)} with {frequency === "D" ? "daily" : 
-                               frequency === "W" ? "weekly" : 
-                               frequency === "M" ? "monthly" : "yearly"} frequency.
+      {/* No Data Alert */}
+      {!loading && forecastData.length === 0 && (
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            No forecast data available. Please update your selection and try again.
           </AlertDescription>
         </Alert>
       )}
-
-      {usingFallbackModel && !noModelAvailable && (
-        <Alert variant="warning" className="bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800">
-          <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-          <AlertDescription className="text-amber-800 dark:text-amber-300">
-            Showing forecast from the most recent available model (not the latest trained model).
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {latestForecast && (
+      
+      {/* Forecast Chart Section */}
+      {forecastData.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Current Air Quality</CardTitle>
+            <CardTitle>
+              {getPollutantDisplay(pollutant)} Forecast
+            </CardTitle>
             <CardDescription>
-              {getRegionDisplay(region)} - {getPollutantDisplay(pollutant)} - {format(new Date(), "MMMM d, yyyy")}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col md:flex-row items-center gap-6">
-            <div className="flex flex-col items-center justify-center">
-              <AqiBadge level={stringToAqiLevel(latestForecast.category)} className="h-20 w-20" />
-              <span className="text-xl font-bold mt-2">{aqiLevelLabels[stringToAqiLevel(latestForecast.category)]}</span>
-              <span className="text-sm text-muted-foreground">{latestForecast.yhat.toFixed(1)} µg/m³</span>
-            </div>
-            <div className="flex-1">
-              <p>
-                The {getPollutantDisplay(pollutant)} level in {getRegionDisplay(region)} today is considered{" "}
-                <strong>{aqiLevelLabels[stringToAqiLevel(latestForecast.category)]}</strong>.
-              </p>
-              {stringToAqiLevel(latestForecast.category) === "good" && (
-                <p className="mt-2">
-                  The air is clean and poses little to no health risk. It's a great day to be outdoors and enjoy activities.
-                </p>
-              )}
-              {stringToAqiLevel(latestForecast.category) === "moderate" && (
-                <p className="mt-2">
-                  Air quality is acceptable, but there may be some risk for people who are unusually sensitive to air pollution.
-                </p>
-              )}
-              {stringToAqiLevel(latestForecast.category) === "unhealthy-sensitive" && (
-                <p className="mt-2">
-                  Members of sensitive groups may experience health effects. The general public is less likely to be affected.
-                </p>
-              )}
-              {(stringToAqiLevel(latestForecast.category) === "unhealthy" || 
-                stringToAqiLevel(latestForecast.category) === "very-unhealthy" || 
-                stringToAqiLevel(latestForecast.category) === "hazardous") && (
-                <p className="mt-2 text-red-600 dark:text-red-400 font-medium">
-                  Health alert: Everyone may experience more serious health effects! Limit outdoor activities and wear a mask if going outside.
-                </p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {forecasts.length > 0 && (
-        <ForecastChart data={forecasts} region={region} pollutant={pollutant} />
-      )}
-
-      {forecasts.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Daily Forecast</CardTitle>
-            <CardDescription>
-              {periods}-period forecast for {getPollutantDisplay(pollutant)} in {getRegionDisplay(region)}
+              {getFrequencyDisplay(frequency)} forecast for the next {periods} {frequency === "D" ? "days" : frequency === "W" ? "weeks" : "months"}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4">
-              {forecasts.slice(0, 7).map((forecast, index) => (
-                <div key={index} className="flex flex-col items-center p-3 border rounded-lg">
-                  <div className="text-sm font-medium">{formatForecastDate(forecast.ds)}</div>
-                  <AqiBadge level={stringToAqiLevel(forecast.category)} className="my-3 h-10 w-10" />
-                  <div className="font-bold text-center">{aqiLevelLabels[stringToAqiLevel(forecast.category)]}</div>
-                  <div className="text-xs text-muted-foreground text-center">{forecast.yhat.toFixed(1)} µg/m³</div>
+            <div className="h-[350px]">
+              <ResponsiveContainer width="100%" height="100%">
+                {chartType === "bar" ? (
+                  <BarChart data={forecastData} margin={{ top: 5, right: 30, left: 20, bottom: 25 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis 
+                      dataKey="ds" 
+                      tickFormatter={(value) => format(new Date(value), "MMM d")}
+                      angle={-45}
+                      textAnchor="end"
+                      height={60}
+                    />
+                    <YAxis />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Bar dataKey="yhat" name={getPollutantDisplay(pollutant)}>
+                      {forecastData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={RISK_COLORS[entry.risk_score]} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                ) : (
+                  <LineChart data={forecastData} margin={{ top: 5, right: 30, left: 20, bottom: 25 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis 
+                      dataKey="ds" 
+                      tickFormatter={(value) => format(new Date(value), "MMM d")}
+                      angle={-45}
+                      textAnchor="end"
+                      height={60}
+                    />
+                    <YAxis />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Line 
+                      type="monotone" 
+                      dataKey="yhat" 
+                      name={getPollutantDisplay(pollutant)}
+                      stroke="#6366f1"
+                      strokeWidth={2}
+                      dot={(props) => {
+                        const { cx, cy, payload } = props;
+                        return (
+                          <circle 
+                            cx={cx} 
+                            cy={cy} 
+                            r={5} 
+                            fill={RISK_COLORS[payload.risk_score]} 
+                            stroke="none"
+                          />
+                        );
+                      }}
+                    />
+                  </LineChart>
+                )}
+              </ResponsiveContainer>
+            </div>
+            
+            {/* Risk Legend */}
+            <div className="mt-4 flex flex-wrap gap-2 justify-center">
+              {RISK_COLORS.map((color, index) => (
+                <div key={index} className="flex items-center space-x-1">
+                  <div 
+                    className="h-3 w-3 rounded-full" 
+                    style={{ backgroundColor: color }}
+                  ></div>
+                  <span className="text-xs">{RISK_DESCRIPTIONS[index]}</span>
                 </div>
               ))}
             </div>
-            {forecasts.length > 7 && (
-              <p className="mt-4 text-center text-sm text-muted-foreground">
-                Showing first 7 periods of {forecasts.length} total periods
-              </p>
-            )}
           </CardContent>
         </Card>
       )}
-
-      {forecasts.length === 0 && !loading && noModelAvailable && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Forecast Unavailable</CardTitle>
-            <CardDescription>
-              No forecast data for {getPollutantDisplay(pollutant)} in {getRegionDisplay(region)}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center justify-center py-10 text-center">
-            <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-xl font-semibold mb-2">No forecast model available</h3>
-            <p className="text-muted-foreground max-w-md">
-              There is no trained model available to provide forecasts for this pollutant and region combination.
-              Try selecting a different pollutant or region.
-            </p>
-          </CardContent>
-        </Card>
+      
+      {/* Cards Section */}
+      {currentData && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Current AQI Summary Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Current Air Quality</CardTitle>
+              <CardDescription>
+                Based on the forecast for today ({format(new Date(currentData.ds), "MMMM d, yyyy")})
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center space-x-4">
+                <div 
+                  className="h-16 w-16 rounded-full flex items-center justify-center text-white font-semibold"
+                  style={{ backgroundColor: RISK_COLORS[currentData.risk_score] }}
+                >
+                  {currentData.risk_score}
+                </div>
+                <div>
+                  <p className="text-xl font-semibold">{currentData.category}</p>
+                  <p className="text-lg">{currentData.pollutant_display}: {currentData.yhat.toFixed(1)} μg/m³</p>
+                  <p className="text-sm text-muted-foreground">
+                    Your risk score: <span className="font-semibold">{currentData.risk_score}</span> - {RISK_DESCRIPTIONS[currentData.risk_score]}
+                  </p>
+                </div>
+              </div>
+              
+              <div>
+                <h4 className="font-medium mb-1">What this means:</h4>
+                <p className="text-sm">
+                  {currentData.category === "Good" && "Air quality is considered satisfactory, and air pollution poses little or no risk."}
+                  {currentData.category === "Moderate" && "Air quality is acceptable. However, there may be a risk for some people, particularly those who are unusually sensitive to air pollution."}
+                  {currentData.category === "Unhealthy for Sensitive Groups" && "Members of sensitive groups may experience health effects. The general public is less likely to be affected."}
+                  {currentData.category === "Unhealthy" && "Some members of the general public may experience health effects; members of sensitive groups may experience more serious effects."}
+                  {currentData.category === "Very Unhealthy" && "Health alert: The risk of health effects is increased for everyone."}
+                  {currentData.category === "Hazardous" && "Health warning of emergency conditions: everyone is more likely to be affected."}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+          
+          {/* Personalized Insight Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Your Personal Health Insight</CardTitle>
+              <CardDescription>
+                Tailored advice based on your health profile and current air quality
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="p-4 bg-muted rounded-lg">
+                <p className="text-lg">{getPersonalizedInsight()}</p>
+              </div>
+              
+              {!profile && (
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    Complete your health profile to get personalized air quality advice.
+                  </AlertDescription>
+                </Alert>
+              )}
+              
+              {/* AI Insights Placeholder */}
+              <div className="border border-dashed border-muted-foreground/50 rounded-lg p-4 bg-background">
+                <p className="italic text-muted-foreground">
+                  🤖 Coming soon: AI-generated insights tailored to your health and forecast data.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       )}
     </div>
   );
