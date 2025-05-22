@@ -1,14 +1,15 @@
 
 import * as React from "react";
-import { ChevronDown } from "lucide-react";
+import { Check, ChevronDown } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Pollutant } from "@/lib/types";
 import ErrorBoundary from "@/components/ErrorBoundary";
 
@@ -36,8 +37,6 @@ export function PollutantSelector({
   pollutants = [],
   disabled = false
 }: PollutantSelectorProps) {
-  const [open, setOpen] = React.useState(false);
-
   // Get available pollutant options - use custom pollutants if provided, otherwise use defaults
   const availablePollutants = React.useMemo(() => {
     if (pollutants && pollutants.length > 0) {
@@ -56,39 +55,35 @@ export function PollutantSelector({
 
   return (
     <ErrorBoundary>
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
           <Button
             variant="outline"
-            role="combobox"
-            aria-expanded={open}
-            disabled={disabled}
             className="w-full justify-between"
+            disabled={disabled}
           >
             {selectedPollutantLabel || "Select pollutant..."}
             <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-full p-0">
-          <div className="py-1">
-            {availablePollutants.map((pollutant) => (
-              <div
-                key={pollutant.value}
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="w-full" align="start">
+          {availablePollutants.map((pollutant) => (
+            <DropdownMenuItem
+              key={pollutant.value}
+              onClick={() => onValueChange(pollutant.value)}
+              className="cursor-pointer"
+            >
+              <Check
                 className={cn(
-                  "px-3 py-2 cursor-pointer hover:bg-accent hover:text-accent-foreground",
-                  value === pollutant.value && "bg-muted"
+                  "mr-2 h-4 w-4",
+                  value === pollutant.value ? "opacity-100" : "opacity-0"
                 )}
-                onClick={() => {
-                  onValueChange(pollutant.value);
-                  setOpen(false);
-                }}
-              >
-                {pollutant.label}
-              </div>
-            ))}
-          </div>
-        </PopoverContent>
-      </Popover>
+              />
+              {pollutant.label}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
     </ErrorBoundary>
   );
 }
