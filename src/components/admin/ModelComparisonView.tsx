@@ -17,6 +17,8 @@ import {
 } from 'recharts';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Switch } from '@/components/ui/switch';
+import { AqiBadge } from '@/components/ui/aqi-badge';
+import { stringToAqiLevel } from '@/lib/types';
 
 interface Forecast {
   ds: string;
@@ -27,10 +29,11 @@ interface Forecast {
 }
 
 interface ComparisonModel {
-  id: string;
+  id?: string;
+  model_id?: string;
   region: string;
   pollutant: string;
-  frequency: string;
+  frequency?: string;
   forecast: Forecast[];
 }
 
@@ -59,6 +62,7 @@ const LINE_COLORS = [
 
 const ModelComparisonView: React.FC<ModelComparisonViewProps> = ({ data, onClose, formatters }) => {
   const [showConfidenceIntervals, setShowConfidenceIntervals] = useState<boolean>(false);
+  const [showCategories, setShowCategories] = useState<boolean>(true);
   
   // Format data for the chart
   const formatChartData = () => {
@@ -91,6 +95,11 @@ const ModelComparisonView: React.FC<ModelComparisonViewProps> = ({ data, onClose
           result[`${modelKey}Lower`] = model.forecast[index]?.yhat_lower ?? null;
           result[`${modelKey}Upper`] = model.forecast[index]?.yhat_upper ?? null;
         }
+        
+        // Add categories if available
+        if (showCategories) {
+          result[`${modelKey}Category`] = model.forecast[index]?.category ?? null;
+        }
       });
       
       return result;
@@ -101,7 +110,10 @@ const ModelComparisonView: React.FC<ModelComparisonViewProps> = ({ data, onClose
   const getModelLabel = (model: ComparisonModel) => {
     const region = formatters.getRegionLabel(model.region);
     const pollutant = formatters.getPollutantDisplay(model.pollutant);
-    const frequency = formatters.getFrequencyDisplay(model.frequency);
+    // Use a fallback for frequency if it's undefined
+    const frequency = model.frequency ? 
+      formatters.getFrequencyDisplay(model.frequency) : 
+      "Daily"; // Default to "Daily" if frequency is not provided
     
     return `${region} - ${pollutant} (${frequency})`;
   };
@@ -124,6 +136,10 @@ const ModelComparisonView: React.FC<ModelComparisonViewProps> = ({ data, onClose
         headers.push(`${modelLabel} Lower (µg/m³)`);
         headers.push(`${modelLabel} Upper (µg/m³)`);
       }
+      
+      if (showCategories) {
+        headers.push(`${modelLabel} Category`);
+      }
     });
     
     // Create CSV rows
@@ -140,6 +156,11 @@ const ModelComparisonView: React.FC<ModelComparisonViewProps> = ({ data, onClose
           const upperKey = `${modelKey}Upper`;
           row.push(dataPoint[lowerKey] !== null ? dataPoint[lowerKey].toFixed(2) : '');
           row.push(dataPoint[upperKey] !== null ? dataPoint[upperKey].toFixed(2) : '');
+        }
+        
+        if (showCategories) {
+          const categoryKey = `${modelKey}Category`;
+          row.push(dataPoint[categoryKey] !== null ? dataPoint[categoryKey] : '');
         }
       });
       
@@ -159,6 +180,47 @@ const ModelComparisonView: React.FC<ModelComparisonViewProps> = ({ data, onClose
     document.body.removeChild(link);
   };
 
+  // Custom tooltip component to show category
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (!active || !payload || !payload.length) {
+      return null;
+    }
+    
+    return (
+      <div className="p-3 bg-background border rounded-lg shadow-md">
+        <p className="text-sm font-medium mb-1">{label}</p>
+        {payload.map((entry: any, index: number) => {
+          // Only show entries for the actual model values (not confidence intervals)
+          if (!entry.dataKey.includes('Lower') && !entry.dataKey.includes('Upper')) {
+            const modelIndex = parseInt(entry.dataKey.replace('model', ''));
+            const model = data.models[modelIndex];
+            const modelName = getModelLabel(model);
+            const categoryKey = `model${modelIndex}Category`;
+            const category = payload.find((p: any) => p.dataKey === entry.dataKey)?.payload[categoryKey];
+            
+            return (
+              <div key={index} className="flex flex-col mb-1">
+                <div className="flex items-center gap-2">
+                  <div
+                    className="w-3 h-3 rounded-full"
+                    style={{ backgroundColor: entry.color }}
+                  />
+                  <span className="text-xs">{modelName}: {entry.value.toFixed(2)} µg/m³</span>
+                </div>
+                {category && showCategories && (
+                  <div className="ml-5 mt-1">
+                    <AqiBadge level={stringToAqiLevel(category.toLowerCase())} />
+                  </div>
+                )}
+              </div>
+            );
+          }
+          return null;
+        })}
+      </div>
+    );
+  };
+
   return (
     <Card className="w-full">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -171,15 +233,27 @@ const ModelComparisonView: React.FC<ModelComparisonViewProps> = ({ data, onClose
         {(chartData.length > 0 && data && data.models && Array.isArray(data.models) && data.models.length > 0) ? (
           <>
             <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center space-x-2">
-                <Switch 
-                  id="confidence-intervals" 
-                  checked={showConfidenceIntervals}
-                  onCheckedChange={setShowConfidenceIntervals}
-                />
-                <label htmlFor="confidence-intervals" className="text-sm">
-                  Show confidence intervals
-                </label>
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2">
+                  <Switch 
+                    id="confidence-intervals" 
+                    checked={showConfidenceIntervals}
+                    onCheckedChange={setShowConfidenceIntervals}
+                  />
+                  <label htmlFor="confidence-intervals" className="text-sm">
+                    Show confidence intervals
+                  </label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Switch 
+                    id="show-categories" 
+                    checked={showCategories}
+                    onCheckedChange={setShowCategories}
+                  />
+                  <label htmlFor="show-categories" className="text-sm">
+                    Show categories
+                  </label>
+                </div>
               </div>
               
               <DropdownMenu>
@@ -213,10 +287,10 @@ const ModelComparisonView: React.FC<ModelComparisonViewProps> = ({ data, onClose
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" />
                     <YAxis label={{ value: "µg/m³", angle: -90, position: "insideLeft" }} />
-                    <Tooltip formatter={(value) => [`${value} µg/m³`, ""]} />
+                    <Tooltip content={<CustomTooltip />} />
                     <Legend />
                     {data.models.map((model, idx) => (
-                      <React.Fragment key={model.id}>
+                      <React.Fragment key={model.id || model.model_id || idx}>
                         <Area 
                           type="monotone" 
                           dataKey={`model${idx}Upper`} 
@@ -261,11 +335,11 @@ const ModelComparisonView: React.FC<ModelComparisonViewProps> = ({ data, onClose
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" />
                     <YAxis label={{ value: "µg/m³", angle: -90, position: "insideLeft" }} />
-                    <Tooltip formatter={(value) => [`${value} µg/m³`, ""]} />
+                    <Tooltip content={<CustomTooltip />} />
                     <Legend />
                     {data.models.map((model, idx) => (
                       <Line
-                        key={model.id}
+                        key={model.id || model.model_id || idx}
                         type="monotone"
                         dataKey={`model${idx}`}
                         name={getModelLabel(model)}
@@ -284,7 +358,7 @@ const ModelComparisonView: React.FC<ModelComparisonViewProps> = ({ data, onClose
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 {data.models.map((model, idx) => (
                   <div 
-                    key={model.id} 
+                    key={model.id || model.model_id || idx} 
                     className="flex items-center space-x-2 p-2 rounded-md border border-muted"
                   >
                     <div 

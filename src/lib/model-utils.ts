@@ -87,16 +87,18 @@ export interface ModelDetails {
   model_type?: string;
 }
 
-// Add the ModelComparisonResponse interface
+// Updated ModelComparisonResponse interface to include forecast data
 export interface ModelComparisonResponse {
   models: Array<{
-    id: string;
+    id?: string;
+    model_id?: string; // Added to match backend response
     region: string;
     pollutant: string;
     frequency?: string;
     accuracy_mae?: number;
     accuracy_rmse?: number;
     created_at?: string;
+    forecast?: ForecastDataPoint[]; // Added to include forecast data
     [key: string]: any; // Allow for additional properties
   }>;
 }
