@@ -117,8 +117,8 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
   const getPreviewTooltipMessage = () => {
     if (trainLoading) return "Please wait for training to complete";
     if (forecastLoading) return "Loading forecast data...";
+    if (!selectedPreviewModel && !modelExists) return "Please select a model from the list first";
     if (selectedPreviewModel) return `Preview forecast for ${selectedPreviewModel.pollutant} in ${selectedPreviewModel.region}`;
-    if (!modelExists) return "No model available. Either select a model from the list or train a new one.";
     return "Preview forecast data for current parameters";
   };
   
@@ -396,7 +396,7 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
                 <div className="w-full mt-2">
                   <Button 
                     variant={selectedPreviewModel ? "success" : "outline"}
-                    disabled={isPreviewDisabled}
+                    disabled={isPreviewDisabled || !selectedPreviewModel} // Updated to explicitly require selectedPreviewModel
                     onClick={onPreviewForecast}
                     className={`w-full ${selectedPreviewModel ? "bg-green-600 hover:bg-green-700" : ""}`}
                     size="sm"
@@ -414,7 +414,7 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
                     ) : (
                       <>
                         <LineChart className="mr-2 h-4 w-4" />
-                        Preview Forecast
+                        Select Model To Preview
                       </>
                     )}
                   </Button>
