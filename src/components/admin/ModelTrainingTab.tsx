@@ -20,7 +20,8 @@ import {
   ModelDetails,
   ModelMetadataFilters,
   ForecastDataPoint,
-  stringToModelStatus
+  stringToModelStatus,
+  ModelComparisonResponse
 } from "@/lib/model-utils";
 
 const ModelTrainingTab: React.FC = () => {
@@ -329,10 +330,18 @@ const ModelTrainingTab: React.FC = () => {
     setComparisonLoading(true);
     try {
       const response = await modelApi.compareModels(modelsToCompare);
-      if (response.success && response.data && Array.isArray(response.data.models)) {
-        console.log("Comparison data:", response.data.models);
-        setComparisonData({ models: response.data.models });
-        setShowComparison(true);
+      if (response.success && response.data) {
+        // Add proper type assertion here to fix the TypeScript errors
+        const comparisonData = response.data as ModelComparisonResponse;
+        
+        if (comparisonData && Array.isArray(comparisonData.models)) {
+          console.log("Comparison data:", comparisonData.models);
+          setComparisonData({ models: comparisonData.models });
+          setShowComparison(true);
+        } else {
+          console.error("Invalid comparison data structure:", response.data);
+          toast.error("Invalid data format received from server");
+        }
       } else {
         console.error("Failed to compare models:", response.error);
         toast.error("Failed to compare models");

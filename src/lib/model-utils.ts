@@ -87,6 +87,20 @@ export interface ModelDetails {
   model_type?: string;
 }
 
+// Add the ModelComparisonResponse interface
+export interface ModelComparisonResponse {
+  models: Array<{
+    id: string;
+    region: string;
+    pollutant: string;
+    frequency?: string;
+    accuracy_mae?: number;
+    accuracy_rmse?: number;
+    created_at?: string;
+    [key: string]: any; // Allow for additional properties
+  }>;
+}
+
 // Function to check if models can be compared (same pollutant and frequency)
 export const canCompareModels = (models: ModelData[]): boolean => {
   if (models.length < 2) return false;

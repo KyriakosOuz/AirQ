@@ -351,10 +351,10 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
               <TooltipTrigger asChild>
                 <div className="w-full mt-2">
                   <Button 
-                    variant={selectedPreviewModel ? "success" : "outline"}
+                    variant={selectedPreviewModel ? "default" : "outline"}
                     disabled={isPreviewDisabled}
                     onClick={onPreviewForecast}
-                    className="w-full"
+                    className={`w-full ${selectedPreviewModel ? "bg-green-600 hover:bg-green-700" : ""}`}
                     size="sm"
                   >
                     {forecastLoading ? (
