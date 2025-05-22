@@ -13,15 +13,13 @@ import {
 import { Pollutant } from "@/lib/types";
 import ErrorBoundary from "@/components/ErrorBoundary";
 
-// Defined pollutant options
+// Defined pollutant options - removing PM10 and PM2.5
 const DEFAULT_POLLUTANT_OPTIONS = [
   { value: "no2_conc" as Pollutant, label: "Nitrogen Dioxide (NO₂)" },
   { value: "o3_conc" as Pollutant, label: "Ozone (O₃)" },
   { value: "co_conc" as Pollutant, label: "Carbon Monoxide (CO)" },
   { value: "no_conc" as Pollutant, label: "Nitric Oxide (NO)" },
   { value: "so2_conc" as Pollutant, label: "Sulfur Dioxide (SO₂)" },
-  { value: "pm10_conc" as Pollutant, label: "Particulate Matter (PM10)" },
-  { value: "pm25_conc" as Pollutant, label: "Fine Particulate Matter (PM2.5)" },
 ];
 
 interface PollutantSelectorProps {
