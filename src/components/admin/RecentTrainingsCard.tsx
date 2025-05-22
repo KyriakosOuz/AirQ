@@ -41,6 +41,8 @@ interface RecentTrainingsCardProps {
   onViewDetails?: (modelId: string) => void;
   modelsToCompare?: string[];
   onToggleCompare?: (modelId: string) => void;
+  onSelectForPreview?: (modelId: string, selected: boolean) => void; // NEW: Add handler for preview selection
+  selectedPreviewModel?: string | null; // NEW: Track which model is selected for preview
 }
 
 const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
@@ -50,7 +52,9 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
   onModelDeleted,
   onViewDetails,
   modelsToCompare = [],
-  onToggleCompare
+  onToggleCompare,
+  onSelectForPreview,  // NEW: Handler for preview selection
+  selectedPreviewModel = null  // NEW: ID of model selected for preview
 }) => {
   const [deletingId, setDeletingId] = React.useState<string | null>(null);
 
@@ -72,6 +76,13 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
       return acc;
     }, {} as Record<string, TrainingRecord[]>);
   }, [recentTrainings]);
+
+  // NEW: Handle model selection for preview
+  const handlePreviewSelect = (modelId: string, checked: boolean) => {
+    if (onSelectForPreview) {
+      onSelectForPreview(modelId, checked);
+    }
+  };
 
   // Handle model deletion
   const handleDeleteModel = async (modelId: string) => {
@@ -161,6 +172,44 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
     );
   };
   
+  // NEW: Render preview checkbox
+  const renderPreviewCheckbox = (model: TrainingRecord) => {
+    if (!onSelectForPreview) return null;
+    
+    const isSelected = selectedPreviewModel === model.id;
+    const isViewable = isModelViewable(model.status);
+    
+    return (
+      <div className="flex items-center justify-center">
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div>
+                <Checkbox 
+                  checked={isSelected}
+                  onCheckedChange={(checked) => handlePreviewSelect(model.id, checked === true)}
+                  disabled={!isViewable}
+                  className={cn(
+                    isSelected && "border-green-500 bg-green-500 text-primary-foreground",
+                    "rounded-full"
+                  )}
+                />
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="right">
+              {isViewable 
+                ? (isSelected 
+                    ? "Unselect model for preview" 
+                    : "Select this model for preview")
+                : "Only completed models can be previewed"
+              }
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
+    );
+  };
+  
   // Render loading skeleton
   if (isLoading && recentTrainings.length === 0) {
     return (
@@ -205,8 +254,11 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
                         <Table>
                           <TableHeader>
                             <TableRow>
+                              {onSelectForPreview && (
+                                <TableHead className="w-10 text-center">Preview</TableHead>
+                              )}
                               {onToggleCompare && (
-                                <TableHead className="w-10"></TableHead>
+                                <TableHead className="w-10 text-center">Compare</TableHead>
                               )}
                               <TableHead>Pollutant</TableHead>
                               <TableHead>Frequency</TableHead>
@@ -218,9 +270,17 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
                           </TableHeader>
                           <TableBody>
                             {modelsByRegion[region].map((model) => (
-                              <TableRow key={model.id} className={cn(model.status === "failed" && "bg-red-50/30")}>
+                              <TableRow key={model.id} className={cn(
+                                model.status === "failed" && "bg-red-50/30",
+                                selectedPreviewModel === model.id && "bg-green-50/40"
+                              )}>
+                                {onSelectForPreview && (
+                                  <TableCell className="text-center">
+                                    {renderPreviewCheckbox(model)}
+                                  </TableCell>
+                                )}
                                 {onToggleCompare && (
-                                  <TableCell>
+                                  <TableCell className="text-center">
                                     <Checkbox 
                                       checked={modelsToCompare.includes(model.id)}
                                       onCheckedChange={() => onToggleCompare(model.id)}
@@ -310,8 +370,11 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      {onSelectForPreview && (
+                        <TableHead className="w-10 text-center">Preview</TableHead>
+                      )}
                       {onToggleCompare && (
-                        <TableHead className="w-10"></TableHead>
+                        <TableHead className="w-10 text-center">Compare</TableHead>
                       )}
                       <TableHead>Region</TableHead>
                       <TableHead>Pollutant</TableHead>
@@ -324,9 +387,17 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
                   </TableHeader>
                   <TableBody>
                     {recentTrainings.map((model) => (
-                      <TableRow key={model.id} className={cn(model.status === "failed" && "bg-red-50/30")}>
+                      <TableRow key={model.id} className={cn(
+                        model.status === "failed" && "bg-red-50/30",
+                        selectedPreviewModel === model.id && "bg-green-50/40"
+                      )}>
+                        {onSelectForPreview && (
+                          <TableCell className="text-center">
+                            {renderPreviewCheckbox(model)}
+                          </TableCell>
+                        )}
                         {onToggleCompare && (
-                          <TableCell>
+                          <TableCell className="text-center">
                             <Checkbox 
                               checked={modelsToCompare.includes(model.id)}
                               onCheckedChange={() => onToggleCompare(model.id)}

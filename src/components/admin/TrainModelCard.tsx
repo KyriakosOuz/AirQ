@@ -14,6 +14,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { FREQUENCY_OPTIONS, ModelMetadataFilters } from '@/lib/model-utils';
 import { useDatasetAvailability } from '@/hooks/use-dataset-availability';
+import { TrainingRecord } from './RecentTrainingsCard';
 
 interface TrainModelCardProps {
   trainRegion: string;
@@ -37,6 +38,7 @@ interface TrainModelCardProps {
   filtersLoading?: boolean;
   forecastLoading?: boolean;
   onPreviewForecast?: () => void;
+  selectedPreviewModel?: TrainingRecord | null; // NEW: Add selected model prop
 }
 
 const TrainModelCard: React.FC<TrainModelCardProps> = ({
@@ -60,7 +62,8 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
   availableFilters = null,
   filtersLoading = false,
   forecastLoading = false,
-  onPreviewForecast
+  onPreviewForecast,
+  selectedPreviewModel = null
 }) => {
   // Use our custom hook to check dataset availability
   const { isAvailable: datasetAvailable, isLoading: datasetCheckLoading } = 
@@ -102,6 +105,19 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
   // Check if training is allowed
   const isTrainingDisabled = trainLoading || isCheckingModel || 
     datasetCheckLoading || !datasetAvailable;
+  
+  // NEW: Determine if preview button should be enabled
+  const isPreviewDisabled = trainLoading || forecastLoading || 
+    (!selectedPreviewModel && !modelExists);
+    
+  // NEW: Get tooltip message for preview button
+  const getPreviewTooltipMessage = () => {
+    if (trainLoading) return "Please wait for training to complete";
+    if (forecastLoading) return "Loading forecast data...";
+    if (selectedPreviewModel) return `Preview forecast for ${selectedPreviewModel.pollutant} in ${selectedPreviewModel.region}`;
+    if (!modelExists) return "No model available. Either select a model from the list or train a new one.";
+    return "Preview forecast data for current parameters";
+  };
   
   return (
     <Card className="h-full overflow-auto">
@@ -288,6 +304,17 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
             <p className="text-xs text-muted-foreground">Checking dataset availability...</p>
           </div>
         )}
+        
+        {/* NEW: Show selected model info */}
+        {selectedPreviewModel && (
+          <Alert variant="success" className="py-2 bg-green-50 border-green-200">
+            <AlertCircle className="h-4 w-4 text-green-600" />
+            <AlertDescription className="text-xs text-green-700">
+              Model selected: {selectedPreviewModel.pollutant} in {selectedPreviewModel.region} 
+              {selectedPreviewModel.frequency ? ` (${selectedPreviewModel.frequency})` : ''}
+            </AlertDescription>
+          </Alert>
+        )}
       </CardContent>
       <CardFooter className="flex flex-col">
         <Button 
@@ -324,8 +351,8 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
               <TooltipTrigger asChild>
                 <div className="w-full mt-2">
                   <Button 
-                    variant="outline" 
-                    disabled={trainLoading || forecastLoading || !modelExists}
+                    variant={selectedPreviewModel ? "success" : "outline"}
+                    disabled={isPreviewDisabled}
                     onClick={onPreviewForecast}
                     className="w-full"
                     size="sm"
@@ -334,6 +361,11 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
                       <>
                         <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
                         Loading...
+                      </>
+                    ) : selectedPreviewModel ? (
+                      <>
+                        <LineChart className="mr-2 h-4 w-4" />
+                        Preview Selected Model
                       </>
                     ) : (
                       <>
@@ -345,15 +377,7 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
                 </div>
               </TooltipTrigger>
               <TooltipContent side="top">
-                {trainLoading ? (
-                  "Please wait for training to complete"
-                ) : forecastLoading ? (
-                  "Loading forecast data..."
-                ) : !modelExists ? (
-                  "No model available yet. Train a model first."
-                ) : (
-                  "Preview forecast data for current parameters"
-                )}
+                {getPreviewTooltipMessage()}
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>

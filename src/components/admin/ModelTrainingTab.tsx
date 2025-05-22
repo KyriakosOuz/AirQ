@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from "react";
 import { toast } from "sonner";
 import { modelApi } from "@/lib/api";
@@ -52,6 +51,9 @@ const ModelTrainingTab: React.FC = () => {
   const [comparisonLoading, setComparisonLoading] = useState(false);
   const [availableFilters, setAvailableFilters] = useState<ModelMetadataFilters | null>(null);
   const [filtersLoading, setFiltersLoading] = useState(false);
+  
+  // NEW: State to track the model selected for preview
+  const [selectedPreviewModel, setSelectedPreviewModel] = useState<TrainingRecord | null>(null);
   
   // Use our custom hook to check if a model exists
   const { modelExists, isChecking: isCheckingModel } = useModelExists({
@@ -296,6 +298,27 @@ const ModelTrainingTab: React.FC = () => {
     });
   };
 
+  // NEW: Handle model selection for preview
+  const handleSelectModelForPreview = (modelId: string, selected: boolean) => {
+    // Clear any previous selection if deselecting
+    if (!selected) {
+      setSelectedPreviewModel(null);
+      return;
+    }
+    
+    // Find the selected model in the recentTrainings list
+    const model = recentTrainings.find(model => model.id === modelId);
+    if (model) {
+      setSelectedPreviewModel(model);
+      
+      // Auto-update the training form fields to match the selected model
+      setTrainRegion(model.region);
+      setTrainPollutant(model.pollutant);
+      if (model.frequency) setTrainFrequency(model.frequency);
+      if (model.periods) setTrainPeriods(model.periods);
+    }
+  };
+
   // Compare selected models
   const compareSelectedModels = async () => {
     if (modelsToCompare.length < 2) {
@@ -306,9 +329,9 @@ const ModelTrainingTab: React.FC = () => {
     setComparisonLoading(true);
     try {
       const response = await modelApi.compareModels(modelsToCompare);
-      if (response.success && response.data) {
-        console.log("Comparison data:", response.data);
-        setComparisonData(response.data);
+      if (response.success && response.data && Array.isArray(response.data.models)) {
+        console.log("Comparison data:", response.data.models);
+        setComparisonData({ models: response.data.models });
         setShowComparison(true);
       } else {
         console.error("Failed to compare models:", response.error);
@@ -322,52 +345,64 @@ const ModelTrainingTab: React.FC = () => {
     }
   };
 
-  // When either frequency or range changes, fetch new forecast range
+  // NEW: Updated fetchForecastRange to use the selected model when available
   const fetchForecastRange = async () => {
-    if (!trainRegion || !trainPollutant || !trainFrequency || !trainPeriods) {
-      return;
-    }
-
-    setForecastLoading(true);
+    // Clear previous data
+    setForecastData([]);
     setNoForecastAvailable(false);
+    setForecastLoading(true);
     
     try {
-      console.log(`Fetching forecast range for ${trainRegion}, pollutant ${trainPollutant}, frequency ${trainFrequency}, periods ${trainPeriods}`);
+      let response;
       
-      // Clear previous forecast data
-      setForecastData([]);
+      // Check if we have a selected model to use for preview
+      if (selectedPreviewModel && selectedPreviewModel.id) {
+        console.log(`Fetching forecast preview for model ID: ${selectedPreviewModel.id}`);
+        
+        // Use the model preview endpoint with the selected model ID
+        response = await modelApi.getModelPreview(
+          selectedPreviewModel.id,
+          selectedPreviewModel.periods || trainPeriods
+        );
+      } else {
+        // Fallback to using parameters when no model is selected
+        if (!trainRegion || !trainPollutant || !trainFrequency || !trainPeriods) {
+          setForecastLoading(false);
+          return;
+        }
+        
+        console.log(`Fetching forecast range for ${trainRegion}, pollutant ${trainPollutant}, frequency ${trainFrequency}, periods ${trainPeriods}`);
+        
+        // Use the forecast range endpoint with parameters
+        response = await modelApi.getForecastRange({
+          region: trainRegion,
+          pollutant: trainPollutant,
+          frequency: trainFrequency,
+          limit: trainPeriods
+        });
+      }
       
-      // Call the forecast-range endpoint
-      const response = await modelApi.getForecastRange({
-        region: trainRegion,
-        pollutant: trainPollutant,
-        frequency: trainFrequency,
-        limit: trainPeriods
-      });
-      
-      if (response.success && response.data && response.data.forecast && response.data.forecast.length > 0) {
+      // Process the response (both endpoints should return similar data structure)
+      if (response.success && response.data && Array.isArray(response.data.forecast) && response.data.forecast.length > 0) {
         console.log("Received forecast data:", response.data.forecast);
         setForecastData(response.data.forecast);
         setNoForecastAvailable(false);
       } else {
-        console.log("No forecast data in response or API error:", response.error);
+        console.log("No forecast data returned or empty response");
         setForecastData([]);
         setNoForecastAvailable(true);
         
-        // Show a toast error only if there's a specific error
         if (response.error) {
           toast.error(`Failed to fetch forecast: ${response.error}`);
         }
       }
     } catch (error) {
-      console.error("Error fetching forecast range:", error);
+      console.error("Error fetching forecast data:", error);
       setForecastData([]);
       setNoForecastAvailable(true);
       toast.error("Failed to fetch forecast data");
       
-      // Check if it's a 404 error (model not found)
       if (error instanceof Error && error.message.includes("404")) {
-        console.log("Model not found (404)");
         toast.error("No forecast model found for the selected parameters");
       }
     } finally {
@@ -427,6 +462,7 @@ const ModelTrainingTab: React.FC = () => {
             filtersLoading={filtersLoading}
             forecastLoading={forecastLoading}
             onPreviewForecast={fetchForecastRange}
+            selectedPreviewModel={selectedPreviewModel} // NEW: Pass the selected model
           />
         </ResizablePanel>
         
@@ -442,6 +478,8 @@ const ModelTrainingTab: React.FC = () => {
               onViewDetails={handleViewModelDetails}
               modelsToCompare={modelsToCompare}
               onToggleCompare={toggleModelForComparison}
+              onSelectForPreview={handleSelectModelForPreview} // NEW: Pass the preview selection handler
+              selectedPreviewModel={selectedPreviewModel ? selectedPreviewModel.id : null} // NEW: Pass the selected model ID
             />
             
             {forecastLoading && (
@@ -456,9 +494,9 @@ const ModelTrainingTab: React.FC = () => {
             {!forecastLoading && forecastData && forecastData.length > 0 && (
               <ForecastPreview
                 data={forecastData}
-                region={trainRegion}
-                pollutant={trainPollutant}
-                frequency={trainFrequency}
+                region={selectedPreviewModel ? selectedPreviewModel.region : trainRegion}
+                pollutant={selectedPreviewModel ? selectedPreviewModel.pollutant : trainPollutant}
+                frequency={selectedPreviewModel?.frequency || trainFrequency}
                 formatters={formatters}
               />
             )}
@@ -468,10 +506,16 @@ const ModelTrainingTab: React.FC = () => {
                 <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
                 <h3 className="text-xl font-semibold mb-2">No forecast available</h3>
                 <p className="text-muted-foreground text-center max-w-md mb-4">
-                  No forecast model is available for {formatters.getPollutantDisplay(trainPollutant)} in {formatters.getRegionLabel(trainRegion)} with {formatters.getFrequencyDisplay(trainFrequency).toLowerCase()} frequency.
+                  {selectedPreviewModel ? 
+                    `No forecast data available for the selected model.` :
+                    `No forecast model is available for ${formatters.getPollutantDisplay(trainPollutant)} in ${formatters.getRegionLabel(trainRegion)} with ${formatters.getFrequencyDisplay(trainFrequency).toLowerCase()} frequency.`
+                  }
                 </p>
                 <p className="text-sm text-center text-muted-foreground">
-                  Please train a model using the form on the left to generate forecasts.
+                  {selectedPreviewModel ? 
+                    "Please select a different model." :
+                    "Please train a model using the form on the left to generate forecasts."
+                  }
                 </p>
               </Card>
             )}
