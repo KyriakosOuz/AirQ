@@ -1,9 +1,9 @@
 
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { Toaster } from "sonner";
-import { ErrorBoundary } from "./components/ErrorBoundary";
-import { ProtectedRoute } from "./components/ProtectedRoute";
-import { AppLayout } from "./components/layout/AppLayout";
+import ErrorBoundary from "./components/ErrorBoundary";
+import ProtectedRoute from "./components/ProtectedRoute";
+import AppLayout from "./components/layout/AppLayout";
 import Auth from "./pages/Auth";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
