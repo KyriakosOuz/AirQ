@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect } from "react";
-import { toast } from "@/components/ui/sonner";
+import { toast } from "sonner";
 import { modelApi } from "@/lib/api";
 import { Pollutant } from "@/lib/types";
 import TrainModelCard from "./TrainModelCard";

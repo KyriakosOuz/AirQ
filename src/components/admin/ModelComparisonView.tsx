@@ -62,7 +62,8 @@ const ModelComparisonView: React.FC<ModelComparisonViewProps> = ({ data, onClose
   
   // Format data for the chart
   const formatChartData = () => {
-    if (!data || !data.models || data.models.length === 0) {
+    // Ensure data and models exist and is an array
+    if (!data || !data.models || !Array.isArray(data.models) || data.models.length === 0) {
       return [];
     }
     
@@ -167,7 +168,7 @@ const ModelComparisonView: React.FC<ModelComparisonViewProps> = ({ data, onClose
         </Button>
       </CardHeader>
       <CardContent>
-        {chartData.length > 0 ? (
+        {(chartData.length > 0 && data && data.models && Array.isArray(data.models) && data.models.length > 0) ? (
           <>
             <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center space-x-2">
