@@ -87,22 +87,6 @@ export interface ModelDetails {
   model_type?: string;
 }
 
-// Add ModelInfo interface
-export interface ModelInfo {
-  id: string;
-  region: string;
-  pollutant: string;
-  model_type?: string;
-  frequency?: string;
-  forecast_periods?: number;
-  created_at: string;
-  status: ModelStatus;
-  accuracy_mae?: number;
-  accuracy_rmse?: number;
-  trained_by?: string;
-  file_path?: string;
-}
-
 // Updated ModelComparisonResponse interface to include forecast data
 export interface ModelComparisonResponse {
   models: Array<{

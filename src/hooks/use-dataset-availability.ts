@@ -1,7 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { fetchWithAuth } from '@/lib/auth-header';
-import { ApiResponse } from '@/lib/api';
+import { fetchWithAuth } from '@/lib/api';
 
 interface DatasetAvailabilityProps {
   region: string;
@@ -24,17 +23,15 @@ export function useDatasetAvailability({ region }: DatasetAvailabilityProps) {
       setError(null);
       
       try {
-        const response = await fetchWithAuth(
+        const response = await fetchWithAuth<DatasetAvailabilityResponse>(
           `/datasets/check-availability/?region=${region}`
         );
         
-        const responseData = await response.json();
-        
-        if (response.ok && responseData) {
-          setIsAvailable(responseData.available);
+        if (response.success && response.data) {
+          setIsAvailable(response.data.available);
         } else {
-          console.error("Failed to check dataset availability:", responseData.error || "Unknown error");
-          setError(responseData.error || "Failed to check dataset availability");
+          console.error("Failed to check dataset availability:", response.error);
+          setError(response.error || "Failed to check dataset availability");
           // Default to true in case of error to prevent blocking training
           setIsAvailable(true);
         }

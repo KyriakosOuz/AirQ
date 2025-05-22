@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -77,8 +78,7 @@ const Dashboard: React.FC = () => {
         // Fetch real forecast data - updated to use models/predict instead
         const forecastResponse = await predictionApi.forecast({ 
           pollutant, 
-          region,
-          frequency: "D" // Add the required frequency parameter
+          region 
         });
         
         if (forecastResponse.success && forecastResponse.data) {
@@ -157,12 +157,7 @@ const Dashboard: React.FC = () => {
       }
       
       // Re-fetch forecast data with updated endpoint
-      const forecastResponse = await predictionApi.forecast({ 
-        pollutant, 
-        region,
-        frequency: "D" // Add the required frequency parameter 
-      });
-      
+      const forecastResponse = await predictionApi.forecast({ pollutant, region });
       if (forecastResponse.success && forecastResponse.data) {
         const transformedForecastData = forecastResponse.data.map(item => ({
           month: new Date(item.ds).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),

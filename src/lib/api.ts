@@ -1,752 +1,824 @@
-import { Dataset, HealthTip, Pollutant, TrendChart, SeasonalityChart, UserProfile, Alert } from "./types";
-import { authHeader, setToken, removeToken, fetchWithAuth } from "./auth-header";
-import { ModelTrainRequest, ModelTrainingResponse, ModelMetadataFilters, ModelComparisonResponse, ModelInfo } from "./model-utils";
 
-// Re-export the auth-header functions for use in other files
-export { setToken, removeToken, fetchWithAuth };
+import { toast } from "sonner";
+import { Pollutant, Region, Dataset, HealthTip, TrendChart, SeasonalityChart } from "@/lib/types";
+import { supabase } from "@/integrations/supabase/client";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+// Define the base URL for API requests - fallback to mock data if API fails
+export const API_URL = "http://localhost:8000"; 
 
-// Define response types
-export interface ApiResponse<T = any> {
+// Define types for API responses
+export type ApiResponse<T> = {
   success: boolean;
   data?: T;
   error?: string;
-  meta?: Record<string, any>; // Add meta field to support additional response metadata
-}
+  meta?: {
+    using_fallback_model?: boolean;
+    model_id?: string;
+    model_created_at?: string;
+    [key: string]: any;
+  };
+};
 
-export interface DatasetPreviewResponse {
+// Define the dataset preview response type for consistency
+export type DatasetPreviewResponse = {
   columns: string[];
   preview: Record<string, any>[];
-}
-
-export const datasetApi = {
-  list: async (): Promise<ApiResponse<Dataset[]>> => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/datasets`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          ...authHeader(),
-        },
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        return { success: false, error: `Failed to fetch datasets: ${errorText}` };
-      }
-
-      const data = await response.json();
-      return { success: true, data };
-    } catch (error: any) {
-      console.error("Error fetching datasets:", error);
-      return { success: false, error: error.message || "Failed to fetch datasets" };
-    }
-  },
-  upload: async (formData: FormData): Promise<ApiResponse> => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/datasets/upload`, {
-        method: "POST",
-        headers: {
-          ...authHeader(),
-        },
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        return { success: false, error: `Upload failed: ${errorText}` };
-      }
-
-      const data = await response.json();
-      return { success: true, data };
-    } catch (error: any) {
-      console.error("Upload error:", error);
-      return { success: false, error: error.message || "Upload failed" };
-    }
-  },
-  preview: async (datasetId: string): Promise<ApiResponse<DatasetPreviewResponse>> => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/datasets/${datasetId}/preview`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          ...authHeader(),
-        },
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        return { success: false, error: `Failed to preview dataset: ${errorText}` };
-      }
-
-      const data = await response.json();
-      return { success: true, data };
-    } catch (error: any) {
-      console.error("Error previewing dataset:", error);
-      return { success: false, error: error.message || "Failed to preview dataset" };
-    }
-  },
-  delete: async (datasetId: string): Promise<ApiResponse> => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/datasets/${datasetId}`, {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          ...authHeader(),
-        },
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        return { success: false, error: `Failed to delete dataset: ${errorText}` };
-      }
-
-      return { success: true };
-    } catch (error: any) {
-      console.error("Error deleting dataset:", error);
-      return { success: false, error: error.message || "Failed to delete dataset" };
-    }
-  },
 };
 
-export const metadataApi = {
-  getHealthTips: async (aqiLevel: string, personalized: boolean = false): Promise<ApiResponse<HealthTip[]>> => {
-    try {
-      let url = `${API_BASE_URL}/metadata/health-tips?aqi_level=${aqiLevel}`;
-      if (personalized) {
-        url += '&personalized=true';
-      }
-      const response = await fetch(url, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          ...authHeader(),
-        },
-      });
+// Storage key for the auth token
+const TOKEN_KEY = "air_quality_token";
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        return { success: false, error: `Failed to fetch health tips: ${errorText}` };
-      }
+// Default request timeout (in milliseconds)
+export const DEFAULT_TIMEOUT = 5000;
 
-      const data = await response.json();
-      return { success: true, data };
-    } catch (error: any) {
-      console.error("Error fetching health tips:", error);
-      return { success: false, error: error.message || "Failed to fetch health tips" };
-    }
-  },
+// Circuit breaker configuration
+const CIRCUIT_BREAKER = {
+  maxFailures: 3,
+  resetTimeout: 30000, // 30 seconds
+  failureCount: 0,
+  tripped: false,
+  lastFailure: 0
 };
 
-export const alertApi = {
-  list: async (): Promise<ApiResponse<Alert[]>> => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/alerts`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          ...authHeader(),
-        },
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        return { success: false, error: `Failed to fetch alerts: ${errorText}` };
-      }
-
-      const data = await response.json();
-      return { success: true, data };
-    } catch (error: any) {
-      console.error("Error fetching alerts:", error);
-      return { success: false, error: error.message || "Failed to fetch alerts" };
-    }
+// Mock data for offline mode - Updated with consistent types and values
+const MOCK_DATA = {
+  forecast: [
+    { 
+      ds: new Date().toISOString(), 
+      yhat: 50, 
+      yhat_lower: 40, 
+      yhat_upper: 60, 
+      category: "Good" 
+    },
+    { 
+      ds: new Date(Date.now() + 86400000).toISOString(), 
+      yhat: 55, 
+      yhat_lower: 45, 
+      yhat_upper: 65, 
+      category: "Good" 
+    },
+    { 
+      ds: new Date(Date.now() + 172800000).toISOString(), 
+      yhat: 60, 
+      yhat_lower: 50, 
+      yhat_upper: 70, 
+      category: "Moderate" 
+    },
+  ],
+  trend: {
+    labels: ["2020", "2021", "2022", "2023"],
+    values: [45, 42, 48, 50],
+    deltas: [-3, 6, 2]
   },
-  subscribe: async (params: { region: string; pollutant: string; threshold: string }): Promise<ApiResponse> => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/alerts/subscribe`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...authHeader(),
-        },
-        body: JSON.stringify(params),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        return { success: false, error: `Failed to subscribe to alert: ${errorText}` };
-      }
-
-      const data = await response.json();
-      return { success: true, data };
-    } catch (error: any) {
-      console.error("Error subscribing to alert:", error);
-      return { success: false, error: error.message || "Failed to subscribe to alert" };
-    }
+  seasonality: {
+    labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+    values: [40, 42, 45, 48, 50, 52, 55, 53, 48, 45, 43, 41]
   },
-  delete: async (alertId: string): Promise<ApiResponse> => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/alerts/${alertId}`, {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          ...authHeader(),
-        },
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        return { success: false, error: `Failed to delete alert: ${errorText}` };
+  model_comparison: {
+    models: [
+      {
+        id: "model-1",
+        region: "thessaloniki",
+        pollutant: "no2_conc",
+        frequency: "daily",
+        forecast: Array.from({ length: 10 }, (_, i) => ({
+          ds: new Date(Date.now() + i * 86400000).toISOString(),
+          yhat: 40 + Math.random() * 20,
+          yhat_lower: 35 + Math.random() * 15,
+          yhat_upper: 50 + Math.random() * 25,
+          category: "Moderate"
+        }))
+      },
+      {
+        id: "model-2",
+        region: "kalamaria",
+        pollutant: "no2_conc",
+        frequency: "daily",
+        forecast: Array.from({ length: 10 }, (_, i) => ({
+          ds: new Date(Date.now() + i * 86400000).toISOString(),
+          yhat: 30 + Math.random() * 15,
+          yhat_lower: 25 + Math.random() * 10,
+          yhat_upper: 40 + Math.random() * 20,
+          category: "Good"
+        }))
       }
-
-      return { success: true };
-    } catch (error: any) {
-      console.error("Error deleting alert:", error);
-      return { success: false, error: error.message || "Failed to delete alert" };
-    }
+    ]
   },
-  checkAlerts: async (sendEmail: boolean = false): Promise<ApiResponse> => {
-    try {
-      const queryParams = sendEmail ? '?send_email=true' : '';
-      const response = await fetch(`${API_BASE_URL}/alerts/check${queryParams}`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          ...authHeader(),
-        },
-      });
-      if (!response.ok) {
-        const errorText = await response.text();
-        return { success: false, error: `Failed to check alerts: ${errorText}` };
-      }
-      const data = await response.json();
-      return { success: true, data };
-    } catch (error: any) {
-      console.error("Error checking alerts:", error);
-      return { success: false, error: error.message || "Failed to check alerts" };
-    }
+  model_metadata: {
+    available: [
+      { region: "thessaloniki", pollutant: "no2_conc", frequency: "daily" },
+      { region: "kalamaria", pollutant: "no2_conc", frequency: "daily" },
+      { region: "thessaloniki", pollutant: "o3_conc", frequency: "daily" },
+      { region: "kalamaria", pollutant: "o3_conc", frequency: "weekly" }
+    ]
   },
+  model_info: {
+    id: "model-123",
+    region: "thessaloniki",
+    pollutant: "no2_conc",
+    frequency: "daily",
+    forecast_periods: 365,
+    created_at: new Date().toISOString(),
+    trained_by: "admin@airquality.org",
+    status: "ready",
+    accuracy_mae: 2.45,
+    accuracy_rmse: 3.12,
+    model_type: "Prophet"
+  },
+  dataset_availability: {
+    available: true
+  }
 };
 
+// Helper to get the stored token
+export const getToken = (): string | null => {
+  return localStorage.getItem(TOKEN_KEY);
+};
+
+// Helper to set the token
+export const setToken = (token: string): void => {
+  localStorage.setItem(TOKEN_KEY, token);
+};
+
+// Helper to remove the token
+export const removeToken = (): void => {
+  localStorage.removeItem(TOKEN_KEY);
+};
+
+// Check if circuit breaker is tripped
+const isCircuitBreakerTripped = () => {
+  // Reset circuit breaker after timeout
+  if (CIRCUIT_BREAKER.tripped && 
+      Date.now() - CIRCUIT_BREAKER.lastFailure > CIRCUIT_BREAKER.resetTimeout) {
+    console.log("Circuit breaker reset after timeout");
+    CIRCUIT_BREAKER.tripped = false;
+    CIRCUIT_BREAKER.failureCount = 0;
+  }
+  return CIRCUIT_BREAKER.tripped;
+};
+
+// Trip the circuit breaker
+const tripCircuitBreaker = () => {
+  CIRCUIT_BREAKER.failureCount++;
+  CIRCUIT_BREAKER.lastFailure = Date.now();
+  
+  if (CIRCUIT_BREAKER.failureCount >= CIRCUIT_BREAKER.maxFailures) {
+    console.warn("Circuit breaker tripped! Too many API failures");
+    toast.error("API is currently unavailable. Using offline mode.", {
+      id: "circuit-breaker",
+      duration: 5000,
+    });
+  }
+};
+
+// Function to create a request with timeout
+const fetchWithTimeout = async (url: string, options: RequestInit, timeout: number): Promise<Response> => {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+  
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+    clearTimeout(id);
+    return response;
+  } catch (error) {
+    clearTimeout(id);
+    throw error;
+  }
+};
+
+// Base fetch function with authentication, timeouts, and better error handling
+export const fetchWithAuth = async <T>(
+  endpoint: string,
+  options: RequestInit = {},
+  timeout: number = DEFAULT_TIMEOUT
+): Promise<ApiResponse<T>> => {
+  try {
+    // Check if circuit breaker is tripped
+    if (isCircuitBreakerTripped()) {
+      console.log(`Circuit breaker active, using mock data for: ${endpoint}`);
+      // Return appropriate mock data based on the endpoint
+      if (endpoint.includes('/models/predict')) {
+        return { success: true, data: MOCK_DATA.forecast as T };
+      } else if (endpoint.includes('/insights/trend')) {
+        return { success: true, data: MOCK_DATA.trend as T };
+      } else if (endpoint.includes('/insights/seasonality')) {
+        return { success: true, data: MOCK_DATA.seasonality as T };
+      } else if (endpoint.includes('/models/compare')) {
+        return { success: true, data: MOCK_DATA.model_comparison as T };
+      } else if (endpoint.includes('/models/metadata/filters')) {
+        return { success: true, data: MOCK_DATA.model_metadata as T };
+      } else if (endpoint.includes('/models/info/')) {
+        return { success: true, data: MOCK_DATA.model_info as T };
+      } else if (endpoint.includes('/models/check-exists')) {
+        return { success: true, data: { exists: Math.random() > 0.5 } as T };
+      } else if (endpoint.includes('/datasets/check-availability')) {
+        return { success: true, data: { available: MOCK_DATA.dataset_availability.available } as T };
+      }
+      return { success: false, error: "API is currently unavailable. Using offline mode." };
+    }
+    
+    console.log(`API Request to: ${API_URL}${endpoint}`);
+    const token = getToken();
+
+    const headers: HeadersInit = {
+      ...options.headers,
+    };
+
+    // Only set Content-Type to application/json if we're NOT sending FormData
+    if (!(options.body instanceof FormData)) {
+      headers["Content-Type"] = "application/json";
+    }
+
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    // Add debug logging for FormData uploads
+    if (options.body instanceof FormData) {
+      console.log("Uploading with FormData:", [...(options.body as FormData).entries()]);
+    }
+
+    // Use fetchWithTimeout to prevent hanging requests
+    const response = await fetchWithTimeout(`${API_URL}${endpoint}`, {
+      ...options,
+      headers,
+    }, timeout);
+
+    // Handle non-JSON responses
+    const contentType = response.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+      console.error("Non-JSON response received:", await response.text());
+      tripCircuitBreaker();
+      // Return mock data when API fails
+      if (endpoint.includes('/models/predict')) {
+        return { success: true, data: MOCK_DATA.forecast as T };
+      } else if (endpoint.includes('/insights/trend')) {
+        return { success: true, data: MOCK_DATA.trend as T };
+      } else if (endpoint.includes('/insights/seasonality')) {
+        return { success: true, data: MOCK_DATA.seasonality as T };
+      } else if (endpoint.includes('/models/compare')) {
+        return { success: true, data: MOCK_DATA.model_comparison as T };
+      } else if (endpoint.includes('/models/metadata/filters')) {
+        return { success: true, data: MOCK_DATA.model_metadata as T };
+      } else if (endpoint.includes('/models/info/')) {
+        return { success: true, data: MOCK_DATA.model_info as T };
+      } else if (endpoint.includes('/models/check-exists')) {
+        return { success: true, data: { exists: Math.random() > 0.5 } as T };
+      } else if (endpoint.includes('/datasets/check-availability')) {
+        return { success: true, data: { available: MOCK_DATA.dataset_availability.available } as T };
+      }
+      return { success: false, error: "Invalid response format from server" };
+    }
+
+    // Parse JSON response
+    let data;
+    let meta;
+    try {
+      const responseData = await response.json();
+      
+      // Extract data and metadata from response
+      if (responseData.data !== undefined) {
+        data = responseData.data;
+        // Capture any metadata if provided in the response
+        if (responseData.meta) {
+          meta = responseData.meta;
+        }
+      } else {
+        data = responseData;
+      }
+    } catch (e) {
+      console.error("Error parsing JSON response:", e);
+      tripCircuitBreaker();
+      // Return mock data when JSON parsing fails
+      if (endpoint.includes('/models/predict')) {
+        return { success: true, data: MOCK_DATA.forecast as T };
+      } else if (endpoint.includes('/insights/trend')) {
+        return { success: true, data: MOCK_DATA.trend as T };
+      } else if (endpoint.includes('/insights/seasonality')) {
+        return { success: true, data: MOCK_DATA.seasonality as T };
+      } else if (endpoint.includes('/models/compare')) {
+        return { success: true, data: MOCK_DATA.model_comparison as T };
+      } else if (endpoint.includes('/models/metadata/filters')) {
+        return { success: true, data: MOCK_DATA.model_metadata as T };
+      } else if (endpoint.includes('/models/info/')) {
+        return { success: true, data: MOCK_DATA.model_info as T };
+      } else if (endpoint.includes('/models/check-exists')) {
+        return { success: true, data: { exists: Math.random() > 0.5 } as T };
+      } else if (endpoint.includes('/datasets/check-availability')) {
+        return { success: true, data: { available: MOCK_DATA.dataset_availability.available } as T };
+      }
+      return { success: false, error: "Failed to parse server response" };
+    }
+
+    // Handle specific error codes
+    if (response.status === 401) {
+      console.error("Authentication error:", data);
+      removeToken(); // Clear invalid token
+      toast.error("Session expired. Please login again.");
+      return { success: false, error: "Authentication required" };
+    }
+    
+    if (response.status === 403) {
+      console.error("Forbidden access:", data);
+      toast.error("You don't have permission to access this resource");
+      return { success: false, error: "Access denied" };
+    }
+    
+    if (response.status === 400) {
+      console.error("Bad request:", data);
+      toast.error(data.detail || "Invalid request");
+      return { success: false, error: data.detail || "Invalid request" };
+    }
+
+    if (!response.ok) {
+      console.error("API Error Response:", data);
+      tripCircuitBreaker();
+      // Return mock data for specific endpoints
+      if (endpoint.includes('/models/predict')) {
+        return { success: true, data: MOCK_DATA.forecast as T };
+      } else if (endpoint.includes('/insights/trend')) {
+        return { success: true, data: MOCK_DATA.trend as T };
+      } else if (endpoint.includes('/insights/seasonality')) {
+        return { success: true, data: MOCK_DATA.seasonality as T };
+      } else if (endpoint.includes('/models/compare')) {
+        return { success: true, data: MOCK_DATA.model_comparison as T };
+      } else if (endpoint.includes('/models/metadata/filters')) {
+        return { success: true, data: MOCK_DATA.model_metadata as T };
+      } else if (endpoint.includes('/models/info/')) {
+        return { success: true, data: MOCK_DATA.model_info as T };
+      } else if (endpoint.includes('/models/check-exists')) {
+        return { success: true, data: { exists: Math.random() > 0.5 } as T };
+      } else if (endpoint.includes('/datasets/check-availability')) {
+        return { success: true, data: { available: MOCK_DATA.dataset_availability.available } as T };
+      }
+      return { success: false, error: data.detail || "API Error" };
+    }
+
+    // Reset failure count on success
+    CIRCUIT_BREAKER.failureCount = 0;
+    return { success: true, data, meta };
+  } catch (error) {
+    // Trip circuit breaker on failure
+    tripCircuitBreaker();
+    
+    // Specific error handling for timeout (AbortError)
+    if (error instanceof Error && error.name === "AbortError") {
+      console.error("API Request timeout:", endpoint);
+      // Return mock data for timeout
+      if (endpoint.includes('/models/predict')) {
+        return { success: true, data: MOCK_DATA.forecast as T };
+      } else if (endpoint.includes('/insights/trend')) {
+        return { success: true, data: MOCK_DATA.trend as T };
+      } else if (endpoint.includes('/insights/seasonality')) {
+        return { success: true, data: MOCK_DATA.seasonality as T };
+      } else if (endpoint.includes('/models/compare')) {
+        return { success: true, data: MOCK_DATA.model_comparison as T };
+      } else if (endpoint.includes('/models/metadata/filters')) {
+        return { success: true, data: MOCK_DATA.model_metadata as T };
+      } else if (endpoint.includes('/models/info/')) {
+        return { success: true, data: MOCK_DATA.model_info as T };
+      } else if (endpoint.includes('/models/check-exists')) {
+        return { success: true, data: { exists: Math.random() > 0.5 } as T };
+      } else if (endpoint.includes('/datasets/check-availability')) {
+        return { success: true, data: { available: MOCK_DATA.dataset_availability.available } as T };
+      }
+      return { success: false, error: "Request timed out. Using offline data." };
+    }
+    
+    console.error("API Error:", error);
+    // Return mock data for network errors
+    if (endpoint.includes('/models/predict')) {
+      return { success: true, data: MOCK_DATA.forecast as T };
+    } else if (endpoint.includes('/insights/trend')) {
+      return { success: true, data: MOCK_DATA.trend as T };
+    } else if (endpoint.includes('/insights/seasonality')) {
+      return { success: true, data: MOCK_DATA.seasonality as T };
+    } else if (endpoint.includes('/models/compare')) {
+      return { success: true, data: MOCK_DATA.model_comparison as T };
+    } else if (endpoint.includes('/models/metadata/filters')) {
+      return { success: true, data: MOCK_DATA.model_metadata as T };
+    } else if (endpoint.includes('/models/info/')) {
+      return { success: true, data: MOCK_DATA.model_info as T };
+    } else if (endpoint.includes('/models/check-exists')) {
+      return { success: true, data: { exists: Math.random() > 0.5 } as T };
+    } else if (endpoint.includes('/datasets/check-availability')) {
+      return { success: true, data: { available: MOCK_DATA.dataset_availability.available } as T };
+    }
+    return { success: false, error: "Network error. Using offline data." };
+  }
+};
+
+// Auth endpoints - updated to use Supabase directly
 export const authApi = {
-  login: async (email: string, password: string): Promise<ApiResponse> => {
+  // Updated to use Supabase authentication directly
+  login: async (email: string, password: string) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password }),
+      // Use Supabase's native authentication
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email, 
+        password
       });
-      if (!response.ok) {
-        const errorText = await response.text();
-        return { success: false, error: `Login failed: ${errorText}` };
-      }
-      const data = await response.json();
       
-      // Set auth token
-      if (data.token) {
-        setToken(data.token);
+      if (error) {
+        console.error("Supabase auth error:", error);
+        return { success: false, error: error.message };
       }
       
-      return { success: true, data };
-    } catch (error: any) {
-      console.error("Error during login:", error);
-      return { success: false, error: error.message || "Login failed" };
+      if (data?.session?.access_token) {
+        // Store the Supabase token
+        setToken(data.session.access_token);
+        console.log("Successfully authenticated with Supabase");
+        return { success: true, data: { access_token: data.session.access_token } };
+      } else {
+        console.error("No access token in Supabase response");
+        return { success: false, error: "Authentication failed" };
+      }
+    } catch (error) {
+      console.error("Login error:", error);
+      return { success: false, error: "Authentication failed" };
     }
   },
-  logout: async (): Promise<ApiResponse> => {
-    try {
-      removeToken();
-      return { success: true };
-    } catch (error: any) {
-      console.error("Error during logout:", error);
-      return { success: false, error: error.message || "Logout failed" };
-    }
+  
+  signup: async (email: string, password: string) => {
+    // This is already handled by Auth.tsx directly with Supabase
+    return { success: false, error: "Use direct Supabase signup" };
   },
+  
+  logout: () => {
+    // Remove the token from localStorage
+    removeToken();
+    // Also sign out from Supabase
+    supabase.auth.signOut();
+  }
 };
 
-export const insightApi = {
-  getTrend: async (params: { pollutant?: Pollutant; region?: string }): Promise<ApiResponse<TrendChart>> => {
-    try {
-      const queryParams = new URLSearchParams();
-      if (params.pollutant) queryParams.append('pollutant', params.pollutant);
-      if (params.region) queryParams.append('region', params.region);
-
-      const response = await fetch(`${API_BASE_URL}/insights/trend?${queryParams.toString()}`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          ...authHeader(),
-        },
-      });
-      if (!response.ok) {
-        const errorText = await response.text();
-        return { success: false, error: `Failed to fetch trend data: ${errorText}` };
-      }
-      const data = await response.json();
-      return { success: true, data };
-    } catch (error: any) {
-      console.error("Error fetching trend data:", error);
-      return { success: false, error: error.message || "Failed to fetch trend data" };
-    }
-  },
-  getSeasonality: async (params: { pollutant?: Pollutant; region?: string }): Promise<ApiResponse<SeasonalityChart>> => {
-    try {
-      const queryParams = new URLSearchParams();
-      if (params.pollutant) queryParams.append('pollutant', params.pollutant);
-      if (params.region) queryParams.append('region', params.region);
-
-      const response = await fetch(`${API_BASE_URL}/insights/seasonality?${queryParams.toString()}`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          ...authHeader(),
-        },
-      });
-      if (!response.ok) {
-        const errorText = await response.text();
-        return { success: false, error: `Failed to fetch seasonality data: ${errorText}` };
-      }
-      const data = await response.json();
-      return { success: true, data };
-    } catch (error: any) {
-      console.error("Error fetching seasonality data:", error);
-      return { success: false, error: error.message || "Failed to fetch seasonality data" };
-    }
-  },
-  getTopPolluted: async (params: { pollutant?: Pollutant; year?: number; limit?: number }): Promise<ApiResponse> => {
-    try {
-      const queryParams = new URLSearchParams();
-      if (params.pollutant) queryParams.append('pollutant', params.pollutant);
-      if (params.year) queryParams.append('year', params.year.toString());
-      if (params.limit) queryParams.append('limit', params.limit.toString());
-      
-      const response = await fetch(`${API_BASE_URL}/insights/top-polluted?${queryParams.toString()}`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          ...authHeader(),
-        },
-      });
-      if (!response.ok) {
-        const errorText = await response.text();
-        return { success: false, error: `Failed to fetch top polluted regions: ${errorText}` };
-      }
-      const data = await response.json();
-      return { success: true, data };
-    } catch (error: any) {
-      console.error("Error fetching top polluted regions:", error);
-      return { success: false, error: error.message || "Failed to fetch top polluted regions" };
-    }
-  },
-};
-
+// User profile endpoints
 export const userApi = {
-  getProfile: async (): Promise<ApiResponse<UserProfile>> => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/profile`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          ...authHeader(),
-        },
-      });
-      if (!response.ok) {
-        const errorText = await response.text();
-        return { success: false, error: `Failed to fetch profile: ${errorText}` };
-      }
-      const data = await response.json();
-      return { success: true, data };
-    } catch (error: any) {
-      console.error("Error fetching profile:", error);
-      return { success: false, error: error.message || "Failed to fetch profile" };
-    }
+  saveProfile: async (profileData: any) => {
+    // Backend expects snake_case field names
+    return fetchWithAuth("/users/profile/", {
+      method: "POST",
+      body: JSON.stringify(profileData), // Already in snake_case from the frontend
+    });
   },
-  updateProfile: async (profileData: Partial<UserProfile>): Promise<ApiResponse<UserProfile>> => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/profile`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          ...authHeader(),
-        },
-        body: JSON.stringify(profileData),
-      });
-      if (!response.ok) {
-        const errorText = await response.text();
-        return { success: false, error: `Failed to update profile: ${errorText}` };
-      }
-      const data = await response.json();
-      return { success: true, data };
-    } catch (error: any) {
-      console.error("Error updating profile:", error);
-      return { success: false, error: error.message || "Failed to update profile" };
-    }
+  getProfile: async () => {
+    return fetchWithAuth("/users/profile/");
   },
-  saveProfile: async (profileData: Partial<UserProfile>): Promise<ApiResponse<UserProfile>> => {
-    return userApi.updateProfile(profileData); // Alias for updateProfile
+  getRiskTimeline: async () => {
+    return fetchWithAuth("/users/risk-timeline/");
   }
 };
 
-export const healthApi = {
-  getPersonalizedTips: async (aqiLevel: string): Promise<ApiResponse<HealthTip[]>> => {
-    return metadataApi.getHealthTips(aqiLevel, true);
+// Dataset endpoints
+export const datasetApi = {
+  upload: async (formData: FormData) => {
+    // Debug log to see what's being sent
+    console.log("Uploading with FormData:", [...formData.entries()]);
+    
+    // Important: Do not set Content-Type header - browser will set it correctly with boundary
+    return fetchWithAuth<{ dataset_id: string, file_url: string }>("/datasets/upload/", {
+      method: "POST",
+      body: formData,
+      // Note: Don't set Content-Type header for multipart/form-data
+      // The browser will automatically set it with the proper boundary
+    });
   },
-  // Add getTip method used in Dashboard.tsx
-  getTip: async (params: { pollutant: Pollutant, region: string }): Promise<ApiResponse<HealthTip>> => {
-    try {
-      const queryParams = new URLSearchParams();
-      if (params.pollutant) queryParams.append('pollutant', params.pollutant);
-      if (params.region) queryParams.append('region', params.region);
-      
-      const response = await fetch(`${API_BASE_URL}/health/tip?${queryParams.toString()}`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          ...authHeader(),
-        },
-      });
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        return { success: false, error: `Failed to fetch health tip: ${errorText}` };
-      }
-      
-      const data = await response.json();
-      return { success: true, data };
-    } catch (error: any) {
-      console.error("Error fetching health tip:", error);
-      return { success: false, error: error.message || "Failed to fetch health tip" };
+  
+  list: async () => {
+    return fetchWithAuth<Dataset[]>("/datasets/list/");
+  },
+  
+  preview: async (datasetId: string) => {
+    // Make the request to the API
+    const response = await fetchWithAuth<{
+      columns: string[],
+      preview?: Record<string, any>[],
+      rows?: Record<string, any>[]
+    }>(`/datasets/preview/${datasetId}`);
+
+    // If response is successful, transform the data to match our expected format
+    if (response.success && response.data) {
+      // Create a consistent DatasetPreviewResponse structure
+      const transformedData: DatasetPreviewResponse = {
+        columns: response.data.columns,
+        // Use preview if it exists, otherwise use rows
+        preview: response.data.preview || response.data.rows || []
+      };
+      return { success: true, data: transformedData };
     }
+    
+    // If there was an error, return it
+    return { 
+      success: response.success, 
+      error: response.error,
+      data: undefined
+    };
+  },
+  
+  delete: async (datasetId: string) => {
+    return fetchWithAuth(`/datasets/${datasetId}`, {
+      method: "DELETE",
+    });
+  },
+  
+  // Add the check-availability endpoint
+  checkAvailability: async (region: string) => {
+    const queryParams = new URLSearchParams({ region }).toString();
+    return fetchWithAuth<{ available: boolean }>(`/datasets/check-availability/?${queryParams}`);
   }
 };
 
-export const predictionApi = {
-  getForecast: async (params: { 
-    pollutant: string; 
-    region: string; 
-    frequency: string; 
-    limit?: number;
-    start_date?: string;
-    end_date?: string;
-  }): Promise<ApiResponse> => {
-    try {
-      const queryParams = new URLSearchParams();
-      if (params.pollutant) queryParams.append('pollutant', params.pollutant);
-      if (params.region) queryParams.append('region', params.region);
-      if (params.frequency) queryParams.append('frequency', params.frequency);
-      if (params.limit) queryParams.append('limit', params.limit.toString());
-      if (params.start_date) queryParams.append('start_date', params.start_date);
-      if (params.end_date) queryParams.append('end_date', params.end_date);
-      
-      const response = await fetch(`${API_BASE_URL}/predictions/forecast?${queryParams.toString()}`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          ...authHeader(),
-        },
-      });
-      if (!response.ok) {
-        const errorText = await response.text();
-        return { success: false, error: `Failed to fetch forecast: ${errorText}` };
-      }
-      const data = await response.json();
-      return { success: true, data };
-    } catch (error: any) {
-      console.error("Error fetching forecast:", error);
-      return { success: false, error: error.message || "Failed to fetch forecast" };
-    }
-  },
-  // Add the forecast method as an alias for getForecast
-  forecast: async (params: { 
-    pollutant: string | Pollutant; 
-    region: string; 
-    frequency: string; 
-    limit?: number;
-    start_date?: string;
-    end_date?: string;
-  }): Promise<ApiResponse> => {
-    return predictionApi.getForecast(params);
-  },
-  compareRegions: async (params: { 
-    regions: string[]; 
-    pollutant: string; 
-    frequency: string;
-    limit?: number;
-    start_date?: string;
-    end_date?: string;
-  }): Promise<ApiResponse> => {
-    try {
-      const queryParams = new URLSearchParams();
-      if (params.pollutant) queryParams.append('pollutant', params.pollutant);
-      if (params.frequency) queryParams.append('frequency', params.frequency);
-      if (params.limit) queryParams.append('limit', params.limit.toString());
-      if (params.start_date) queryParams.append('start_date', params.start_date);
-      if (params.end_date) queryParams.append('end_date', params.end_date);
-      if (params.regions && params.regions.length > 0) {
-        queryParams.append('regions', params.regions.join(','));
-      }
-      
-      const response = await fetch(`${API_BASE_URL}/predictions/compare-regions?${queryParams.toString()}`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          ...authHeader(),
-        },
-      });
-      if (!response.ok) {
-        const errorText = await response.text();
-        return { success: false, error: `Failed to compare regions: ${errorText}` };
-      }
-      const data = await response.json();
-      return { success: true, data };
-    } catch (error: any) {
-      console.error("Error comparing regions:", error);
-      return { success: false, error: error.message || "Failed to compare regions" };
-    }
-  }
-};
-
+// Model training endpoints with improved error handling
 export const modelApi = {
-  // Method renamed to match usage in ModelTrainingTab
-  train: async (request: ModelTrainRequest): Promise<ApiResponse<ModelTrainingResponse>> => {
-    return modelApi.trainModel(request);
-  },
-  trainModel: async (request: ModelTrainRequest): Promise<ApiResponse<ModelTrainingResponse>> => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/models/train`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...authHeader(),
-        },
-        body: JSON.stringify(request),
-      });
-      if (!response.ok) {
-        const errorText = await response.text();
-        return { success: false, error: `Failed to train model: ${errorText}` };
-      }
-      const data = await response.json();
-      return { success: true, data };
-    } catch (error: any) {
-      console.error("Error training model:", error);
-      return { success: false, error: error.message || "Failed to train model" };
-    }
-  },
-  getTrainingProgress: async (trainingId: string): Promise<ApiResponse<ModelTrainingResponse>> => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/models/training/${trainingId}`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          ...authHeader(),
-        },
-      });
-      if (!response.ok) {
-        const errorText = await response.text();
-        return { success: false, error: `Failed to get training progress: ${errorText}` };
-      }
-      const data = await response.json();
-      return { success: true, data };
-    } catch (error: any) {
-      console.error("Error getting training progress:", error);
-      return { success: false, error: error.message || "Failed to get training progress" };
-    }
-  },
-  getAvailableFilters: async (): Promise<ApiResponse<ModelMetadataFilters>> => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/models/filters`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          ...authHeader(),
-        },
-      });
-      if (!response.ok) {
-        const errorText = await response.text();
-        return { success: false, error: `Failed to get available filters: ${errorText}` };
-      }
-      const data = await response.json();
-      return { success: true, data };
-    } catch (error: any) {
-      console.error("Error getting available filters:", error);
-      return { success: false, error: error.message || "Failed to get available filters" };
-    }
-  },
-  getMetadataFilters: async (): Promise<ApiResponse<ModelMetadataFilters>> => {
-    return modelApi.getAvailableFilters();
-  },
-  compareModels: async (modelIds: string[]): Promise<ApiResponse<ModelComparisonResponse>> => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/models/compare?model_ids=${modelIds.join(',')}`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          ...authHeader(),
-        },
-      });
-      if (!response.ok) {
-        const errorText = await response.text();
-        return { success: false, error: `Failed to compare models: ${errorText}` };
-      }
-      const data = await response.json();
-      return { success: true, data };
-    } catch (error: any) {
-      console.error("Error comparing models:", error);
-      return { success: false, error: error.message || "Failed to compare models" };
-    }
-  },
-  // Additional model API methods needed
-  list: async (): Promise<ApiResponse> => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/models`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          ...authHeader(),
-        },
-      });
-      if (!response.ok) {
-        const errorText = await response.text();
-        return { success: false, error: `Failed to list models: ${errorText}` };
-      }
-      const data = await response.json();
-      return { success: true, data };
-    } catch (error: any) {
-      console.error("Error listing models:", error);
-      return { success: false, error: error.message || "Failed to list models" };
-    }
-  },
-  getInfo: async (modelId: string): Promise<ApiResponse<ModelInfo>> => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/models/${modelId}`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          ...authHeader(),
-        },
-      });
-      if (!response.ok) {
-        const errorText = await response.text();
-        return { success: false, error: `Failed to get model info: ${errorText}` };
-      }
-      const data = await response.json();
-      return { success: true, data };
-    } catch (error: any) {
-      console.error("Error getting model info:", error);
-      return { success: false, error: error.message || "Failed to get model info" };
-    }
-  },
-  delete: async (modelId: string): Promise<ApiResponse> => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/models/${modelId}`, {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          ...authHeader(),
-        },
-      });
-      if (!response.ok) {
-        const errorText = await response.text();
-        return { success: false, error: `Failed to delete model: ${errorText}` };
-      }
-      return { success: true };
-    } catch (error: any) {
-      console.error("Error deleting model:", error);
-      return { success: false, error: error.message || "Failed to delete model" };
-    }
-  },
-  getModelPreview: async (modelId: string, periods: number): Promise<ApiResponse> => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/models/${modelId}/preview?periods=${periods}`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          ...authHeader(),
-        },
-      });
-      if (!response.ok) {
-        const errorText = await response.text();
-        return { success: false, error: `Failed to get model preview: ${errorText}` };
-      }
-      const data = await response.json();
-      return { success: true, data };
-    } catch (error: any) {
-      console.error("Error getting model preview:", error);
-      return { success: false, error: error.message || "Failed to get model preview" };
-    }
-  },
-  getForecastRange: async (params: { 
+  train: async (trainData: { 
+    pollutant: string; 
     region: string; 
-    pollutant: string;
-    frequency: string;
-    limit: number;
-  }): Promise<ApiResponse> => {
-    try {
-      const queryParams = new URLSearchParams();
-      if (params.region) queryParams.append('region', params.region);
-      if (params.pollutant) queryParams.append('pollutant', params.pollutant);
-      if (params.frequency) queryParams.append('frequency', params.frequency);
-      if (params.limit) queryParams.append('limit', params.limit.toString());
-      
-      const response = await fetch(`${API_BASE_URL}/models/forecast?${queryParams.toString()}`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          ...authHeader(),
-        },
-      });
-      if (!response.ok) {
-        const errorText = await response.text();
-        return { success: false, error: `Failed to get forecast range: ${errorText}` };
-      }
-      const data = await response.json();
-      return { success: true, data };
-    } catch (error: any) {
-      console.error("Error getting forecast range:", error);
-      return { success: false, error: error.message || "Failed to get forecast range" };
-    }
+    frequency?: string; 
+    periods?: number;
+    overwrite?: boolean; // Added overwrite parameter
+  }) => {
+    const queryParams = new URLSearchParams(trainData as any).toString();
+    return fetchWithAuth(`/models/train/?${queryParams}`, {
+      method: "POST"
+    }, 10000); // Longer timeout for training requests
   },
-  checkExists: async (params: { 
+  
+  list: async () => {
+    return fetchWithAuth("/models/list/");
+  },
+  
+  getForecast: async (modelId: string) => {
+    return fetchWithAuth(`/models/forecast/${modelId}`);
+  },
+  
+  // Add model deletion method
+  delete: async (modelId: string) => {
+    return fetchWithAuth(`/models/delete/${modelId}`, {
+      method: "DELETE"
+    });
+  },
+  
+  // Add new model preview method
+  getModelPreview: async (modelId: string, limit?: number) => {
+    const queryParams = limit ? new URLSearchParams({ limit: limit.toString() }).toString() : '';
+    const endpoint = `/models/preview/${modelId}${queryParams ? `?${queryParams}` : ''}`;
+    
+    return fetchWithAuth(`${endpoint}`);
+  },
+  
+  // Original forecast range method (kept for backward compatibility)
+  getForecastRange: async ({
+    region,
+    pollutant,
+    frequency,
+    limit
+  }: {
     region: string;
     pollutant: string;
     frequency: string;
-  }): Promise<ApiResponse<{exists: boolean}>> => {
+    limit: number;
+  }) => {
     try {
-      const queryParams = new URLSearchParams();
-      if (params.region) queryParams.append('region', params.region);
-      if (params.pollutant) queryParams.append('pollutant', params.pollutant);
-      if (params.frequency) queryParams.append('frequency', params.frequency);
-      
-      const response = await fetch(`${API_BASE_URL}/models/exists?${queryParams.toString()}`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          ...authHeader(),
-        },
-      });
+      const response = await fetch(
+        `${API_URL}/models/forecast-range/?region=${region}&pollutant=${pollutant}&frequency=${frequency}&limit=${limit}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${getToken()}`,
+          },
+        }
+      );
+
       if (!response.ok) {
-        const errorText = await response.text();
-        return { success: false, error: `Failed to check if model exists: ${errorText}` };
+        const errorData = await response.json();
+        return {
+          success: false,
+          error: errorData.detail || "Failed to get forecast range",
+        };
       }
+
       const data = await response.json();
       return { success: true, data };
-    } catch (error: any) {
-      console.error("Error checking if model exists:", error);
-      return { success: false, error: error.message || "Failed to check if model exists" };
+    } catch (error) {
+      console.error("API error in getForecastRange:", error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error occurred",
+      };
     }
   },
-  // Add needed compareRegions method to modelApi (was erroneously used in ForecastPage)
-  compareRegions: async (params: {
-    regions: string[];
-    pollutant: string; 
+
+  // Add method to check if a model exists
+  checkExists: async ({
+    region,
+    pollutant,
+    frequency
+  }: {
+    region: string;
+    pollutant: string;
     frequency: string;
+  }) => {
+    const queryParams = new URLSearchParams({
+      region,
+      pollutant,
+      frequency
+    }).toString();
+    
+    return fetchWithAuth<{ exists: boolean }>(`/models/check-exists/?${queryParams}`);
+  },
+  
+  // Add method to get model info
+  getInfo: async (modelId: string) => {
+    return fetchWithAuth(`/models/info/${modelId}`);
+  },
+  
+  // Add method to compare models
+  compareModels: async (modelIds: string[]) => {
+    return fetchWithAuth('/models/compare/', {
+      method: "POST",
+      body: JSON.stringify({ model_ids: modelIds }),
+    });
+  },
+  
+  // Add method to get metadata filters
+  getMetadataFilters: async () => {
+    return fetchWithAuth('/models/metadata/filters');
+  },
+};
+
+// Prediction endpoints with improved error handling
+export const predictionApi = {
+  forecast: async (params: { 
+    pollutant: string; 
+    region: string;
+    frequency?: string;
     limit?: number;
     start_date?: string;
     end_date?: string;
-  }): Promise<ApiResponse> => {
-    return predictionApi.compareRegions(params);
+  }) => {
+    const queryParams = new URLSearchParams(params as any).toString();
+    return fetchWithAuth<Array<{ 
+      ds: string; 
+      yhat: number; 
+      yhat_lower: number; 
+      yhat_upper: number;
+      category: string; 
+    }>>(`/models/predict/?${queryParams}`, {}, 8000);
+  },
+  compare: async (compareData: { pollutant: string; regions: string[] }) => {
+    return fetchWithAuth("/models/predict/compare/", {
+      method: "POST",
+      body: JSON.stringify(compareData),
+    }, 8000);
+  }
+};
+
+// Health suggestions endpoints
+export const healthApi = {
+  getTip: async (params: { pollutant: string; region: string }) => {
+    // Add include_profile=true parameter to get personalized health tips
+    const queryParams = new URLSearchParams({
+      ...params,
+      include_profile: 'true'
+    } as any).toString();
+    
+    return fetchWithAuth<HealthTip>(`/health/tip/?${queryParams}`);
+  }
+};
+
+// Insights endpoints
+export const insightApi = {
+  getTrend: async (params: { pollutant: string; region: string }) => {
+    const queryParams = new URLSearchParams(params as any).toString();
+    return fetchWithAuth<TrendChart>(`/insights/trend/?${queryParams}`);
+  },
+  getTopPolluted: async (params: { pollutant: string; year: number }) => {
+    const queryParams = new URLSearchParams(params as any).toString();
+    return fetchWithAuth<Array<{ name: string; value: number }>>(`/insights/top-polluted/?${queryParams}`);
+  },
+  getSeasonality: async (params: { pollutant: string; region: string }) => {
+    const queryParams = new URLSearchParams(params as any).toString();
+    return fetchWithAuth<SeasonalityChart>(`/insights/seasonality/?${queryParams}`);
+  },
+  getPersonalized: async (params: { pollutant: string; region: string }) => {
+    const queryParams = new URLSearchParams(params as any).toString();
+    return fetchWithAuth(`/insights/personalized/?${queryParams}`);
+  },
+  getSummary: async (params: { pollutant: string; region: string; year: number }) => {
+    const queryParams = new URLSearchParams(params as any).toString();
+    return fetchWithAuth(`/insights/summary/?${queryParams}`);
+  },
+  getHistorical: async (params: { pollutant: string; region: string; year: number }) => {
+    const queryParams = new URLSearchParams(params as any).toString();
+    return fetchWithAuth(`/insights/historical/?${queryParams}`);
+  }
+};
+
+// AQI alerts endpoints
+export const alertApi = {
+  subscribe: async (alertData: { region: string; pollutant: string; threshold: string }) => {
+    // Updated to accept string thresholds instead of numeric ("Good", "Moderate", etc.)
+    return fetchWithAuth("/alerts/subscribe/", {
+      method: "POST",
+      body: JSON.stringify(alertData),
+    });
+  },
+  list: async () => {
+    return fetchWithAuth("/alerts/my-subscriptions/");
+  },
+  delete: async (alertId: string) => {
+    return fetchWithAuth(`/alerts/unsubscribe/${alertId}`, {
+      method: "DELETE",
+    });
+  },
+  checkAlerts: async (sendEmail: boolean = false) => {
+    return fetchWithAuth(`/alerts/check-alerts/?send_email=${sendEmail}`);
+  }
+};
+
+// Metadata endpoints with caching and fallback to reduce API calls
+export const metadataApi = {
+  // Cache for pollutants data
+  _pollutantsCache: null as Array<{label: string, value: Pollutant}> | null,
+  // Cache for regions data
+  _regionsCache: null as Array<{label: string, value: string}> | null,
+  
+  getPollutants: async () => {
+    // Return cached data if available
+    if (metadataApi._pollutantsCache) {
+      return { success: true, data: metadataApi._pollutantsCache };
+    }
+    
+    const response = await fetchWithAuth<Array<{label: string, value: string}>>("/metadata/pollutants");
+    
+    // If API succeeds, cache the result
+    if (response.success && response.data) {
+      // Cast the data to ensure it matches the expected Pollutant type
+      const typedData = response.data.map(item => ({
+        label: item.label,
+        value: item.value as Pollutant
+      }));
+      metadataApi._pollutantsCache = typedData;
+    }
+    
+    // If API fails, return mock data
+    if (!response.success) {
+      console.log("Using mock pollutant data due to API failure");
+      const mockData = [
+        { value: "NO2" as Pollutant, label: "Nitrogen Dioxide (NO₂)" },
+        { value: "O3" as Pollutant, label: "Ozone (O₃)" },
+        { value: "PM10" as Pollutant, label: "Particulate Matter 10 (PM₁₀)" },
+        { value: "PM25" as Pollutant, label: "Particulate Matter 2.5 (PM₂.₅)" },
+        { value: "SO2" as Pollutant, label: "Sulfur Dioxide (SO₂)" }
+      ];
+      // Cache mock data too
+      metadataApi._pollutantsCache = mockData;
+      return { success: true, data: mockData };
+    }
+    
+    return response;
+  },
+  
+  getRegions: async () => {
+    // Return cached data if available
+    if (metadataApi._regionsCache) {
+      return { success: true, data: metadataApi._regionsCache };
+    }
+    
+    const response = await fetchWithAuth<Array<{label: string, value: string}>>("/metadata/regions");
+    
+    // If API succeeds, cache the result
+    if (response.success && response.data) {
+      metadataApi._regionsCache = response.data;
+    }
+    
+    // If API fails, return standardized region data from the constant
+    if (!response.success) {
+      console.log("Using standard region data due to API failure");
+      const standardRegions = [
+        { value: "thessaloniki", label: "Thessaloniki" },
+        { value: "ampelokipoi-menemeni", label: "Ampelokipoi - Menemeni" },
+        { value: "neapoli-sykies", label: "Neapoli - Sykies" },
+        { value: "kalamaria", label: "Kalamaria" },
+        { value: "pavlos-melas", label: "Pavlos Melas" },
+        { value: "pylaia-chortiatis", label: "Pylaia - Chortiatis" },
+        { value: "panorama", label: "Panorama" },
+      ];
+      // Cache standard data
+      metadataApi._regionsCache = standardRegions;
+      return { success: true, data: standardRegions };
+    }
+    
+    return response;
+  },
+  
+  // Method to clear cache if needed
+  clearCache: () => {
+    metadataApi._pollutantsCache = null;
+    metadataApi._regionsCache = null;
   }
 };
