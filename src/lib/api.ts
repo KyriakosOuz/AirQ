@@ -1,4 +1,3 @@
-
 import { Dataset, HealthTip, Pollutant, TrendChart, SeasonalityChart, UserProfile, Alert } from "./types";
 import { authHeader, setToken, removeToken, fetchWithAuth } from "./auth-header";
 import { ModelTrainRequest, ModelTrainingResponse, ModelMetadataFilters, ModelComparisonResponse, ModelInfo } from "./model-utils";
@@ -13,6 +12,7 @@ export interface ApiResponse<T = any> {
   success: boolean;
   data?: T;
   error?: string;
+  meta?: Record<string, any>; // Add meta field to support additional response metadata
 }
 
 export interface DatasetPreviewResponse {

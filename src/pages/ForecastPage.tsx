@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { RegionSelector } from "@/components/ui/region-selector";
@@ -151,7 +150,7 @@ const ForecastPage: React.FC = () => {
         setForecasts(validatedData);
         
         // Check if response metadata indicates a fallback model was used
-        if (response.meta?.using_fallback_model) {
+        if (response.data && response.data.length > 0 && response.data[0].using_fallback_model) {
           console.log("Using fallback model for forecast");
           setUsingFallbackModel(true);
         }
