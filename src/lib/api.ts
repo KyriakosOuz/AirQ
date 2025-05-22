@@ -1,6 +1,7 @@
+
 import { Dataset, HealthTip, Pollutant, TrendChart, SeasonalityChart, UserProfile, Alert } from "./types";
 import { authHeader, setToken, removeToken, fetchWithAuth } from "./auth-header";
-import { ModelTrainRequest, ModelTrainingResponse, ModelMetadataFilters, ModelComparisonResponse } from "./model-utils";
+import { ModelTrainRequest, ModelTrainingResponse, ModelMetadataFilters, ModelComparisonResponse, ModelInfo } from "./model-utils";
 
 // Re-export the auth-header functions for use in other files
 export { setToken, removeToken, fetchWithAuth };
@@ -68,7 +69,7 @@ export const datasetApi = {
       return { success: false, error: error.message || "Upload failed" };
     }
   },
-  preview: async (datasetId: string): Promise<DatasetPreviewResponse> => {
+  preview: async (datasetId: string): Promise<ApiResponse<{ columns: string[]; preview: Record<string, any>[] }>> => {
     try {
       const response = await fetch(`${API_BASE_URL}/datasets/${datasetId}/preview`, {
         method: "GET",
@@ -232,7 +233,6 @@ export const alertApi = {
   },
 };
 
-// Fix auth API
 export const authApi = {
   login: async (email: string, password: string): Promise<ApiResponse> => {
     try {
@@ -320,7 +320,6 @@ export const insightApi = {
       return { success: false, error: error.message || "Failed to fetch seasonality data" };
     }
   },
-  // Add year parameter to getTopPolluted
   getTopPolluted: async (params: { pollutant?: Pollutant; year?: number; limit?: number }): Promise<ApiResponse> => {
     try {
       const queryParams = new URLSearchParams();
@@ -348,7 +347,7 @@ export const insightApi = {
   },
 };
 
-export const profileApi = {
+export const userApi = {
   getProfile: async (): Promise<ApiResponse<UserProfile>> => {
     try {
       const response = await fetch(`${API_BASE_URL}/profile`, {
@@ -390,9 +389,97 @@ export const profileApi = {
       return { success: false, error: error.message || "Failed to update profile" };
     }
   },
+  saveProfile: async (profileData: Partial<UserProfile>): Promise<ApiResponse<UserProfile>> => {
+    return userApi.updateProfile(profileData); // Alias for updateProfile
+  }
+};
+
+export const healthApi = {
+  getPersonalizedTips: async (aqiLevel: string): Promise<ApiResponse<HealthTip[]>> => {
+    return metadataApi.getHealthTips(aqiLevel, true);
+  }
+};
+
+export const predictionApi = {
+  getForecast: async (params: { 
+    pollutant: string; 
+    region: string; 
+    frequency: string; 
+    limit?: number;
+    start_date?: string;
+    end_date?: string;
+  }): Promise<ApiResponse> => {
+    try {
+      const queryParams = new URLSearchParams();
+      if (params.pollutant) queryParams.append('pollutant', params.pollutant);
+      if (params.region) queryParams.append('region', params.region);
+      if (params.frequency) queryParams.append('frequency', params.frequency);
+      if (params.limit) queryParams.append('limit', params.limit.toString());
+      if (params.start_date) queryParams.append('start_date', params.start_date);
+      if (params.end_date) queryParams.append('end_date', params.end_date);
+      
+      const response = await fetch(`${API_BASE_URL}/predictions/forecast?${queryParams.toString()}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          ...authHeader(),
+        },
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        return { success: false, error: `Failed to fetch forecast: ${errorText}` };
+      }
+      const data = await response.json();
+      return { success: true, data };
+    } catch (error: any) {
+      console.error("Error fetching forecast:", error);
+      return { success: false, error: error.message || "Failed to fetch forecast" };
+    }
+  },
+  compareRegions: async (params: { 
+    regions: string[]; 
+    pollutant: string; 
+    frequency: string;
+    limit?: number;
+    start_date?: string;
+    end_date?: string;
+  }): Promise<ApiResponse> => {
+    try {
+      const queryParams = new URLSearchParams();
+      if (params.pollutant) queryParams.append('pollutant', params.pollutant);
+      if (params.frequency) queryParams.append('frequency', params.frequency);
+      if (params.limit) queryParams.append('limit', params.limit.toString());
+      if (params.start_date) queryParams.append('start_date', params.start_date);
+      if (params.end_date) queryParams.append('end_date', params.end_date);
+      if (params.regions && params.regions.length > 0) {
+        queryParams.append('regions', params.regions.join(','));
+      }
+      
+      const response = await fetch(`${API_BASE_URL}/predictions/compare-regions?${queryParams.toString()}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          ...authHeader(),
+        },
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        return { success: false, error: `Failed to compare regions: ${errorText}` };
+      }
+      const data = await response.json();
+      return { success: true, data };
+    } catch (error: any) {
+      console.error("Error comparing regions:", error);
+      return { success: false, error: error.message || "Failed to compare regions" };
+    }
+  }
 };
 
 export const modelApi = {
+  // Method renamed to match usage in ModelTrainingTab
+  train: async (request: ModelTrainRequest): Promise<ApiResponse<ModelTrainingResponse>> => {
+    return modelApi.trainModel(request);
+  },
   trainModel: async (request: ModelTrainRequest): Promise<ApiResponse<ModelTrainingResponse>> => {
     try {
       const response = await fetch(`${API_BASE_URL}/models/train`, {
@@ -454,6 +541,9 @@ export const modelApi = {
       return { success: false, error: error.message || "Failed to get available filters" };
     }
   },
+  getMetadataFilters: async (): Promise<ApiResponse<ModelMetadataFilters>> => {
+    return modelApi.getAvailableFilters();
+  },
   compareModels: async (modelIds: string[]): Promise<ApiResponse<ModelComparisonResponse>> => {
     try {
       const response = await fetch(`${API_BASE_URL}/models/compare?model_ids=${modelIds.join(',')}`, {
@@ -474,4 +564,144 @@ export const modelApi = {
       return { success: false, error: error.message || "Failed to compare models" };
     }
   },
+  // Additional model API methods needed
+  list: async (): Promise<ApiResponse> => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/models`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          ...authHeader(),
+        },
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        return { success: false, error: `Failed to list models: ${errorText}` };
+      }
+      const data = await response.json();
+      return { success: true, data };
+    } catch (error: any) {
+      console.error("Error listing models:", error);
+      return { success: false, error: error.message || "Failed to list models" };
+    }
+  },
+  getInfo: async (modelId: string): Promise<ApiResponse<ModelInfo>> => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/models/${modelId}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          ...authHeader(),
+        },
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        return { success: false, error: `Failed to get model info: ${errorText}` };
+      }
+      const data = await response.json();
+      return { success: true, data };
+    } catch (error: any) {
+      console.error("Error getting model info:", error);
+      return { success: false, error: error.message || "Failed to get model info" };
+    }
+  },
+  delete: async (modelId: string): Promise<ApiResponse> => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/models/${modelId}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          ...authHeader(),
+        },
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        return { success: false, error: `Failed to delete model: ${errorText}` };
+      }
+      return { success: true };
+    } catch (error: any) {
+      console.error("Error deleting model:", error);
+      return { success: false, error: error.message || "Failed to delete model" };
+    }
+  },
+  getModelPreview: async (modelId: string, periods: number): Promise<ApiResponse> => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/models/${modelId}/preview?periods=${periods}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          ...authHeader(),
+        },
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        return { success: false, error: `Failed to get model preview: ${errorText}` };
+      }
+      const data = await response.json();
+      return { success: true, data };
+    } catch (error: any) {
+      console.error("Error getting model preview:", error);
+      return { success: false, error: error.message || "Failed to get model preview" };
+    }
+  },
+  getForecastRange: async (params: { 
+    region: string; 
+    pollutant: string;
+    frequency: string;
+    limit: number;
+  }): Promise<ApiResponse> => {
+    try {
+      const queryParams = new URLSearchParams();
+      if (params.region) queryParams.append('region', params.region);
+      if (params.pollutant) queryParams.append('pollutant', params.pollutant);
+      if (params.frequency) queryParams.append('frequency', params.frequency);
+      if (params.limit) queryParams.append('limit', params.limit.toString());
+      
+      const response = await fetch(`${API_BASE_URL}/models/forecast?${queryParams.toString()}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          ...authHeader(),
+        },
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        return { success: false, error: `Failed to get forecast range: ${errorText}` };
+      }
+      const data = await response.json();
+      return { success: true, data };
+    } catch (error: any) {
+      console.error("Error getting forecast range:", error);
+      return { success: false, error: error.message || "Failed to get forecast range" };
+    }
+  },
+  checkExists: async (params: { 
+    region: string;
+    pollutant: string;
+    frequency: string;
+  }): Promise<ApiResponse<{exists: boolean}>> => {
+    try {
+      const queryParams = new URLSearchParams();
+      if (params.region) queryParams.append('region', params.region);
+      if (params.pollutant) queryParams.append('pollutant', params.pollutant);
+      if (params.frequency) queryParams.append('frequency', params.frequency);
+      
+      const response = await fetch(`${API_BASE_URL}/models/exists?${queryParams.toString()}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          ...authHeader(),
+        },
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        return { success: false, error: `Failed to check if model exists: ${errorText}` };
+      }
+      const data = await response.json();
+      return { success: true, data };
+    } catch (error: any) {
+      console.error("Error checking if model exists:", error);
+      return { success: false, error: error.message || "Failed to check if model exists" };
+    }
+  }
 };
