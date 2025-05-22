@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RefreshCw, Calendar, Info } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { format } from "date-fns";
+import { format, startOfWeek, startOfMonth, endOfWeek, endOfMonth, addDays } from "date-fns";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -58,14 +58,48 @@ const LabelWithTooltip = ({ label, tooltip }: { label: string; tooltip: string }
 const DatePickerField = ({ 
   label, 
   tooltip, 
-  date, 
+  date,
+  frequency,
   onDateChange 
 }: { 
   label: string;
   tooltip: string;
   date: Date | undefined;
+  frequency: string;
   onDateChange: (date: Date | undefined) => void;
 }) => {
+  // Date format based on frequency
+  const getDateFormat = (selectedDate: Date) => {
+    switch (frequency) {
+      case "W":
+        return `Week of ${format(startOfWeek(selectedDate), "MMM d, yyyy")}`;
+      case "M":
+        return format(selectedDate, "MMMM yyyy");
+      default:
+        return format(selectedDate, "PPP");
+    }
+  };
+
+  // Handle date selection based on frequency
+  const handleDateSelect = (selectedDate: Date | undefined) => {
+    if (!selectedDate) {
+      onDateChange(undefined);
+      return;
+    }
+
+    switch (frequency) {
+      case "W":
+        onDateChange(startOfWeek(selectedDate));
+        break;
+      case "M":
+        onDateChange(startOfMonth(selectedDate));
+        break;
+      default:
+        onDateChange(selectedDate);
+        break;
+    }
+  };
+
   return (
     <div className="space-y-2">
       <LabelWithTooltip 
@@ -82,16 +116,23 @@ const DatePickerField = ({
             )}
           >
             <Calendar className="mr-2 h-4 w-4" />
-            {date ? format(date, "PPP") : <span>Pick a date</span>}
+            {date ? getDateFormat(date) : <span>Pick a date</span>}
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0" align="start">
           <CalendarComponent
             mode="single"
             selected={date}
-            onSelect={onDateChange}
+            onSelect={handleDateSelect}
             initialFocus
             className={cn("p-3 pointer-events-auto")}
+            weekStartsOn={1} // Start week on Monday
+            modifiersStyles={{
+              selected: {
+                backgroundColor: "var(--color-primary)",
+                color: "white",
+              }
+            }}
           />
         </PopoverContent>
       </Popover>
@@ -172,6 +213,7 @@ const ForecastControls: React.FC<ForecastControlsProps> = ({
               label="Start Date"
               tooltip="Select the start date for your forecast range" 
               date={startDate}
+              frequency={frequency}
               onDateChange={onStartDateChange}
             />
             
@@ -180,6 +222,7 @@ const ForecastControls: React.FC<ForecastControlsProps> = ({
               label="End Date"
               tooltip="Select the end date for your forecast range" 
               date={endDate}
+              frequency={frequency}
               onDateChange={onEndDateChange}
             />
           </div>

@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { predictionApi } from "@/lib/api";
 import { Pollutant } from "@/lib/types";
@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { useUserStore } from "@/stores/userStore";
 import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { startOfMonth, startOfWeek, endOfMonth, endOfWeek, addDays, addMonths, addWeeks } from "date-fns";
 
 // Import our components
 import ForecastControls from "@/components/forecasts/ForecastControls";
@@ -49,6 +50,52 @@ const ForecastPage: React.FC = () => {
   
   // Get user profile from store
   const { profile } = useUserStore();
+
+  // Update end date when frequency changes
+  useEffect(() => {
+    if (startDate) {
+      // Set appropriate end date based on frequency when it changes
+      let newEndDate: Date;
+      
+      switch (frequency) {
+        case "W":
+          // For weekly, set end date to 8 weeks ahead
+          newEndDate = addWeeks(startOfWeek(startDate), 8);
+          break;
+        case "M":
+          // For monthly, set end date to 6 months ahead
+          newEndDate = addMonths(startOfMonth(startDate), 6);
+          break;
+        default:
+          // For daily, set end date to 30 days ahead
+          newEndDate = addDays(startDate, 30);
+      }
+      
+      setEndDate(newEndDate);
+    }
+  }, [frequency, startDate]);
+
+  // Adjust start date when frequency changes
+  useEffect(() => {
+    if (startDate) {
+      let adjustedStartDate: Date;
+      
+      switch (frequency) {
+        case "W":
+          adjustedStartDate = startOfWeek(startDate);
+          break;
+        case "M":
+          adjustedStartDate = startOfMonth(startDate);
+          break;
+        default:
+          adjustedStartDate = startDate;
+      }
+      
+      if (adjustedStartDate.getTime() !== startDate.getTime()) {
+        setStartDate(adjustedStartDate);
+      }
+    }
+  }, [frequency]);
 
   // Function to format date for API
   const formatDateForApi = (date: Date): string => {
