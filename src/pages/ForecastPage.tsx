@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { predictionApi } from "@/lib/api";
 import { Pollutant } from "@/lib/types";
@@ -46,22 +46,10 @@ const ForecastPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [forecastData, setForecastData] = useState<any[]>([]);
   const [currentData, setCurrentData] = useState<any>(null);
+  const [initialLoad, setInitialLoad] = useState(true);
   
   // Get user profile from store
   const { profile } = useUserStore();
-
-  // Load forecast data when component mounts
-  useEffect(() => {
-    loadForecastData();
-  }, []);
-
-  // Debug log to check if date format is correct
-  useEffect(() => {
-    if (forecastData.length > 0) {
-      console.log("Forecast data sample:", forecastData[0]);
-      console.log("Date from forecast:", new Date(forecastData[0].ds));
-    }
-  }, [forecastData]);
 
   // Function to format date for API
   const formatDateForApi = (date: Date): string => {
@@ -74,6 +62,7 @@ const ForecastPage: React.FC = () => {
   // Function to load forecast data from API
   const loadForecastData = async () => {
     setLoading(true);
+    setInitialLoad(false);
     try {
       let response;
       
@@ -189,7 +178,7 @@ const ForecastPage: React.FC = () => {
   };
   
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-full">
       <div className="flex flex-col space-y-2">
         <h1 className="text-3xl font-bold tracking-tight">Personal Air Quality Forecast</h1>
         <p className="text-muted-foreground">
@@ -219,8 +208,18 @@ const ForecastPage: React.FC = () => {
         onUpdateForecast={loadForecastData}
       />
 
-      {/* No Data Alert */}
-      {!loading && forecastData.length === 0 && (
+      {/* Initial state - no data yet */}
+      {initialLoad && (
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Select your forecast parameters and press "Update Forecast" to view predictions.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* No Data Alert (after attempted load) */}
+      {!loading && !initialLoad && forecastData.length === 0 && (
         <Alert>
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
@@ -243,20 +242,22 @@ const ForecastPage: React.FC = () => {
       )}
       
       {/* Cards Section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Current AQI Summary Card */}
-        <AQISummaryCard 
-          currentData={currentData} 
-          loading={loading}
-        />
-        
-        {/* Personalized Insight Card */}
-        <PersonalizedInsightCard 
-          currentData={currentData}
-          profile={profile}
-          loading={loading}
-        />
-      </div>
+      {!initialLoad && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Current AQI Summary Card */}
+          <AQISummaryCard 
+            currentData={currentData} 
+            loading={loading}
+          />
+          
+          {/* Personalized Insight Card */}
+          <PersonalizedInsightCard 
+            currentData={currentData}
+            profile={profile}
+            loading={loading}
+          />
+        </div>
+      )}
     </div>
   );
 };

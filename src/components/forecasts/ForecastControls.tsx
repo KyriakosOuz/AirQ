@@ -7,9 +7,8 @@ import { Pollutant } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import { RefreshCw, Calendar } from "lucide-react";
+import { RefreshCw, Calendar, Info } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { InfoCircle } from "./InfoCircle";
 import { format } from "date-fns";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -75,7 +74,7 @@ const ForecastControls: React.FC<ForecastControlsProps> = ({
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <InfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                    <span><Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" /></span>
                   </TooltipTrigger>
                   <TooltipContent>
                     <p className="w-[200px] text-xs">Select a region to view air quality forecasts for that area</p>
@@ -93,7 +92,7 @@ const ForecastControls: React.FC<ForecastControlsProps> = ({
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <InfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                    <span><Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" /></span>
                   </TooltipTrigger>
                   <TooltipContent>
                     <p className="w-[200px] text-xs">Different pollutants have varying health impacts. NO₂ affects respiratory system, O₃ (ozone) can irritate airways, etc.</p>
@@ -111,7 +110,7 @@ const ForecastControls: React.FC<ForecastControlsProps> = ({
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <InfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                    <span><Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" /></span>
                   </TooltipTrigger>
                   <TooltipContent>
                     <p className="w-[200px] text-xs">Choose between predicting a number of periods or a specific date range</p>
@@ -160,7 +159,7 @@ const ForecastControls: React.FC<ForecastControlsProps> = ({
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <InfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                      <span><Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" /></span>
                     </TooltipTrigger>
                     <TooltipContent>
                       <p className="w-[200px] text-xs">Choose how frequently forecast data is presented: daily, weekly, or monthly intervals</p>
@@ -188,7 +187,7 @@ const ForecastControls: React.FC<ForecastControlsProps> = ({
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <InfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                        <span><Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" /></span>
                       </TooltipTrigger>
                       <TooltipContent>
                         <p className="w-[200px] text-xs">Adjust how far into the future you want to see forecasts</p>
@@ -218,7 +217,7 @@ const ForecastControls: React.FC<ForecastControlsProps> = ({
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <InfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                      <span><Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" /></span>
                     </TooltipTrigger>
                     <TooltipContent>
                       <p className="w-[200px] text-xs">Select the start date for your forecast range</p>
@@ -258,7 +257,7 @@ const ForecastControls: React.FC<ForecastControlsProps> = ({
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <InfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                      <span><Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" /></span>
                     </TooltipTrigger>
                     <TooltipContent>
                       <p className="w-[200px] text-xs">Select the end date for your forecast range</p>

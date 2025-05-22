@@ -13,7 +13,6 @@ import {
   ResponsiveContainer,
   Cell,
   TooltipProps,
-  ReferenceLine
 } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -129,7 +128,7 @@ const ForecastVisualization: React.FC<ForecastVisualizationProps> = ({
   }
 
   return (
-    <Card>
+    <Card className="w-full">
       <CardHeader>
         <CardTitle>
           {getPollutantDisplay(pollutant)} Forecast
