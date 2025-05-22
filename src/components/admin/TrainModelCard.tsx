@@ -258,37 +258,43 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
           />
         </div>
         
-        {/* Dataset availability warning */}
+        {/* Dataset availability warning - Fixed alignment */}
         {!datasetAvailable && !datasetCheckLoading && (
           <Alert variant="destructive" className="py-2">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription className="text-xs">
-              No dataset available for this region. Please upload data before training.
-            </AlertDescription>
+            <div className="flex items-center">
+              <AlertCircle className="h-4 w-4 mr-2 flex-shrink-0" />
+              <AlertDescription className="text-xs">
+                No dataset available for this region. Please upload data before training.
+              </AlertDescription>
+            </div>
           </Alert>
         )}
         
-        {/* Display model exists warning */}
+        {/* Display model exists warning - Fixed alignment */}
         {modelExists && !overwriteModel && (
           <Alert variant="warning" className="py-2">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription className="text-xs text-amber-700">
-              A model with these parameters already exists. Enable "Retrain Model" to overwrite it.
-            </AlertDescription>
+            <div className="flex items-center">
+              <AlertCircle className="h-4 w-4 mr-2 flex-shrink-0" />
+              <AlertDescription className="text-xs text-amber-700">
+                A model with these parameters already exists. Enable "Retrain Model" to overwrite it.
+              </AlertDescription>
+            </div>
           </Alert>
         )}
         
-        {/* Display training error if present */}
+        {/* Display training error if present - Fixed alignment */}
         {trainingError && (
           <Alert variant="destructive" className="py-2">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription className="text-xs">
-              {trainingError}
-            </AlertDescription>
+            <div className="flex items-center">
+              <AlertCircle className="h-4 w-4 mr-2 flex-shrink-0" />
+              <AlertDescription className="text-xs">
+                {trainingError}
+              </AlertDescription>
+            </div>
           </Alert>
         )}
         
-        {/* Display loading indicator when checking model existence */}
+        {/* Display loading indicator when checking model existence - Fixed alignment */}
         {isCheckingModel && (
           <div className="flex items-center justify-center py-2">
             <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent mr-2"></div>
@@ -296,7 +302,7 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
           </div>
         )}
         
-        {/* Show loading state for dataset check */}
+        {/* Show loading state for dataset check - Fixed alignment */}
         {datasetCheckLoading && (
           <div className="flex items-center justify-center py-2">
             <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent mr-2"></div>
@@ -304,14 +310,16 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
           </div>
         )}
         
-        {/* NEW: Show selected model info */}
+        {/* NEW: Show selected model info - Fixed alignment */}
         {selectedPreviewModel && (
           <Alert variant="default" className="py-2 bg-green-50 border-green-200">
-            <AlertCircle className="h-4 w-4 text-green-600" />
-            <AlertDescription className="text-xs text-green-700">
-              Model selected: {selectedPreviewModel.pollutant} in {selectedPreviewModel.region} 
-              {selectedPreviewModel.frequency ? ` (${selectedPreviewModel.frequency})` : ''}
-            </AlertDescription>
+            <div className="flex items-center">
+              <AlertCircle className="h-4 w-4 mr-2 flex-shrink-0 text-green-600" />
+              <AlertDescription className="text-xs text-green-700">
+                Model selected: {selectedPreviewModel.pollutant} in {selectedPreviewModel.region} 
+                {selectedPreviewModel.frequency ? ` (${selectedPreviewModel.frequency})` : ''}
+              </AlertDescription>
+            </div>
           </Alert>
         )}
       </CardContent>
