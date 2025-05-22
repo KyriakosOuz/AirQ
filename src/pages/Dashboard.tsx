@@ -12,8 +12,13 @@ import { useRegionStore } from "@/stores/regionStore";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { getErrorMessage } from "@/lib/utils";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useNavigate } from "react-router-dom";
 
 const Dashboard: React.FC = () => {
+  // Use React Router navigation
+  const navigate = useNavigate();
+  
   const isMobile = useIsMobile();
   const [region, setRegion] = useState("thessaloniki");
   const [pollutant, setPollutant] = useState<Pollutant>("no2_conc");
@@ -25,6 +30,7 @@ const Dashboard: React.FC = () => {
   const [seasonalData, setSeasonalData] = useState<any[]>([]);
   const [forecastData, setForecastData] = useState<any[]>([]);
   const [currentAqi, setCurrentAqi] = useState<AqiLevel>("moderate");
+  const [activeTab, setActiveTab] = useState("summary");
   
   // Update app state when region or pollutant changes
   useEffect(() => {
@@ -223,6 +229,11 @@ const Dashboard: React.FC = () => {
     setPollutant(value);
   };
   
+  // Navigate to forecast page
+  const navigateToForecast = () => {
+    navigate('/forecast');
+  };
+  
   return (
     <div className="space-y-6">
       <div className="flex flex-col space-y-2">
@@ -232,128 +243,174 @@ const Dashboard: React.FC = () => {
         </p>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle>Location & Pollutant</CardTitle>
-              <CardDescription>
-                Select a region and pollutant to monitor
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <div className="space-y-1">
-                  <label className="text-sm font-medium">Region</label>
-                  <RegionSelector value={region} onValueChange={handleRegionChange} />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-sm font-medium">Pollutant</label>
-                  <PollutantSelector value={pollutant} onValueChange={handlePollutantChange} />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center justify-between">
-                <span>Current Status</span>
-                <AqiBadge level={currentAqi} />
-              </CardTitle>
-              <CardDescription>
-                Air quality information for {region}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex flex-col border rounded-lg p-3">
-                  <span className="text-sm font-medium text-muted-foreground">
-                    {pollutant} Level
-                  </span>
-                  <span className="text-2xl font-bold">105 μg/m³</span>
-                </div>
-                <div className="flex flex-col border rounded-lg p-3">
-                  <span className="text-sm font-medium text-muted-foreground">
-                    24hr Change
-                  </span>
-                  <span className="text-2xl font-bold text-orange-500">+2.3%</span>
-                </div>
-              </div>
-            </CardContent>
-            <CardFooter>
-              <Button 
-                className="w-full"
-                variant="secondary"
-                onClick={fetchHealthTip}
-                disabled={loading}
-              >
-                {loading ? "Loading..." : "Get Health Advice"}
-              </Button>
-            </CardFooter>
-          </Card>
-          
-          {healthTip && (
-            // Fix: Updated to use the correct property 'severity' instead of 'riskLevel'
-            <Card className={`border-l-4 border-l-aqi-${healthTip.severity}`}>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg">Health Recommendation</CardTitle>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="summary">Summary</TabsTrigger>
+          <TabsTrigger value="insights">Insights</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="summary" className="space-y-4 mt-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-4">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle>Location & Pollutant</CardTitle>
+                  <CardDescription>
+                    Select a region and pollutant to monitor
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    <div className="space-y-1">
+                      <label className="text-sm font-medium">Region</label>
+                      <RegionSelector value={region} onValueChange={handleRegionChange} />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-sm font-medium">Pollutant</label>
+                      <PollutantSelector value={pollutant} onValueChange={handlePollutantChange} />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center justify-between">
+                    <span>Current Status</span>
+                    <AqiBadge level={currentAqi} />
+                  </CardTitle>
+                  <CardDescription>
+                    Air quality information for {region}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex flex-col border rounded-lg p-3">
+                      <span className="text-sm font-medium text-muted-foreground">
+                        {pollutant} Level
+                      </span>
+                      <span className="text-2xl font-bold">105 μg/m³</span>
+                    </div>
+                    <div className="flex flex-col border rounded-lg p-3">
+                      <span className="text-sm font-medium text-muted-foreground">
+                        24hr Change
+                      </span>
+                      <span className="text-2xl font-bold text-orange-500">+2.3%</span>
+                    </div>
+                  </div>
+                </CardContent>
+                <CardFooter className="flex flex-col gap-2">
+                  <Button 
+                    className="w-full"
+                    variant="secondary"
+                    onClick={fetchHealthTip}
+                    disabled={loading}
+                  >
+                    {loading ? "Loading..." : "Get Health Advice"}
+                  </Button>
+                  <Button 
+                    className="w-full"
+                    variant="default"
+                    onClick={navigateToForecast}
+                  >
+                    View Detailed Forecast
+                  </Button>
+                </CardFooter>
+              </Card>
+              
+              {healthTip && (
+                // Fix: Updated to use the correct property 'severity' instead of 'riskLevel'
+                <Card className={`border-l-4 border-l-aqi-${healthTip.severity}`}>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-lg">Health Recommendation</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p>{healthTip.tip}</p>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+            
+            <div className="space-y-4">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle>Annual Trend</CardTitle>
+                  <CardDescription>
+                    Yearly average {pollutant} concentration
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="h-72">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={trendData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.8}/>
+                          <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0.1}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="year" />
+                      <YAxis />
+                      <Tooltip />
+                      <Area type="monotone" dataKey="value" stroke="#0ea5e9" fillOpacity={1} fill="url(#colorValue)" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle>Seasonal Pattern</CardTitle>
+                  <CardDescription>
+                    Monthly average {pollutant} levels
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="h-72">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={seasonalData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" />
+                      <YAxis />
+                      <Tooltip />
+                      <Bar dataKey="value" fill="#10b981" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="insights" className="space-y-4 mt-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card className="md:col-span-2">
+              <CardHeader>
+                <CardTitle>Air Quality Insights</CardTitle>
+                <CardDescription>
+                  Detailed analysis and recommendations based on current air quality data
+                </CardDescription>
               </CardHeader>
-              <CardContent>
-                <p>{healthTip.tip}</p>
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  <p>
+                    Our analytics show that air quality in {region} has been {currentAqi === "good" ? "improving" : "worsening"} over the past week.
+                  </p>
+                  
+                  <div className="mt-4">
+                    <h3 className="text-lg font-medium">For more detailed insights:</h3>
+                    <Button 
+                      onClick={navigateToForecast} 
+                      className="mt-2"
+                    >
+                      View Personalized Forecast
+                    </Button>
+                  </div>
+                </div>
               </CardContent>
             </Card>
-          )}
-        </div>
-        
-        <div className="space-y-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle>Annual Trend</CardTitle>
-              <CardDescription>
-                Yearly average {pollutant} concentration
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={trendData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0.1}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="year" />
-                  <YAxis />
-                  <Tooltip />
-                  <Area type="monotone" dataKey="value" stroke="#0ea5e9" fillOpacity={1} fill="url(#colorValue)" />
-                </AreaChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle>Seasonal Pattern</CardTitle>
-              <CardDescription>
-                Monthly average {pollutant} levels
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={seasonalData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="value" fill="#10b981" />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

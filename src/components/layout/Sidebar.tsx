@@ -1,388 +1,115 @@
+
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import {
-  Home,
-  BarChart3,
-  UserCircle,
-  LineChart,
-  Bell,
-  Settings,
-  LogOut,
-  ChevronLeft,
-  ChevronRight,
-  Menu,
-} from "lucide-react";
-import { useIsMobile } from "@/hooks/use-mobile";
-import { useUserStore } from "@/stores/userStore";
-import { 
-  Sidebar as SidebarComponent,
-  SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarTrigger,
-  useSidebar,
-} from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import { 
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { useUserStore } from "@/stores/userStore";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+  ChevronDown,
+  LayoutDashboard,
+  BarChart2,
+  Settings,
+  Bell,
+  LogOut,
+  UserRound,
+  ArrowUpRight,
+  CalendarDays
+} from "lucide-react";
 
-export const Sidebar: React.FC = () => {
+interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {}
+
+export function Sidebar({ className }: SidebarProps) {
   const location = useLocation();
-  const isMobile = useIsMobile();
-  const { user, isAdmin } = useUserStore();
+  const { profile } = useUserStore();
+  const isAdmin = profile?.role === "admin";
 
-  // Mobile view uses Sheet component
-  if (isMobile) {
-    return (
-      <Sheet>
-        <SheetTrigger asChild>
-          <Button variant="ghost" size="icon" className="md:hidden fixed top-4 left-4 z-10">
-            <Menu size={24} />
-            <span className="sr-only">Toggle Menu</span>
-          </Button>
-        </SheetTrigger>
-        <SheetContent side="left" className="p-0 w-64">
-          <MobileSidebarContent />
-        </SheetContent>
-      </Sheet>
-    );
-  }
-
-  // Desktop view uses SidebarComponent directly
-  return <DesktopSidebar />;
-};
-
-// Mobile sidebar content
-const MobileSidebarContent: React.FC = () => {
-  const location = useLocation();
-  const { user, isAdmin, logout } = useUserStore();
-  
-  return (
-    <div className="h-full flex flex-col bg-sidebar">
-      {/* Logo */}
-      <div className="p-4 flex items-center">
-        <img 
-          src="/lovable-uploads/a95d6ea6-5b37-4d78-aa50-114b5e7537d2.png" 
-          alt="AirQ Logo" 
-          className="h-8 object-contain"
-        />
-      </div>
-      
-      <Separator className="bg-sidebar-border" />
-      
-      {/* Navigation Items */}
-      <div className="flex-1 overflow-auto py-2">
-        <div className="px-3 py-2">
-          <p className="text-xs font-medium text-sidebar-foreground/70 mb-2">Main Navigation</p>
-          <NavigationLinks location={location} isAdmin={isAdmin} />
-        </div>
-      </div>
-      
-      {/* User Profile */}
-      {user && (
-        <div className="p-4 border-t border-sidebar-border">
-          <div className="flex items-center gap-2">
-            <Avatar className="h-8 w-8">
-              <AvatarFallback>{getUserInitials(user)}</AvatarFallback>
-            </Avatar>
-            <div className="flex flex-col flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{user.email}</p>
-              <p className="text-xs text-sidebar-foreground/70 truncate">
-                {isAdmin ? "Administrator" : "User"}
-              </p>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={logout}
-              className="h-8 w-8 p-0"
-            >
-              <LogOut size={16} />
-              <span className="sr-only">Logout</span>
-            </Button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-// Desktop sidebar
-const DesktopSidebar: React.FC = () => {
-  const { state, toggleSidebar } = useSidebar();
-  const isCollapsed = state === "collapsed";
-  
-  return (
-    <SidebarComponent variant="sidebar" collapsible="icon">
-      <SidebarHeader className="p-4 flex items-center">
-        <div className="flex justify-start w-full">
-          <img 
-            src="/lovable-uploads/a95d6ea6-5b37-4d78-aa50-114b5e7537d2.png" 
-            alt="AirQ Logo" 
-            className={cn(
-              "object-contain transition-all duration-300",
-              isCollapsed ? "h-8 w-8" : "h-8"
-            )}
-          />
-        </div>
-
-        <div className="absolute top-4 right-0 transform translate-x-1/2 z-10">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button 
-                variant="outline" 
-                size="icon" 
-                onClick={toggleSidebar}
-                className="h-7 w-7 rounded-full bg-background shadow-sm border-sidebar-border hover:bg-sidebar-accent hover:text-sidebar-primary"
-              >
-                {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
-                <span className="sr-only">
-                  {isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-                </span>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="right">
-              {isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-            </TooltipContent>
-          </Tooltip>
-        </div>
-      </SidebarHeader>
-      
-      <SidebarContent>
-        <SidebarNavigation />
-      </SidebarContent>
-      
-      <UserProfileFooter />
-    </SidebarComponent>
-  );
-};
-
-// Sidebar navigation groups
-const SidebarNavigation: React.FC = () => {
-  const location = useLocation();
-  const { isAdmin } = useUserStore();
-  const { state } = useSidebar();
-  const isCollapsed = state === "collapsed";
-  
-  return (
-    <SidebarGroup>
-      <SidebarGroupLabel>Navigation</SidebarGroupLabel>
-      <SidebarGroupContent>
-        <SidebarMenu>
-          <NavigationLinks location={location} isAdmin={isAdmin} collapsed={isCollapsed} />
-        </SidebarMenu>
-      </SidebarGroupContent>
-    </SidebarGroup>
-  );
-};
-
-// Navigation links component for reuse
-const NavigationLinks: React.FC<{ 
-  location: ReturnType<typeof useLocation>;
-  isAdmin: boolean;
-  collapsed?: boolean;
-}> = ({ location, isAdmin, collapsed = false }) => {
-  const navItems = [
-    {
-      name: "Dashboard",
-      path: "/",
-      icon: <Home size={20} />,
-    },
-    {
-      name: "Insights",
-      path: "/insights",
-      icon: <BarChart3 size={20} />,
-    },
-    {
-      name: "Health Profile",
-      path: "/profile",
-      icon: <UserCircle size={20} />,
-    },
-    {
-      name: "Forecasts",
-      path: "/forecasts",
-      icon: <LineChart size={20} />,
-    },
-    {
-      name: "AQI Alerts",
-      path: "/alerts",
-      icon: <Bell size={20} />,
-    }
-  ];
-
-  // Admin nav items
-  const adminItems = [
-    {
-      name: "Admin Panel",
-      path: "/admin",
-      icon: <Settings size={20} />,
-    },
-  ];
-
-  const renderNavLink = (item: typeof navItems[0]) => {
-    const isActive = location.pathname === item.path;
-    
-    if (collapsed) {
-      return (
-        <Tooltip key={item.path}>
-          <TooltipTrigger asChild>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild tooltip={item.name} isActive={isActive}>
-                <Link to={item.path}>
-                  {item.icon}
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </TooltipTrigger>
-          <TooltipContent side="right">{item.name}</TooltipContent>
-        </Tooltip>
-      );
-    }
-    
-    return (
-      <SidebarMenuItem key={item.path}>
-        <SidebarMenuButton
-          asChild
-          isActive={isActive}
-        >
-          <Link to={item.path}>
-            {item.icon}
-            <span>{item.name}</span>
-          </Link>
-        </SidebarMenuButton>
-      </SidebarMenuItem>
-    );
+  // Function to check if a route is active
+  const isRouteActive = (path: string) => {
+    return location.pathname === path;
   };
 
   return (
-    <>
-      {navItems.map(renderNavLink)}
-      
-      {isAdmin && (
-        <>
-          {!collapsed && <Separator className="my-2 bg-sidebar-border" />}
-          {adminItems.map(renderNavLink)}
-        </>
-      )}
-    </>
-  );
-};
-
-// User profile footer
-const UserProfileFooter: React.FC = () => {
-  const { user, isAdmin, logout } = useUserStore();
-  const { state } = useSidebar();
-  const isCollapsed = state === "collapsed";
-  
-  if (!user) return null;
-  
-  if (isCollapsed) {
-    return (
-      <SidebarFooter className="p-2">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-9 w-9 rounded-full group"
-                >
-                  <Avatar className="h-9 w-9">
-                    <AvatarFallback className="group-hover:text-black transition-colors">
-                      {getUserInitials(user)}
-                    </AvatarFallback>
-                  </Avatar>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuLabel>
-                  {user.email}
-                  <p className="text-xs font-normal text-muted-foreground">
-                    {isAdmin ? "Administrator" : "User"}
-                  </p>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={logout}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>Logout</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </TooltipTrigger>
-          <TooltipContent side="right">Account</TooltipContent>
-        </Tooltip>
-      </SidebarFooter>
-    );
-  }
-  
-  return (
-    <SidebarFooter className="p-4 border-t border-sidebar-border">
-      <div className="flex items-center gap-2">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button 
-              variant="ghost" 
-              className="p-0 h-10 w-10 rounded-full group"
+    <div className={cn("pb-12", className)}>
+      <div className="space-y-4 py-4">
+        <div className="px-3 py-2">
+          <h2 className="mb-2 px-4 text-lg font-semibold tracking-tight">
+            AirQuality Dashboard
+          </h2>
+          <div className="space-y-1">
+            <Button
+              variant={isRouteActive("/dashboard") ? "secondary" : "ghost"}
+              className="w-full justify-start"
+              asChild
             >
-              <Avatar>
-                <AvatarFallback className="group-hover:text-black transition-colors">
-                  {getUserInitials(user)}
-                </AvatarFallback>
-              </Avatar>
+              <Link to="/dashboard">
+                <LayoutDashboard className="mr-2 h-4 w-4" />
+                Dashboard
+              </Link>
             </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel>
-              {user.email}
-              <p className="text-xs font-normal text-muted-foreground">
-                {isAdmin ? "Administrator" : "User"}
-              </p>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={logout}>
-              <LogOut className="mr-2 h-4 w-4" />
-              <span>Logout</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        
-        <div className="flex flex-col min-w-0 flex-1">
-          <p className="text-sm font-medium truncate">{user.email}</p>
-          <p className="text-xs text-sidebar-foreground/70 truncate">
-            {isAdmin ? "Administrator" : "User"}
-          </p>
+            <Button
+              variant={isRouteActive("/insights") ? "secondary" : "ghost"}
+              className="w-full justify-start"
+              asChild
+            >
+              <Link to="/insights">
+                <BarChart2 className="mr-2 h-4 w-4" />
+                Insights
+              </Link>
+            </Button>
+            <Button
+              variant={isRouteActive("/forecast") ? "secondary" : "ghost"}
+              className="w-full justify-start"
+              asChild
+            >
+              <Link to="/forecast">
+                <CalendarDays className="mr-2 h-4 w-4" />
+                Forecast
+              </Link>
+            </Button>
+          </div>
+        </div>
+
+        <div className="px-3 py-2">
+          <h2 className="mb-2 px-4 text-lg font-semibold tracking-tight">
+            Settings
+          </h2>
+          <div className="space-y-1">
+            <Button
+              variant={isRouteActive("/alerts") ? "secondary" : "ghost"}
+              className="w-full justify-start"
+              asChild
+            >
+              <Link to="/alerts">
+                <Bell className="mr-2 h-4 w-4" />
+                Alerts
+              </Link>
+            </Button>
+            <Button
+              variant={isRouteActive("/profile") ? "secondary" : "ghost"}
+              className="w-full justify-start"
+              asChild
+            >
+              <Link to="/profile">
+                <UserRound className="mr-2 h-4 w-4" />
+                Profile
+              </Link>
+            </Button>
+            {isAdmin && (
+              <Button
+                variant={isRouteActive("/admin") ? "secondary" : "ghost"}
+                className="w-full justify-start"
+                asChild
+              >
+                <Link to="/admin">
+                  <Settings className="mr-2 h-4 w-4" />
+                  Admin Panel
+                </Link>
+              </Button>
+            )}
+          </div>
         </div>
       </div>
-    </SidebarFooter>
+    </div>
   );
-};
-
-// Helper function to get user initials
-function getUserInitials(user: any): string {
-  if (!user?.email) return "U";
-  const parts = user.email.split("@");
-  return parts[0].substring(0, 2).toUpperCase();
 }
