@@ -1,4 +1,3 @@
-
 import { toast } from "sonner";
 import { Pollutant, Region, Dataset, HealthTip, TrendChart, SeasonalityChart } from "@/lib/types";
 import { supabase } from "@/integrations/supabase/client";
@@ -40,12 +39,30 @@ const CIRCUIT_BREAKER = {
   lastFailure: 0
 };
 
-// Mock data for offline mode
+// Mock data for offline mode - Updated with consistent types and values
 const MOCK_DATA = {
   forecast: [
-    { ds: new Date().toISOString(), yhat: 50, category: "Good" },
-    { ds: new Date(Date.now() + 86400000).toISOString(), yhat: 55, category: "Good" },
-    { ds: new Date(Date.now() + 172800000).toISOString(), yhat: 60, category: "Moderate" },
+    { 
+      ds: new Date().toISOString(), 
+      yhat: 50, 
+      yhat_lower: 40, 
+      yhat_upper: 60, 
+      category: "Good" 
+    },
+    { 
+      ds: new Date(Date.now() + 86400000).toISOString(), 
+      yhat: 55, 
+      yhat_lower: 45, 
+      yhat_upper: 65, 
+      category: "Good" 
+    },
+    { 
+      ds: new Date(Date.now() + 172800000).toISOString(), 
+      yhat: 60, 
+      yhat_lower: 50, 
+      yhat_upper: 70, 
+      category: "Moderate" 
+    },
   ],
   trend: {
     labels: ["2020", "2021", "2022", "2023"],
@@ -65,7 +82,10 @@ const MOCK_DATA = {
         frequency: "daily",
         forecast: Array.from({ length: 10 }, (_, i) => ({
           ds: new Date(Date.now() + i * 86400000).toISOString(),
-          yhat: 40 + Math.random() * 20
+          yhat: 40 + Math.random() * 20,
+          yhat_lower: 35 + Math.random() * 15,
+          yhat_upper: 50 + Math.random() * 25,
+          category: "Moderate"
         }))
       },
       {
@@ -75,7 +95,10 @@ const MOCK_DATA = {
         frequency: "daily",
         forecast: Array.from({ length: 10 }, (_, i) => ({
           ds: new Date(Date.now() + i * 86400000).toISOString(),
-          yhat: 30 + Math.random() * 15
+          yhat: 30 + Math.random() * 15,
+          yhat_lower: 25 + Math.random() * 10,
+          yhat_upper: 40 + Math.random() * 20,
+          category: "Good"
         }))
       }
     ]
@@ -96,10 +119,13 @@ const MOCK_DATA = {
     forecast_periods: 365,
     created_at: new Date().toISOString(),
     trained_by: "admin@airquality.org",
-    status: "complete",
+    status: "ready",
     accuracy_mae: 2.45,
     accuracy_rmse: 3.12,
     model_type: "Prophet"
+  },
+  dataset_availability: {
+    available: true
   }
 };
 
@@ -187,6 +213,8 @@ export const fetchWithAuth = async <T>(
         return { success: true, data: MOCK_DATA.model_info as T };
       } else if (endpoint.includes('/models/check-exists')) {
         return { success: true, data: { exists: Math.random() > 0.5 } as T };
+      } else if (endpoint.includes('/datasets/check-availability')) {
+        return { success: true, data: { available: MOCK_DATA.dataset_availability.available } as T };
       }
       return { success: false, error: "API is currently unavailable. Using offline mode." };
     }
@@ -238,6 +266,8 @@ export const fetchWithAuth = async <T>(
         return { success: true, data: MOCK_DATA.model_info as T };
       } else if (endpoint.includes('/models/check-exists')) {
         return { success: true, data: { exists: Math.random() > 0.5 } as T };
+      } else if (endpoint.includes('/datasets/check-availability')) {
+        return { success: true, data: { available: MOCK_DATA.dataset_availability.available } as T };
       }
       return { success: false, error: "Invalid response format from server" };
     }
@@ -276,6 +306,8 @@ export const fetchWithAuth = async <T>(
         return { success: true, data: MOCK_DATA.model_info as T };
       } else if (endpoint.includes('/models/check-exists')) {
         return { success: true, data: { exists: Math.random() > 0.5 } as T };
+      } else if (endpoint.includes('/datasets/check-availability')) {
+        return { success: true, data: { available: MOCK_DATA.dataset_availability.available } as T };
       }
       return { success: false, error: "Failed to parse server response" };
     }
@@ -318,6 +350,8 @@ export const fetchWithAuth = async <T>(
         return { success: true, data: MOCK_DATA.model_info as T };
       } else if (endpoint.includes('/models/check-exists')) {
         return { success: true, data: { exists: Math.random() > 0.5 } as T };
+      } else if (endpoint.includes('/datasets/check-availability')) {
+        return { success: true, data: { available: MOCK_DATA.dataset_availability.available } as T };
       }
       return { success: false, error: data.detail || "API Error" };
     }
@@ -347,6 +381,8 @@ export const fetchWithAuth = async <T>(
         return { success: true, data: MOCK_DATA.model_info as T };
       } else if (endpoint.includes('/models/check-exists')) {
         return { success: true, data: { exists: Math.random() > 0.5 } as T };
+      } else if (endpoint.includes('/datasets/check-availability')) {
+        return { success: true, data: { available: MOCK_DATA.dataset_availability.available } as T };
       }
       return { success: false, error: "Request timed out. Using offline data." };
     }
@@ -367,6 +403,8 @@ export const fetchWithAuth = async <T>(
       return { success: true, data: MOCK_DATA.model_info as T };
     } else if (endpoint.includes('/models/check-exists')) {
       return { success: true, data: { exists: Math.random() > 0.5 } as T };
+    } else if (endpoint.includes('/datasets/check-availability')) {
+      return { success: true, data: { available: MOCK_DATA.dataset_availability.available } as T };
     }
     return { success: false, error: "Network error. Using offline data." };
   }
@@ -483,6 +521,12 @@ export const datasetApi = {
     return fetchWithAuth(`/datasets/${datasetId}`, {
       method: "DELETE",
     });
+  },
+  
+  // Add the check-availability endpoint
+  checkAvailability: async (region: string) => {
+    const queryParams = new URLSearchParams({ region }).toString();
+    return fetchWithAuth<{ available: boolean }>(`/datasets/check-availability/?${queryParams}`);
   }
 };
 

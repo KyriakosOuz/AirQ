@@ -12,20 +12,8 @@ import { Pollutant } from "@/lib/types";
 import { AlertCircle, Clock, RefreshCw, LineChart } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-
-interface FrequencyOption {
-  value: string;
-  label: string;
-  ranges: number[];
-}
-
-interface FilterMetadata {
-  available: Array<{
-    region: string;
-    pollutant: string;
-    frequency: string;
-  }>;
-}
+import { FREQUENCY_OPTIONS, ModelMetadataFilters } from '@/lib/model-utils';
+import { useDatasetAvailability } from '@/hooks/use-dataset-availability';
 
 interface TrainModelCardProps {
   trainRegion: string;
@@ -38,14 +26,14 @@ interface TrainModelCardProps {
   setTrainPeriods: (value: number) => void;
   trainLoading: boolean;
   onTrainModel: () => void;
-  frequencyOptions: FrequencyOption[];
+  frequencyOptions: typeof FREQUENCY_OPTIONS;
   availableRanges: number[];
   overwriteModel: boolean;
   setOverwriteModel: (value: boolean) => void;
   trainingError: string | null;
   modelExists?: boolean;
   isCheckingModel?: boolean;
-  availableFilters?: FilterMetadata | null;
+  availableFilters?: ModelMetadataFilters | null;
   filtersLoading?: boolean;
   forecastLoading?: boolean;
   onPreviewForecast?: () => void;
@@ -74,6 +62,10 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
   forecastLoading = false,
   onPreviewForecast
 }) => {
+  // Use our custom hook to check dataset availability
+  const { isAvailable: datasetAvailable, isLoading: datasetCheckLoading } = 
+    useDatasetAvailability({ region: trainRegion });
+
   // Helper to get the frequency display label
   const getFrequencyLabel = (value: string): string => {
     const option = frequencyOptions.find(opt => opt.value === value);
@@ -106,6 +98,10 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
   };
 
   const { regions, pollutants, frequencies } = extractUniqueValues();
+
+  // Check if training is allowed
+  const isTrainingDisabled = trainLoading || isCheckingModel || 
+    datasetCheckLoading || !datasetAvailable;
   
   return (
     <Card className="h-full overflow-auto">
@@ -124,7 +120,7 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
           <RegionSelector 
             value={trainRegion} 
             onValueChange={setTrainRegion}
-            disabled={filtersLoading}
+            disabled={filtersLoading || trainLoading}
             regions={regions}
           />
         </div>
@@ -134,7 +130,7 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
           <PollutantSelector 
             value={trainPollutant} 
             onValueChange={setTrainPollutant}
-            disabled={filtersLoading}
+            disabled={filtersLoading || trainLoading}
             pollutants={pollutants as Pollutant[]}
           />
         </div>
@@ -144,7 +140,7 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
           <Select 
             value={trainFrequency} 
             onValueChange={setTrainFrequency}
-            disabled={filtersLoading}
+            disabled={filtersLoading || trainLoading}
           >
             <SelectTrigger id="frequency">
               <SelectValue placeholder="Select frequency" />
@@ -197,11 +193,13 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
               value={[trainPeriods]}
               onValueChange={(values) => setTrainPeriods(values[0])}
               className="py-2"
+              disabled={trainLoading}
             />
           ) : (
             <Select
               value={trainPeriods.toString()}
               onValueChange={(value) => setTrainPeriods(parseInt(value))}
+              disabled={trainLoading}
             >
               <SelectTrigger id="period-range">
                 <SelectValue placeholder="Select period" />
@@ -241,8 +239,19 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
             id="retrain"
             checked={overwriteModel}
             onCheckedChange={setOverwriteModel}
+            disabled={trainLoading}
           />
         </div>
+        
+        {/* Dataset availability warning */}
+        {!datasetAvailable && !datasetCheckLoading && (
+          <Alert variant="destructive" className="py-2">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription className="text-xs">
+              No dataset available for this region. Please upload data before training.
+            </AlertDescription>
+          </Alert>
+        )}
         
         {/* Display model exists warning */}
         {modelExists && !overwriteModel && (
@@ -271,14 +280,22 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
             <p className="text-xs text-muted-foreground">Checking if model exists...</p>
           </div>
         )}
+        
+        {/* Show loading state for dataset check */}
+        {datasetCheckLoading && (
+          <div className="flex items-center justify-center py-2">
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent mr-2"></div>
+            <p className="text-xs text-muted-foreground">Checking dataset availability...</p>
+          </div>
+        )}
       </CardContent>
       <CardFooter className="flex flex-col">
         <Button 
           className="w-full" 
-          disabled={trainLoading || isCheckingModel}
+          disabled={isTrainingDisabled}
           onClick={onTrainModel}
           size="sm"
-          variant={modelExists && !overwriteModel ? "outline" : "default"}
+          variant={(modelExists && !overwriteModel) ? "outline" : "default"}
         >
           {trainLoading ? (
             <>
@@ -292,6 +309,13 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
             </>
           ) : overwriteModel ? "Retrain Model" : "Train Model"}
         </Button>
+        
+        {/* Show reason why button is disabled */}
+        {!datasetAvailable && !datasetCheckLoading && (
+          <p className="text-xs text-destructive mt-2 text-center">
+            Training disabled: Dataset not available
+          </p>
+        )}
         
         {/* Preview Forecast Button with enhanced behavior */}
         {onPreviewForecast && (

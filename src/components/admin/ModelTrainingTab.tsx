@@ -1,10 +1,11 @@
+
 import React, { useState, useMemo, useEffect } from "react";
 import { toast } from "@/components/ui/sonner";
 import { modelApi } from "@/lib/api";
 import { Pollutant } from "@/lib/types";
 import TrainModelCard from "./TrainModelCard";
 import RecentTrainingsCard, { TrainingRecord } from "./RecentTrainingsCard";
-import ForecastPreview, { ForecastDataPoint } from "./ForecastPreview";
+import ForecastPreview from "./ForecastPreview";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { Card } from "@/components/ui/card";
 import { AlertCircle } from "lucide-react";
@@ -12,61 +13,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import ModelDetailsView from "./ModelDetailsView";
 import ModelComparisonView from "./ModelComparisonView";
 import { Button } from "@/components/ui/button";
-
-// Interface for model training API response
-interface ModelTrainingResponse {
-  message?: string;
-  trained_at?: string;
-  forecast?: ForecastDataPoint[];
-  accuracy_mae?: number;
-  accuracy_rmse?: number;
-}
-
-// Interface for model data from API
-interface ModelData {
-  id: string;
-  region: string;
-  pollutant: string;
-  model_type?: string;
-  frequency?: string;
-  forecast_periods?: number;
-  created_at: string;
-  status?: string;
-  accuracy_mae?: number;
-  accuracy_rmse?: number;
-}
-
-// Interface for model metadata filters
-interface ModelMetadataFilters {
-  available: Array<{
-    region: string;
-    pollutant: string;
-    frequency: string;
-  }>;
-}
-
-// Interface for model details
-interface ModelDetails {
-  id: string;
-  region: string;
-  pollutant: string;
-  frequency: string;
-  forecast_periods: number;
-  created_at: string;
-  trained_by?: string;
-  status: string;
-  accuracy_mae?: number;
-  accuracy_rmse?: number;
-  model_type?: string;
-}
-
-// Frequency options with their display labels and available ranges
-const FREQUENCY_OPTIONS = [
-  { value: "daily", label: "Daily", ranges: [7, 14, 30, 60, 90, 180, 365] },
-  { value: "weekly", label: "Weekly", ranges: [4, 12, 26, 52] },
-  { value: "monthly", label: "Monthly", ranges: [3, 6, 12, 24] },
-  { value: "yearly", label: "Yearly", ranges: [1, 2, 3, 5] },
-];
+import { useModelExists } from "@/hooks/use-model-exists";
+import { 
+  FREQUENCY_OPTIONS, 
+  ModelTrainingResponse, 
+  ModelData, 
+  ModelDetails,
+  ModelMetadataFilters,
+  ForecastDataPoint,
+  stringToModelStatus
+} from "@/lib/model-utils";
 
 const ModelTrainingTab: React.FC = () => {
   // State for the training form
@@ -86,8 +42,6 @@ const ModelTrainingTab: React.FC = () => {
   const [trainingError, setTrainingError] = useState<string | null>(null); // State to track specific training errors
   
   // New state for model existence check, details, and comparison
-  const [modelExists, setModelExists] = useState(false);
-  const [isCheckingModel, setIsCheckingModel] = useState(false);
   const [modelDetailsOpen, setModelDetailsOpen] = useState(false);
   const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
   const [selectedModelDetails, setSelectedModelDetails] = useState<ModelDetails | null>(null);
@@ -98,6 +52,13 @@ const ModelTrainingTab: React.FC = () => {
   const [comparisonLoading, setComparisonLoading] = useState(false);
   const [availableFilters, setAvailableFilters] = useState<ModelMetadataFilters | null>(null);
   const [filtersLoading, setFiltersLoading] = useState(false);
+  
+  // Use our custom hook to check if a model exists
+  const { modelExists, isChecking: isCheckingModel } = useModelExists({
+    region: trainRegion,
+    pollutant: trainPollutant,
+    frequency: trainFrequency
+  });
   
   // Get available ranges for the selected frequency
   const availableRanges = useMemo(() => {
@@ -172,13 +133,13 @@ const ModelTrainingTab: React.FC = () => {
       if (response.success && response.data) {
         console.log("Received models data:", response.data);
         
-        // Convert API model data to TrainingRecord format
+        // Convert API model data to TrainingRecord format with proper type casting
         const trainings: TrainingRecord[] = (response.data as ModelData[]).map(model => ({
           id: model.id,
           region: model.region,
           pollutant: model.pollutant as Pollutant, // Ensure pollutant is cast to Pollutant type
           date: model.created_at,
-          status: (model.status || "complete") as "complete" | "in-progress" | "failed", // Fix status type with proper casting
+          status: stringToModelStatus(model.status || "complete"), // Ensure proper status type casting
           frequency: model.frequency,
           periods: model.forecast_periods,
           accuracy_mae: model.accuracy_mae,
@@ -193,9 +154,11 @@ const ModelTrainingTab: React.FC = () => {
         setRecentTrainings(trainings);
       } else {
         console.error("Failed to fetch trained models:", response.error);
+        toast.error("Failed to load trained models");
       }
     } catch (error) {
       console.error("Error fetching trained models:", error);
+      toast.error("Error loading trained models");
     } finally {
       setModelsLoading(false);
     }
@@ -217,106 +180,18 @@ const ModelTrainingTab: React.FC = () => {
         setAvailableFilters(response.data as ModelMetadataFilters);
       } else {
         console.error("Failed to fetch filter metadata:", response.error);
+        toast.error("Failed to load filter options");
       }
     } catch (error) {
       console.error("Error fetching filter metadata:", error);
+      toast.error("Error loading filter options");
     } finally {
       setFiltersLoading(false);
     }
   };
 
-  // Check if a model already exists before training
-  const checkModelExists = async () => {
-    setIsCheckingModel(true);
-    setModelExists(false);
-    try {
-      const response = await modelApi.checkExists({
-        region: trainRegion,
-        pollutant: trainPollutant,
-        frequency: trainFrequency
-      });
-      
-      if (response.success && response.data) {
-        const exists = response.data.exists;
-        setModelExists(exists);
-        console.log(`Model exists check: ${exists}`);
-        
-        if (exists && !overwriteModel) {
-          toast.info("A model with these parameters already exists. Enable 'Retrain Model' to overwrite it.");
-          return true;
-        }
-      } else {
-        console.error("Failed to check if model exists:", response.error);
-      }
-      return false;
-    } catch (error) {
-      console.error("Error checking if model exists:", error);
-      return false;
-    } finally {
-      setIsCheckingModel(false);
-    }
-  };
-
-  // Generate mock forecast data based on current parameters
-  const generateMockForecastData = (periods: number): ForecastDataPoint[] => {
-    const now = new Date();
-    const data: ForecastDataPoint[] = [];
-    
-    let timeIncrement: number;
-    switch (trainFrequency) {
-      case "daily": 
-        timeIncrement = 86400000; // 1 day in ms
-        break;
-      case "weekly":
-        timeIncrement = 604800000; // 1 week in ms
-        break;
-      case "monthly":
-        timeIncrement = 2592000000; // ~30 days in ms
-        break;
-      case "yearly":
-        timeIncrement = 31536000000; // ~365 days in ms
-        break;
-      default:
-        timeIncrement = 86400000;
-    }
-    
-    // Base value depends on pollutant
-    let baseValue = 30; // Default
-    switch (trainPollutant) {
-      case "no2_conc": baseValue = 35; break;
-      case "o3_conc": baseValue = 45; break;
-      case "so2_conc": baseValue = 5; break;
-      case "pm10_conc" as Pollutant: baseValue = 25; break; // Type cast as Pollutant
-      case "pm25_conc" as Pollutant: baseValue = 15; break; // Type cast as Pollutant
-      case "co_conc": baseValue = 300; break;
-      default: baseValue = 30;
-    }
-    
-    // Generate data points
-    for (let i = 0; i < periods; i++) {
-      const date = new Date(now.getTime() + (i * timeIncrement));
-      // Add some randomness to the forecast
-      const randomFactor = 0.2; // 20% variation
-      const yhat = baseValue * (1 + (Math.random() * randomFactor - randomFactor/2));
-      data.push({
-        ds: date.toISOString(),
-        yhat: yhat,
-        yhat_lower: yhat * 0.8, // 20% below forecast
-        yhat_upper: yhat * 1.2, // 20% above forecast
-      });
-    }
-    
-    return data;
-  };
-
-  // Handle model training with existence check
+  // Handle model training
   const trainModel = async () => {
-    // First check if model exists
-    const exists = await checkModelExists();
-    if (exists && !overwriteModel) {
-      return; // Stop if model exists and overwrite not enabled
-    }
-    
     setTrainLoading(true);
     setTrainingError(null); // Clear any previous errors
     
@@ -345,11 +220,9 @@ const ModelTrainingTab: React.FC = () => {
           setForecastData(apiResponse.forecast);
           setNoForecastAvailable(false);
         } else {
-          console.log("No forecast data in response, using mock data");
-          // Use mock data as fallback
-          const mockData = generateMockForecastData(6);
-          setForecastData(mockData);
-          setNoForecastAvailable(false);
+          console.log("No forecast data in response");
+          setForecastData([]);
+          setNoForecastAvailable(true);
         }
         
         // Refresh the list of trained models
@@ -388,7 +261,11 @@ const ModelTrainingTab: React.FC = () => {
       const response = await modelApi.getInfo(modelId);
       if (response.success && response.data) {
         console.log("Model details:", response.data);
-        setSelectedModelDetails(response.data as ModelDetails);
+        // Ensure status has the correct type
+        const modelDetails = response.data as ModelDetails;
+        modelDetails.status = stringToModelStatus(modelDetails.status);
+        
+        setSelectedModelDetails(modelDetails);
         setModelDetailsOpen(true);
       } else {
         console.error("Failed to fetch model details:", response.error);
@@ -471,19 +348,27 @@ const ModelTrainingTab: React.FC = () => {
       if (response.success && response.data && response.data.forecast && response.data.forecast.length > 0) {
         console.log("Received forecast data:", response.data.forecast);
         setForecastData(response.data.forecast);
+        setNoForecastAvailable(false);
       } else {
         console.log("No forecast data in response or API error:", response.error);
         setForecastData([]);
         setNoForecastAvailable(true);
+        
+        // Show a toast error only if there's a specific error
+        if (response.error) {
+          toast.error(`Failed to fetch forecast: ${response.error}`);
+        }
       }
     } catch (error) {
       console.error("Error fetching forecast range:", error);
       setForecastData([]);
       setNoForecastAvailable(true);
+      toast.error("Failed to fetch forecast data");
       
       // Check if it's a 404 error (model not found)
       if (error instanceof Error && error.message.includes("404")) {
         console.log("Model not found (404)");
+        toast.error("No forecast model found for the selected parameters");
       }
     } finally {
       setForecastLoading(false);
