@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -307,7 +306,7 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
         
         {/* NEW: Show selected model info */}
         {selectedPreviewModel && (
-          <Alert variant="success" className="py-2 bg-green-50 border-green-200">
+          <Alert variant="default" className="py-2 bg-green-50 border-green-200">
             <AlertCircle className="h-4 w-4 text-green-600" />
             <AlertDescription className="text-xs text-green-700">
               Model selected: {selectedPreviewModel.pollutant} in {selectedPreviewModel.region} 
@@ -351,7 +350,7 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
               <TooltipTrigger asChild>
                 <div className="w-full mt-2">
                   <Button 
-                    variant={selectedPreviewModel ? "default" : "outline"}
+                    variant={selectedPreviewModel ? "success" : "outline"}
                     disabled={isPreviewDisabled}
                     onClick={onPreviewForecast}
                     className={`w-full ${selectedPreviewModel ? "bg-green-600 hover:bg-green-700" : ""}`}
