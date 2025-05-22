@@ -354,7 +354,7 @@ const ModelTrainingTab: React.FC = () => {
     }
   };
 
-  // NEW: Updated fetchForecastRange to use the selected model when available
+  // NEW: Updated fetchForecastRange to properly handle the API response
   const fetchForecastRange = async () => {
     // Clear previous data
     setForecastData([]);
@@ -392,12 +392,32 @@ const ModelTrainingTab: React.FC = () => {
       }
       
       // Process the response (both endpoints should return similar data structure)
-      if (response.success && response.data && Array.isArray(response.data.forecast) && response.data.forecast.length > 0) {
-        console.log("Received forecast data:", response.data.forecast);
-        setForecastData(response.data.forecast);
-        setNoForecastAvailable(false);
+      console.log("API response:", response);
+      
+      if (response.success) {
+        // Check if the data has a "forecast" property (API response format)
+        if (response.data && Array.isArray(response.data.forecast) && response.data.forecast.length > 0) {
+          console.log("Received forecast data from API:", response.data.forecast);
+          setForecastData(response.data.forecast);
+          setNoForecastAvailable(false);
+        } 
+        // Check if the data itself is an array (direct format)
+        else if (response.data && Array.isArray(response.data) && response.data.length > 0) {
+          console.log("Received forecast data array:", response.data);
+          setForecastData(response.data);
+          setNoForecastAvailable(false);
+        } 
+        else {
+          console.log("No forecast data or empty array in response");
+          setForecastData([]);
+          setNoForecastAvailable(true);
+          
+          if (response.error) {
+            toast.error(`Failed to fetch forecast: ${response.error}`);
+          }
+        }
       } else {
-        console.log("No forecast data returned or empty response");
+        console.log("API reported failure:", response.error);
         setForecastData([]);
         setNoForecastAvailable(true);
         

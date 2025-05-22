@@ -125,6 +125,12 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
   // Determine which region and pollutant to use for the chart
   const chartRegion = selectedPreviewModel ? selectedPreviewModel.region : trainRegion;
   const chartPollutant = selectedPreviewModel ? selectedPreviewModel.pollutant : trainPollutant;
+
+  // Check if we have forecast data to display
+  const hasForecastData = forecastData && forecastData.length > 0;
+  
+  // Check if we should show no forecast available message
+  const showNoForecastMessage = !forecastLoading && !hasForecastData && selectedPreviewModel;
   
   return (
     <Card className="h-full overflow-auto">
@@ -266,7 +272,7 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
           />
         </div>
         
-        {/* Dataset availability warning - Fixed alignment */}
+        {/* Dataset availability warning */}
         {!datasetAvailable && !datasetCheckLoading && (
           <Alert variant="destructive" className="py-2">
             <div className="flex items-center">
@@ -278,7 +284,7 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
           </Alert>
         )}
         
-        {/* Display model exists warning - Fixed alignment */}
+        {/* Display model exists warning */}
         {modelExists && !overwriteModel && (
           <Alert variant="warning" className="py-2">
             <div className="flex items-center">
@@ -290,7 +296,7 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
           </Alert>
         )}
         
-        {/* Display training error if present - Fixed alignment */}
+        {/* Display training error if present */}
         {trainingError && (
           <Alert variant="destructive" className="py-2">
             <div className="flex items-center">
@@ -302,7 +308,7 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
           </Alert>
         )}
         
-        {/* Display loading indicator when checking model existence - Fixed alignment */}
+        {/* Display loading indicator when checking model existence */}
         {isCheckingModel && (
           <div className="flex items-center justify-center py-2">
             <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent mr-2"></div>
@@ -310,7 +316,7 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
           </div>
         )}
         
-        {/* Show loading state for dataset check - Fixed alignment */}
+        {/* Show loading state for dataset check */}
         {datasetCheckLoading && (
           <div className="flex items-center justify-center py-2">
             <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent mr-2"></div>
@@ -318,7 +324,7 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
           </div>
         )}
         
-        {/* NEW: Show selected model info - Fixed alignment */}
+        {/* Show selected model info */}
         {selectedPreviewModel && (
           <Alert variant="default" className="py-2 bg-green-50 border-green-200">
             <div className="flex items-center">
@@ -332,7 +338,7 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
         )}
         
         {/* Show forecast chart if data is available */}
-        {forecastData && forecastData.length > 0 && (
+        {hasForecastData && (
           <div className="mt-4">
             <ForecastChart 
               data={forecastData}
@@ -340,6 +346,18 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
               pollutant={chartPollutant}
             />
           </div>
+        )}
+        
+        {/* Show no forecast available message */}
+        {showNoForecastMessage && (
+          <Alert variant="destructive" className="py-2">
+            <div className="flex items-center">
+              <AlertCircle className="h-4 w-4 mr-2 flex-shrink-0" />
+              <AlertDescription className="text-xs">
+                No forecast data available for the selected model. Please try again or select a different model.
+              </AlertDescription>
+            </div>
+          </Alert>
         )}
       </CardContent>
       <CardFooter className="flex flex-col">
@@ -370,8 +388,8 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
           </p>
         )}
         
-        {/* Preview Forecast Button with enhanced behavior */}
-        {onPreviewForecast && !forecastData && (
+        {/* Preview Forecast Button - Show only when no forecast data is displayed */}
+        {onPreviewForecast && !hasForecastData && (
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -409,11 +427,11 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
           </TooltipProvider>
         )}
         
-        {/* Hide the preview button if forecast data is being shown */}
-        {forecastData && forecastData.length > 0 && (
+        {/* Show update forecast button when forecast data is displayed */}
+        {hasForecastData && onPreviewForecast && (
           <Button 
             variant="outline"
-            onClick={() => onPreviewForecast && onPreviewForecast()}
+            onClick={onPreviewForecast}
             className="w-full mt-2"
             size="sm"
           >
