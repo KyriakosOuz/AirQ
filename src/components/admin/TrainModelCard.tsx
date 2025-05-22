@@ -270,8 +270,8 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
         
         {/* Display model exists warning */}
         {modelExists && !overwriteModel && (
-          <Alert variant="warning" className="py-2 bg-amber-50 border-amber-200">
-            <AlertCircle className="h-4 w-4 text-amber-600" />
+          <Alert variant="warning" className="py-2">
+            <AlertCircle className="h-4 w-4" />
             <AlertDescription className="text-xs text-amber-700">
               A model with these parameters already exists. Enable "Retrain Model" to overwrite it.
             </AlertDescription>
