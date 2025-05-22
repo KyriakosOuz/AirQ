@@ -1,55 +1,37 @@
 
-/**
- * Returns authorization headers with JWT token for API requests
- */
+// Authentication header helpers
 
-let authToken: string | null = null;
+// Key for storing the auth token
+const TOKEN_KEY = 'airq-auth-token';
 
-export const setToken = (token: string) => {
-  authToken = token;
-};
-
-export const removeToken = () => {
-  authToken = null;
-};
-
+// Get auth headers for API requests
 export const authHeader = (): Record<string, string> => {
-  if (authToken) {
-    return {
-      Authorization: `Bearer ${authToken}`
-    };
-  }
-  return {};
+  const token = localStorage.getItem(TOKEN_KEY);
+  return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
-export const fetchWithAuth = async <T>(url: string, options: RequestInit = {}): Promise<{ 
-  success: boolean; 
-  data?: T; 
-  error?: string; 
-}> => {
-  try {
-    const headers = {
-      'Content-Type': 'application/json',
-      ...authHeader(),
-      ...(options.headers || {})
-    };
+// Set auth token in local storage
+export const setToken = (token: string): void => {
+  localStorage.setItem(TOKEN_KEY, token);
+};
 
-    const response = await fetch(url, {
-      ...options,
-      headers,
-    });
+// Remove auth token from local storage
+export const removeToken = (): void => {
+  localStorage.removeItem(TOKEN_KEY);
+};
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      return { success: false, error: `Request failed: ${errorText}` };
-    }
+// Helper function for authenticated fetch
+export const fetchWithAuth = async (
+  url: string,
+  options: RequestInit = {}
+): Promise<Response> => {
+  const headers = {
+    ...options.headers,
+    ...authHeader(),
+  };
 
-    const data = await response.json();
-    return { success: true, data };
-  } catch (error: any) {
-    return { 
-      success: false, 
-      error: error?.message || 'An unknown error occurred' 
-    };
-  }
+  return fetch(url, {
+    ...options,
+    headers,
+  });
 };

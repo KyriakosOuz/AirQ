@@ -16,12 +16,8 @@ export interface ApiResponse<T = any> {
 }
 
 export interface DatasetPreviewResponse {
-  success: boolean;
-  data?: {
-    columns: string[];
-    preview: Record<string, any>[];
-  };
-  error?: string;
+  columns: string[];
+  preview: Record<string, any>[];
 }
 
 export const datasetApi = {
@@ -69,7 +65,7 @@ export const datasetApi = {
       return { success: false, error: error.message || "Upload failed" };
     }
   },
-  preview: async (datasetId: string): Promise<ApiResponse<{ columns: string[]; preview: Record<string, any>[] }>> => {
+  preview: async (datasetId: string): Promise<ApiResponse<DatasetPreviewResponse>> => {
     try {
       const response = await fetch(`${API_BASE_URL}/datasets/${datasetId}/preview`, {
         method: "GET",
@@ -397,6 +393,33 @@ export const userApi = {
 export const healthApi = {
   getPersonalizedTips: async (aqiLevel: string): Promise<ApiResponse<HealthTip[]>> => {
     return metadataApi.getHealthTips(aqiLevel, true);
+  },
+  // Add getTip method used in Dashboard.tsx
+  getTip: async (params: { pollutant: Pollutant, region: string }): Promise<ApiResponse<HealthTip>> => {
+    try {
+      const queryParams = new URLSearchParams();
+      if (params.pollutant) queryParams.append('pollutant', params.pollutant);
+      if (params.region) queryParams.append('region', params.region);
+      
+      const response = await fetch(`${API_BASE_URL}/health/tip?${queryParams.toString()}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          ...authHeader(),
+        },
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        return { success: false, error: `Failed to fetch health tip: ${errorText}` };
+      }
+      
+      const data = await response.json();
+      return { success: true, data };
+    } catch (error: any) {
+      console.error("Error fetching health tip:", error);
+      return { success: false, error: error.message || "Failed to fetch health tip" };
+    }
   }
 };
 
@@ -435,6 +458,17 @@ export const predictionApi = {
       console.error("Error fetching forecast:", error);
       return { success: false, error: error.message || "Failed to fetch forecast" };
     }
+  },
+  // Add the forecast method as an alias for getForecast
+  forecast: async (params: { 
+    pollutant: string | Pollutant; 
+    region: string; 
+    frequency: string; 
+    limit?: number;
+    start_date?: string;
+    end_date?: string;
+  }): Promise<ApiResponse> => {
+    return predictionApi.getForecast(params);
   },
   compareRegions: async (params: { 
     regions: string[]; 
@@ -703,5 +737,16 @@ export const modelApi = {
       console.error("Error checking if model exists:", error);
       return { success: false, error: error.message || "Failed to check if model exists" };
     }
+  },
+  // Add needed compareRegions method to modelApi (was erroneously used in ForecastPage)
+  compareRegions: async (params: {
+    regions: string[];
+    pollutant: string; 
+    frequency: string;
+    limit?: number;
+    start_date?: string;
+    end_date?: string;
+  }): Promise<ApiResponse> => {
+    return predictionApi.compareRegions(params);
   }
 };
