@@ -1,4 +1,3 @@
-
 import { toast } from "sonner";
 import { Pollutant, Region, Dataset, HealthTip, TrendChart, SeasonalityChart } from "@/lib/types";
 import { supabase } from "@/integrations/supabase/client";
@@ -670,7 +669,7 @@ export const predictionApi = {
     }>>(`/models/predict/?${queryParams}`, {}, 8000);
   },
   
-  // New method to get forecast with risk assessment
+  // Updated method to use the correct endpoint for forecast with risk assessment
   getForecastWithRisk: async (params: { 
     pollutant: string; 
     region: string;
@@ -691,7 +690,7 @@ export const predictionApi = {
         category: string;
         risk_score: number;
       }
-    }>(`/forecast/risk-timeline/?${queryParams}`, {}, 8000);
+    }>(`/models/forecast/risk-timeline/?${queryParams}`, {}, 8000);
   },
   
   compare: async (compareData: { pollutant: string; regions: string[] }) => {
