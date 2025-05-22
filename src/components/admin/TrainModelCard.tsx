@@ -130,7 +130,10 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
   const hasForecastData = forecastData && forecastData.length > 0;
   
   // Check if we should show no forecast available message
-  const showNoForecastMessage = !forecastLoading && !hasForecastData && selectedPreviewModel;
+  // Modified condition: Only show the message if there's no forecast data AND there's no selected model
+  // or if explicitly looking for a forecast but none was found (no forecast data but attempted to load)
+  const showNoForecastMessage = !forecastLoading && !hasForecastData && 
+    (selectedPreviewModel && !modelExists);
   
   return (
     <Card className="h-full overflow-auto">
@@ -348,7 +351,7 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
           </div>
         )}
         
-        {/* Show no forecast available message */}
+        {/* Show no forecast available message - MODIFIED CONDITION */}
         {showNoForecastMessage && (
           <Alert variant="destructive" className="py-2">
             <div className="flex items-center">
@@ -358,6 +361,15 @@ const TrainModelCard: React.FC<TrainModelCardProps> = ({
               </AlertDescription>
             </div>
           </Alert>
+        )}
+        
+        {/* Show message when no forecast is requested yet */}
+        {!forecastLoading && !hasForecastData && !showNoForecastMessage && !selectedPreviewModel && (
+          <div className="py-2 text-center">
+            <p className="text-sm text-muted-foreground">
+              Select a model to preview the forecast
+            </p>
+          </div>
         )}
       </CardContent>
       <CardFooter className="flex flex-col">
