@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -50,44 +49,32 @@ const App = () => (
               <Route element={<AppLayout />}>
                 <Route path="/" element={
                   <ProtectedRoute>
-                    <ErrorBoundary>
-                      <Dashboard />
-                    </ErrorBoundary>
+                    <Dashboard />
                   </ProtectedRoute>
                 } />
                 <Route path="/insights" element={
                   <ProtectedRoute>
-                    <ErrorBoundary>
-                      <Insights />
-                    </ErrorBoundary>
+                    <Insights />
                   </ProtectedRoute>
                 } />
                 <Route path="/profile" element={
                   <ProtectedRoute>
-                    <ErrorBoundary>
-                      <ProfilePage />
-                    </ErrorBoundary>
+                    <ProfilePage />
                   </ProtectedRoute>
                 } />
                 <Route path="/forecasts" element={
                   <ProtectedRoute>
-                    <ErrorBoundary>
-                      <ForecastPage />
-                    </ErrorBoundary>
+                    <ForecastPage />
                   </ProtectedRoute>
                 } />
                 <Route path="/alerts" element={
                   <ProtectedRoute>
-                    <ErrorBoundary>
-                      <AlertsPage />
-                    </ErrorBoundary>
+                    <AlertsPage />
                   </ProtectedRoute>
                 } />
                 <Route path="/admin" element={
                   <ProtectedRoute requireAdmin={true}>
-                    <ErrorBoundary>
-                      <AdminPage />
-                    </ErrorBoundary>
+                    <AdminPage />
                   </ProtectedRoute>
                 } />
               </Route>

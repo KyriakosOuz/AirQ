@@ -1,10 +1,14 @@
 
-import React from "react";
+import React, { ReactNode } from "react";
 import { Outlet } from "react-router-dom";
 import { Sidebar } from "./Sidebar";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 
-const AppLayout: React.FC = () => {
+interface AppLayoutProps {
+  children?: ReactNode;
+}
+
+const AppLayout: React.FC<AppLayoutProps> = () => {
   return (
     <SidebarProvider defaultOpen={true}>
       <div className="min-h-screen flex w-full">
