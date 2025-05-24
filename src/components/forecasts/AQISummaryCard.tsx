@@ -169,6 +169,10 @@ const AQISummaryCard: React.FC<AQISummaryCardProps> = ({
   
   // Enhanced pollutant display logic with debugging and fallback
   const pollutantToDisplay = currentData.pollutant || standardizedData.pollutant || "pollution";
+  console.log("AQISummaryCard - pollutantToDisplay:", pollutantToDisplay);
+  console.log("AQISummaryCard - currentData.pollutant:", currentData.pollutant);
+  console.log("AQISummaryCard - standardizedData.pollutant:", standardizedData.pollutant);
+  
   const pollutantDisplayName = getCardPollutantDisplayName(pollutantToDisplay, selectedPollutant);
   
   // Format the date range for the description
@@ -237,4 +241,3 @@ const AQISummaryCard: React.FC<AQISummaryCardProps> = ({
 };
 
 export default AQISummaryCard;
-

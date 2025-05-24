@@ -1,3 +1,4 @@
+
 import { Pollutant } from "./types";
 
 // Standardized AQI categories with consistent naming
@@ -120,20 +121,82 @@ export const getAqiDescription = (category: AqiCategory): string => {
   }
 };
 
-// Pollutant display names
+// Enhanced pollutant display names with comprehensive mappings
 export const POLLUTANT_DISPLAY_NAMES: Record<string, string> = {
-  "pollution": "Averaged risk from 5 pollutants",
-  "no2_conc": "NO₂",
-  "o3_conc": "O₃",
-  "so2_conc": "SO₂",
-  "co_conc": "CO",
-  "no_conc": "NO",
-  "pm10_conc": "PM10",
-  "pm25_conc": "PM2.5"
+  // Main pollution case
+  "pollution": "Combined Pollution",
+  
+  // Standard pollutant codes
+  "no2_conc": "Nitrogen Dioxide (NO₂)",
+  "o3_conc": "Ozone (O₃)",
+  "so2_conc": "Sulfur Dioxide (SO₂)",
+  "co_conc": "Carbon Monoxide (CO)",
+  "no_conc": "Nitric Oxide (NO)",
+  "pm10_conc": "Particulate Matter (PM10)",
+  "pm25_conc": "Fine Particulate Matter (PM2.5)",
+  
+  // Alternative formats that might come from API
+  "no2": "Nitrogen Dioxide (NO₂)",
+  "o3": "Ozone (O₃)",
+  "so2": "Sulfur Dioxide (SO₂)",
+  "co": "Carbon Monoxide (CO)",
+  "no": "Nitric Oxide (NO)",
+  "pm10": "Particulate Matter (PM10)",
+  "pm25": "Fine Particulate Matter (PM2.5)",
+  "pm2.5": "Fine Particulate Matter (PM2.5)",
+  
+  // Possible variations
+  "nitrogen_dioxide": "Nitrogen Dioxide (NO₂)",
+  "ozone": "Ozone (O₃)",
+  "sulfur_dioxide": "Sulfur Dioxide (SO₂)",
+  "carbon_monoxide": "Carbon Monoxide (CO)",
+  "nitric_oxide": "Nitric Oxide (NO)",
+  "particulate_matter_10": "Particulate Matter (PM10)",
+  "particulate_matter_25": "Fine Particulate Matter (PM2.5)",
+  
+  // Fallback for unknown
+  "unknown": "Air Quality Data"
 };
 
 export const getPollutantDisplayName = (pollutantCode: string): string => {
-  return POLLUTANT_DISPLAY_NAMES[pollutantCode] || pollutantCode;
+  console.log("getPollutantDisplayName - Input pollutant code:", pollutantCode);
+  
+  if (!pollutantCode) {
+    console.log("getPollutantDisplayName - No pollutant code provided, returning default");
+    return "Air Quality Data";
+  }
+  
+  // Check direct mapping first
+  const directMatch = POLLUTANT_DISPLAY_NAMES[pollutantCode.toLowerCase()];
+  if (directMatch) {
+    console.log("getPollutantDisplayName - Direct match found:", directMatch);
+    return directMatch;
+  }
+  
+  // Check for partial matches for complex names
+  const lowerCode = pollutantCode.toLowerCase();
+  
+  if (lowerCode.includes("no2")) return "Nitrogen Dioxide (NO₂)";
+  if (lowerCode.includes("o3") || lowerCode.includes("ozone")) return "Ozone (O₃)";
+  if (lowerCode.includes("so2")) return "Sulfur Dioxide (SO₂)";
+  if (lowerCode.includes("co") && !lowerCode.includes("conc")) return "Carbon Monoxide (CO)";
+  if (lowerCode.includes("no") && !lowerCode.includes("no2")) return "Nitric Oxide (NO)";
+  if (lowerCode.includes("pm10")) return "Particulate Matter (PM10)";
+  if (lowerCode.includes("pm25") || lowerCode.includes("pm2.5")) return "Fine Particulate Matter (PM2.5)";
+  if (lowerCode.includes("pollution") || lowerCode.includes("averaged") || lowerCode.includes("combined")) {
+    return "Combined Pollution";
+  }
+  
+  console.log("getPollutantDisplayName - No match found, returning formatted version of:", pollutantCode);
+  
+  // If no match found, return a formatted version of the original code
+  return pollutantCode
+    .replace(/_/g, ' ')
+    .replace(/conc/g, '')
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+    .trim() || "Air Quality Data";
 };
 
 // Data validation and standardization
