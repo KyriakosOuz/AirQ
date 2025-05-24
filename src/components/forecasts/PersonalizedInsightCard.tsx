@@ -7,39 +7,40 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
 import { InfoCircle } from "./InfoCircle";
+import BoldTextRenderer from "./BoldTextRenderer";
 import { 
   standardizeAqiDataPoint,
   AQI_CATEGORIES
 } from "@/lib/aqi-standardization";
 
-// Simple health advice based on standardized risk score and user health conditions
+// Simple health advice based on standardized risk score and user health conditions - EMOJIS REMOVED
 const getHealthAdvice = (riskScore: number, category: string, profile: any) => {
   if (!profile) {
     return "Sign in and complete your health profile for personalized recommendations.";
   }
 
   if (riskScore >= 4 && profile.has_asthma) {
-    return "⚠️ You may experience breathing difficulty due to asthma. Consider staying indoors today.";
+    return "You may experience breathing difficulty due to asthma. Consider staying indoors today.";
   }
   
   if (riskScore >= 3 && profile.has_lung_disease) {
-    return "⚠️ Your lung condition may be aggravated. Limit outdoor activities and keep medication accessible.";
+    return "Your lung condition may be aggravated. Limit outdoor activities and keep medication accessible.";
   }
   
   if (riskScore >= 3 && profile.has_heart_disease) {
-    return "⚠️ Heart symptoms may worsen. Avoid physical exertion outdoors and monitor your symptoms closely.";
+    return "Heart symptoms may worsen. Avoid physical exertion outdoors and monitor your symptoms closely.";
   }
   
   if (riskScore >= 4 && profile.age && profile.age > 65) {
-    return "⚠️ Older adults are more sensitive to air pollution. Consider staying indoors with windows closed.";
+    return "Older adults are more sensitive to air pollution. Consider staying indoors with windows closed.";
   }
   
   if (riskScore >= 3 && profile.is_smoker) {
-    return "⚠️ The combination of smoking and air pollution increases respiratory risks. Consider reducing smoking today.";
+    return "The combination of smoking and air pollution increases respiratory risks. Consider reducing smoking today.";
   }
   
   if (riskScore >= 2 && profile.has_diabetes) {
-    return "⚠️ Air pollution may affect blood sugar levels. Monitor your glucose more frequently today.";
+    return "Air pollution may affect blood sugar levels. Monitor your glucose more frequently today.";
   }
   
   // General advice based on standardized categories
@@ -146,43 +147,7 @@ const PersonalizedInsightCard: React.FC<PersonalizedInsightCardProps> = ({
           </Alert>
         )}
         
-        {/* Protective Actions - COMMENTED OUT */}
-        {/* 
-        {standardizedData.riskScore >= 3 && (
-          <Card className="border-dashed border-muted-foreground/30 bg-background/80">
-            <CardHeader className="py-3 px-4">
-              <CardTitle className="text-base flex items-center gap-1">
-                <InfoCircle className="h-4 w-4 text-blue-500" />
-                Recommended Protective Actions
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="py-2 px-4">
-              <ul className="list-disc pl-5 space-y-1 text-sm">
-                {standardizedData.riskScore >= 4 && (
-                  <>
-                    <li>Limit outdoor activities, especially during peak pollution hours</li>
-                    <li>Keep windows closed if possible</li>
-                    <li>Consider using an air purifier indoors</li>
-                  </>
-                )}
-                <li>Stay hydrated</li>
-                <li>Monitor your symptoms</li>
-                {(profile?.has_asthma || profile?.has_lung_disease) && (
-                  <li>Keep rescue medication accessible</li>
-                )}
-                {standardizedData.riskScore >= 5 && (
-                  <li>Wear a N95 mask when outdoors</li>
-                )}
-                {standardizedData.riskScore >= 6 && (
-                  <li>Avoid all outdoor activities - health emergency conditions</li>
-                )}
-              </ul>
-            </CardContent>
-          </Card>
-        )}
-        */}
-        
-        {/* AI Insights - Using real backend data with loading state */}
+        {/* AI Insights - Using real backend data with loading state and bold text formatting */}
         {(aiHealthTip || aiTipLoading) && (
           <Card className="border-dashed border-purple-300 bg-purple-50/50">
             <CardHeader className="py-3 px-4">
@@ -213,8 +178,11 @@ const PersonalizedInsightCard: React.FC<PersonalizedInsightCardProps> = ({
                   <Skeleton className="h-4 w-2/3" />
                 </div>
               ) : (
-                <div className="text-sm leading-relaxed whitespace-pre-wrap text-gray-700 font-sans">
-                  {aiHealthTip?.tip}
+                <div className="text-sm leading-relaxed text-gray-700 font-sans">
+                  <BoldTextRenderer 
+                    text={aiHealthTip?.tip || ""} 
+                    className="whitespace-pre-wrap"
+                  />
                 </div>
               )}
             </CardContent>
