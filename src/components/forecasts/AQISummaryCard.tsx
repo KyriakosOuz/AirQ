@@ -76,7 +76,12 @@ const getPersonalizedRiskExplanation = (riskScore: number, category: AqiCategory
 
 // Function to get custom pollutant display name for the card
 const getCardPollutantDisplayName = (pollutant: string): string => {
+  // Handle the main pollution case
   if (pollutant === "pollution") {
+    return "Combined Pollution";
+  }
+  // Also handle potential variations
+  if (pollutant === "Pollution (Averaged from 5 pollutants)" || pollutant === "averaged" || pollutant === "combined") {
     return "Combined Pollution";
   }
   return getPollutantDisplayName(pollutant);
@@ -136,8 +141,9 @@ const AQISummaryCard: React.FC<AQISummaryCardProps> = ({ currentData, loading, p
   // Clean general category name from emojis for display
   const cleanGeneralCategory = removeEmojis(standardizedData.category);
   
-  // Get the proper pollutant display name - use custom function for card display
-  const pollutantDisplayName = getCardPollutantDisplayName(currentData.pollutant || standardizedData.pollutant);
+  // Get the proper pollutant display name - use the pollutant from currentData first, then fallback to standardized
+  const pollutantToDisplay = currentData.pollutant || standardizedData.pollutant || "pollution";
+  const pollutantDisplayName = getCardPollutantDisplayName(pollutantToDisplay);
   
   return (
     <Card>
