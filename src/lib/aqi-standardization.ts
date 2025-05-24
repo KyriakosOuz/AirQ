@@ -1,4 +1,3 @@
-
 import { Pollutant } from "./types";
 
 // Standardized AQI categories with consistent naming
@@ -23,7 +22,7 @@ export const RISK_SCORES = {
   HAZARDOUS: 6
 } as const;
 
-// Color mapping for both categories and risk scores
+// Fixed color mapping - Risk 6 (Hazardous) should be dark red, not purple
 export const AQI_COLORS = {
   [AQI_CATEGORIES.GOOD]: "#22c55e",
   [AQI_CATEGORIES.MODERATE]: "#eab308",
