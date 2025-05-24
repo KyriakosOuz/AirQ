@@ -1,4 +1,3 @@
-
 import React from "react";
 import { format } from "date-fns";
 import {
@@ -18,35 +17,63 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
-// Risk Score color mapping
+// Updated risk score color mapping to handle all possible values (0-9)
 const RISK_COLORS = [
-  "#22c55e", // Green (0)
-  "#eab308", // Yellow (1)
-  "#f97316", // Orange (2)
-  "#ef4444", // Red (3)
-  "#9333ea"  // Purple (4)
+  "#22c55e", // Green (0) - Good
+  "#65a30d", // Light Green (1) - Good
+  "#eab308", // Yellow (2) - Moderate
+  "#f59e0b", // Amber (3) - Moderate
+  "#f97316", // Orange (4) - Unhealthy for Sensitive Groups
+  "#ea580c", // Dark Orange (5) - Unhealthy for Sensitive Groups
+  "#ef4444", // Red (6) - Unhealthy
+  "#dc2626", // Dark Red (7) - Very Unhealthy
+  "#9333ea", // Purple (8) - Very Unhealthy
+  "#7c2d12"  // Dark Brown (9) - Hazardous
 ];
 
-// Risk score to description mapping
+// Updated risk score to description mapping to handle all possible values (0-9)
 const RISK_DESCRIPTIONS = [
-  "Low risk",
-  "Moderate risk",
-  "Medium risk",
-  "High risk",
-  "Very high risk"
+  "Good",                              // 0
+  "Good",                              // 1
+  "Moderate",                          // 2
+  "Moderate",                          // 3
+  "Unhealthy for Sensitive Groups",    // 4
+  "Unhealthy for Sensitive Groups",    // 5
+  "Unhealthy",                         // 6
+  "Very Unhealthy",                    // 7
+  "Very Unhealthy",                    // 8
+  "Hazardous"                          // 9
 ];
+
+// Function to safely get risk color with fallback
+const getRiskColor = (riskScore: number): string => {
+  if (riskScore < 0 || riskScore >= RISK_COLORS.length) {
+    return "#6b7280"; // Gray fallback for invalid scores
+  }
+  return RISK_COLORS[riskScore];
+};
+
+// Function to safely get risk description with fallback
+const getRiskDescription = (riskScore: number): string => {
+  if (riskScore < 0 || riskScore >= RISK_DESCRIPTIONS.length) {
+    return "Unknown";
+  }
+  return RISK_DESCRIPTIONS[riskScore];
+};
 
 // Custom tooltip for the forecast chart
 const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
     const date = new Date(data.ds);
+    const riskScore = data.risk_score || 0;
+    
     return (
       <div className="bg-background border rounded-md p-3 shadow-md">
         <p className="font-medium">{format(date, "MMM d, yyyy")}</p>
         <p className="text-sm text-muted-foreground">{data.pollutant_display} Level: {data.yhat.toFixed(1)} μg/m³</p>
-        <p className="text-sm" style={{ color: RISK_COLORS[data.risk_score] }}>
-          {data.category} ({RISK_DESCRIPTIONS[data.risk_score]})
+        <p className="text-sm" style={{ color: getRiskColor(riskScore) }}>
+          {data.category} ({getRiskDescription(riskScore)})
         </p>
       </div>
     );
@@ -168,7 +195,7 @@ const ForecastVisualization: React.FC<ForecastVisualizationProps> = ({
                     <Tooltip content={<CustomTooltip />} />
                     <Bar dataKey="yhat" name={getPollutantDisplay(pollutant)}>
                       {data.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={RISK_COLORS[entry.risk_score]} />
+                        <Cell key={`cell-${index}`} fill={getRiskColor(entry.risk_score || 0)} />
                       ))}
                     </Bar>
                   </BarChart>
@@ -201,7 +228,7 @@ const ForecastVisualization: React.FC<ForecastVisualizationProps> = ({
                             cx={cx} 
                             cy={cy} 
                             r={5} 
-                            fill={RISK_COLORS[payload.risk_score]} 
+                            fill={getRiskColor(payload.risk_score || 0)} 
                             stroke="none"
                           />
                         );
@@ -212,17 +239,21 @@ const ForecastVisualization: React.FC<ForecastVisualizationProps> = ({
               </ResponsiveContainer>
             </div>
             
-            {/* Risk Legend */}
+            {/* Updated Risk Legend to show only unique categories */}
             <div className="mt-4 flex flex-wrap gap-2 justify-center">
-              {RISK_COLORS.map((color, index) => (
-                <div key={index} className="flex items-center space-x-1">
-                  <div 
-                    className="h-3 w-3 rounded-full" 
-                    style={{ backgroundColor: color }}
-                  ></div>
-                  <span className="text-xs">{RISK_DESCRIPTIONS[index]}</span>
-                </div>
-              ))}
+              {Array.from(new Set(RISK_DESCRIPTIONS)).map((description, index) => {
+                // Find the first risk score that matches this description
+                const riskScore = RISK_DESCRIPTIONS.indexOf(description);
+                return (
+                  <div key={description} className="flex items-center space-x-1">
+                    <div 
+                      className="h-3 w-3 rounded-full" 
+                      style={{ backgroundColor: getRiskColor(riskScore) }}
+                    ></div>
+                    <span className="text-xs">{description}</span>
+                  </div>
+                );
+              })}
             </div>
           </>
         )}
