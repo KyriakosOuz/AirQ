@@ -6,23 +6,49 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 
-// Risk Score color mapping
+// Updated risk Score color mapping to match ForecastVisualization (0-9)
 const RISK_COLORS = [
-  "#22c55e", // Green (0) 
-  "#eab308", // Yellow (1)
-  "#f97316", // Orange (2)
-  "#ef4444", // Red (3)
-  "#9333ea"  // Purple (4)
+  "#22c55e", // Green (0) - Good
+  "#65a30d", // Light Green (1) - Good
+  "#eab308", // Yellow (2) - Moderate
+  "#f59e0b", // Amber (3) - Moderate
+  "#f97316", // Orange (4) - Unhealthy for Sensitive Groups
+  "#ea580c", // Dark Orange (5) - Unhealthy for Sensitive Groups
+  "#ef4444", // Red (6) - Unhealthy
+  "#dc2626", // Dark Red (7) - Very Unhealthy
+  "#9333ea", // Purple (8) - Very Unhealthy
+  "#7c2d12"  // Dark Brown (9) - Hazardous
 ];
 
-// Risk score to description mapping
+// Updated risk score to AQI category mapping (0-9)
 const RISK_DESCRIPTIONS = [
-  "Low risk",
-  "Moderate risk",
-  "Medium risk",
-  "High risk",
-  "Very high risk"
+  "Good",                              // 0
+  "Good",                              // 1
+  "Moderate",                          // 2
+  "Moderate",                          // 3
+  "Unhealthy for Sensitive Groups",    // 4
+  "Unhealthy for Sensitive Groups",    // 5
+  "Unhealthy",                         // 6
+  "Very Unhealthy",                    // 7
+  "Very Unhealthy",                    // 8
+  "Hazardous"                          // 9
 ];
+
+// Function to safely get risk color with fallback
+const getRiskColor = (riskScore: number): string => {
+  if (riskScore < 0 || riskScore >= RISK_COLORS.length) {
+    return "#6b7280"; // Gray fallback for invalid scores
+  }
+  return RISK_COLORS[riskScore];
+};
+
+// Function to safely get risk description with fallback
+const getRiskDescription = (riskScore: number): string => {
+  if (riskScore < 0 || riskScore >= RISK_DESCRIPTIONS.length) {
+    return "Unknown";
+  }
+  return RISK_DESCRIPTIONS[riskScore];
+};
 
 // Function to get pollutant display name
 const getPollutantDisplay = (pollutantCode: string): string => {
@@ -79,6 +105,9 @@ const AQISummaryCard: React.FC<AQISummaryCardProps> = ({ currentData, loading })
       </Card>
     );
   }
+
+  // Ensure risk_score is within valid range
+  const riskScore = Math.max(0, Math.min(9, currentData.risk_score || 0));
   
   return (
     <Card>
@@ -95,15 +124,15 @@ const AQISummaryCard: React.FC<AQISummaryCardProps> = ({ currentData, loading })
               "h-16 w-16 rounded-full flex items-center justify-center text-white font-semibold",
               "transition-all duration-300 hover:scale-105"
             )}
-            style={{ backgroundColor: RISK_COLORS[currentData.risk_score] }}
+            style={{ backgroundColor: getRiskColor(riskScore) }}
           >
-            {currentData.risk_score}
+            {riskScore}
           </div>
           <div>
             <p className="text-xl font-semibold">{currentData.category}</p>
             <p className="text-lg">{getPollutantDisplay(currentData.pollutant_display || '')}: {currentData.yhat.toFixed(1)} μg/m³</p>
             <p className="text-sm text-muted-foreground">
-              Your risk score: <span className="font-semibold">{currentData.risk_score}</span> - {RISK_DESCRIPTIONS[currentData.risk_score]}
+              Risk level: <span className="font-semibold">{getRiskDescription(riskScore)}</span>
             </p>
           </div>
         </div>
