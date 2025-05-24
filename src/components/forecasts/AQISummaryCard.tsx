@@ -85,20 +85,20 @@ const AQISummaryCard: React.FC<AQISummaryCardProps> = ({ currentData, loading, p
   if (loading) {
     return (
       <Card>
-        <CardHeader className="pb-4">
-          <Skeleton className="h-6 w-3/4" />
+        <CardHeader className="pb-3">
+          <Skeleton className="h-5 w-3/4" />
           <Skeleton className="h-3 w-1/2 mt-1" />
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-3">
           <div className="flex items-center space-x-3">
-            <Skeleton className="h-12 w-12 rounded-full" />
+            <Skeleton className="h-10 w-10 rounded-full" />
             <div className="space-y-2">
-              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-3 w-20" />
               <Skeleton className="h-3 w-32" />
-              <Skeleton className="h-3 w-24" />
+              <Skeleton className="h-2 w-24" />
             </div>
           </div>
-          <Skeleton className="h-16 w-full mt-2" />
+          <Skeleton className="h-12 w-full mt-2" />
         </CardContent>
       </Card>
     );
@@ -107,12 +107,12 @@ const AQISummaryCard: React.FC<AQISummaryCardProps> = ({ currentData, loading, p
   if (!currentData) {
     return (
       <Card>
-        <CardHeader className="pb-4">
-          <CardTitle className="text-lg">Personal Air Quality Risk</CardTitle>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Personal Air Quality Risk</CardTitle>
           <CardDescription className="text-xs">No data available</CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">Update the forecast to view your personalized air quality risk assessment.</p>
+          <p className="text-xs text-muted-foreground">Update the forecast to view your personalized air quality risk assessment.</p>
         </CardContent>
       </Card>
     );
@@ -125,19 +125,22 @@ const AQISummaryCard: React.FC<AQISummaryCardProps> = ({ currentData, loading, p
   // Clean category name from emojis
   const cleanCategory = removeEmojis(standardizedData.category);
   
+  // Get the proper pollutant display name - ensure we use the correct pollutant from current data
+  const pollutantDisplayName = getPollutantDisplayName(currentData.pollutant || standardizedData.pollutant);
+  
   return (
     <Card>
-      <CardHeader className="pb-4">
-        <CardTitle className="text-lg">Personal Air Quality Risk</CardTitle>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base">Personal Air Quality Risk</CardTitle>
         <CardDescription className="text-xs">
           Personalized assessment for today ({format(new Date(standardizedData.date), "MMM d, yyyy")})
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-3">
         <div className="flex items-center space-x-3">
           <div 
             className={cn(
-              "h-12 w-12 rounded-full flex items-center justify-center text-white font-semibold text-lg",
+              "h-10 w-10 rounded-full flex items-center justify-center text-white font-semibold text-base",
               "transition-all duration-300 hover:scale-105"
             )}
             style={{ backgroundColor: standardizedData.color }}
@@ -145,8 +148,8 @@ const AQISummaryCard: React.FC<AQISummaryCardProps> = ({ currentData, loading, p
             {standardizedData.riskScore}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-base font-semibold text-gray-900 truncate">Your Risk: {cleanCategory}</p>
-            <p className="text-sm text-gray-600 truncate">{standardizedData.pollutantDisplay}: {standardizedData.value.toFixed(1)} μg/m³</p>
+            <p className="text-sm font-semibold text-gray-900 truncate">Your Risk: {cleanCategory}</p>
+            <p className="text-xs text-gray-600 truncate">{pollutantDisplayName}: {standardizedData.value.toFixed(1)} μg/m³</p>
             <p className="text-xs text-muted-foreground">
               General AQI: <span className="font-medium">{cleanCategory}</span>
             </p>
@@ -154,9 +157,9 @@ const AQISummaryCard: React.FC<AQISummaryCardProps> = ({ currentData, loading, p
         </div>
         
         <div>
-          <h4 className="text-sm font-medium mb-2 text-gray-900">What this means for you:</h4>
+          <h4 className="text-xs font-medium mb-2 text-gray-900">What this means for you:</h4>
           <p 
-            className="text-xs leading-relaxed p-3 rounded-md animate-fade-in"
+            className="text-xs leading-relaxed p-2 rounded-md animate-fade-in"
             style={sectionColors}
           >
             {getPersonalizedRiskExplanation(standardizedData.riskScore, standardizedData.category, profile)}
