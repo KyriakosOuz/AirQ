@@ -5,40 +5,7 @@ import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
-
-// Updated risk Score color mapping to match backend (0-4)
-const RISK_COLORS = [
-  "#22c55e", // Green (0) - Low Risk
-  "#eab308", // Yellow (1) - Moderate Risk
-  "#f97316", // Orange (2) - Medium Risk
-  "#ef4444", // Red (3) - High Risk
-  "#9333ea"  // Purple (4) - Very High Risk
-];
-
-// Updated risk score to personalized risk descriptions (0-4)
-const PERSONALIZED_RISK_DESCRIPTIONS = [
-  "Low Risk",          // 0
-  "Moderate Risk",     // 1
-  "Medium Risk",       // 2
-  "High Risk",         // 3
-  "Very High Risk"     // 4
-];
-
-// Function to safely get risk color with fallback
-const getRiskColor = (riskScore: number): string => {
-  if (riskScore < 0 || riskScore >= RISK_COLORS.length) {
-    return "#6b7280"; // Gray fallback for invalid scores
-  }
-  return RISK_COLORS[riskScore];
-};
-
-// Function to safely get personalized risk description with fallback
-const getPersonalizedRiskDescription = (riskScore: number): string => {
-  if (riskScore < 0 || riskScore >= PERSONALIZED_RISK_DESCRIPTIONS.length) {
-    return "Unknown Risk";
-  }
-  return PERSONALIZED_RISK_DESCRIPTIONS[riskScore];
-};
+import { getRiskColor, getRiskLabel } from "@/lib/aqi-utils";
 
 // Function to get lighter background and darker text colors based on risk score
 const getRiskSectionColors = (riskScore: number): { backgroundColor: string; color: string } => {
@@ -162,6 +129,8 @@ const AQISummaryCard: React.FC<AQISummaryCardProps> = ({ currentData, loading, p
   // Ensure risk_score is within valid range
   const riskScore = Math.max(0, Math.min(4, currentData.risk_score || 0));
   const sectionColors = getRiskSectionColors(riskScore);
+  const personalizedRiskLabel = getRiskLabel(riskScore);
+  const generalCategory = currentData.category || "Unknown";
   
   return (
     <Card>
@@ -183,10 +152,10 @@ const AQISummaryCard: React.FC<AQISummaryCardProps> = ({ currentData, loading, p
             {riskScore}
           </div>
           <div>
-            <p className="text-xl font-semibold">{getPersonalizedRiskDescription(riskScore)}</p>
+            <p className="text-xl font-semibold">Your Risk: {personalizedRiskLabel}</p>
             <p className="text-lg">{getPollutantDisplay(currentData.pollutant_display || '')}: {currentData.yhat.toFixed(1)} μg/m³</p>
             <p className="text-sm text-muted-foreground">
-              General AQI: <span className="font-semibold">{currentData.category}</span>
+              General AQI: <span className="font-semibold">{generalCategory}</span>
             </p>
           </div>
         </div>

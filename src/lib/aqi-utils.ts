@@ -1,6 +1,55 @@
 
 import { AqiLevel, Pollutant } from "./types";
 
+// Standardized AQI risk score labels (0-4) - aligned with backend
+export const RISK_SCORE_LABELS = [
+  "Good",                              // 0
+  "Moderate",                          // 1
+  "Unhealthy for Sensitive Groups",    // 2
+  "Unhealthy",                         // 3
+  "Very Unhealthy"                     // 4
+];
+
+// Standardized risk score colors (0-4) - aligned with backend
+export const RISK_SCORE_COLORS = [
+  "#22c55e", // Green (0) - Good
+  "#eab308", // Yellow (1) - Moderate
+  "#f97316", // Orange (2) - Unhealthy for Sensitive Groups
+  "#ef4444", // Red (3) - Unhealthy
+  "#9333ea"  // Purple (4) - Very Unhealthy
+];
+
+// Label normalization mapping for CSS classes and keys
+export const CATEGORY_NORMALIZATION: Record<string, string> = {
+  "Good": "good",
+  "Moderate": "moderate", 
+  "Unhealthy for Sensitive Groups": "unhealthy-sensitive",
+  "Unhealthy": "unhealthy",
+  "Very Unhealthy": "very-unhealthy",
+  "Hazardous": "hazardous"
+};
+
+// Function to safely get risk color with fallback
+export const getRiskColor = (riskScore: number): string => {
+  if (riskScore < 0 || riskScore >= RISK_SCORE_COLORS.length) {
+    return "#6b7280"; // Gray fallback for invalid scores
+  }
+  return RISK_SCORE_COLORS[riskScore];
+};
+
+// Function to safely get risk label with fallback
+export const getRiskLabel = (riskScore: number): string => {
+  if (riskScore < 0 || riskScore >= RISK_SCORE_LABELS.length) {
+    return "Unknown";
+  }
+  return RISK_SCORE_LABELS[riskScore];
+};
+
+// Function to normalize category labels for CSS classes
+export const normalizeCategoryLabel = (category: string): string => {
+  return CATEGORY_NORMALIZATION[category] || category.toLowerCase().replace(/\s+/g, "-");
+};
+
 // Define AQI thresholds for different pollutants
 export const AQI_THRESHOLDS: Record<Pollutant, Array<[number, string]>> = {
   "pollution": [
@@ -45,7 +94,7 @@ export const AQI_THRESHOLDS: Record<Pollutant, Array<[number, string]>> = {
     [200, "unhealthy"],
     [Infinity, "very-unhealthy"]
   ]
-};
+];
 
 // Function to determine AQI level based on pollutant value
 export function getAqiLevelForPollutant(pollutant: Pollutant, value: number): AqiLevel {

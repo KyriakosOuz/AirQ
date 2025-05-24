@@ -1,3 +1,4 @@
+
 import React from "react";
 import { format } from "date-fns";
 import {
@@ -16,54 +17,24 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { getRiskColor, getRiskLabel, RISK_SCORE_LABELS } from "@/lib/aqi-utils";
 
-// Updated risk score color mapping to match backend (0-4)
-const RISK_COLORS = [
-  "#22c55e", // Green (0) - Good
-  "#eab308", // Yellow (1) - Moderate
-  "#f97316", // Orange (2) - Unhealthy for Sensitive Groups
-  "#ef4444", // Red (3) - Unhealthy
-  "#9333ea"  // Purple (4) - Very Unhealthy
-];
-
-// Updated risk score to description mapping (0-4)
-const RISK_DESCRIPTIONS = [
-  "Good",                              // 0
-  "Moderate",                          // 1
-  "Unhealthy for Sensitive Groups",    // 2
-  "Unhealthy",                         // 3
-  "Very Unhealthy"                     // 4
-];
-
-// Function to safely get risk color with fallback
-const getRiskColor = (riskScore: number): string => {
-  if (riskScore < 0 || riskScore >= RISK_COLORS.length) {
-    return "#6b7280"; // Gray fallback for invalid scores
-  }
-  return RISK_COLORS[riskScore];
-};
-
-// Function to safely get risk description with fallback
-const getRiskDescription = (riskScore: number): string => {
-  if (riskScore < 0 || riskScore >= RISK_DESCRIPTIONS.length) {
-    return "Unknown";
-  }
-  return RISK_DESCRIPTIONS[riskScore];
-};
-
-// Custom tooltip for the forecast chart
+// Custom tooltip for the forecast chart with separated general and personalized data
 const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
     const date = new Date(data.ds);
     const riskScore = data.risk_score || 0;
+    const generalCategory = data.category || "Unknown";
+    const personalizedRisk = getRiskLabel(riskScore);
     
     return (
       <div className="bg-background border rounded-md p-3 shadow-md">
         <p className="font-medium">{format(date, "MMM d, yyyy")}</p>
         <p className="text-sm text-muted-foreground">{data.pollutant_display} Level: {data.yhat.toFixed(1)} μg/m³</p>
+        <p className="text-sm">General: {generalCategory}</p>
         <p className="text-sm" style={{ color: getRiskColor(riskScore) }}>
-          {data.category} ({getRiskDescription(riskScore)})
+          Your risk: {riskScore} ({personalizedRisk})
         </p>
       </div>
     );
@@ -230,21 +201,17 @@ const ForecastVisualization: React.FC<ForecastVisualizationProps> = ({
               </ResponsiveContainer>
             </div>
             
-            {/* Updated Risk Legend to show only unique categories */}
+            {/* Updated Risk Legend using standardized labels */}
             <div className="mt-4 flex flex-wrap gap-2 justify-center">
-              {Array.from(new Set(RISK_DESCRIPTIONS)).map((description, index) => {
-                // Find the first risk score that matches this description
-                const riskScore = RISK_DESCRIPTIONS.indexOf(description);
-                return (
-                  <div key={description} className="flex items-center space-x-1">
-                    <div 
-                      className="h-3 w-3 rounded-full" 
-                      style={{ backgroundColor: getRiskColor(riskScore) }}
-                    ></div>
-                    <span className="text-xs">{description}</span>
-                  </div>
-                );
-              })}
+              {RISK_SCORE_LABELS.map((label, index) => (
+                <div key={label} className="flex items-center space-x-1">
+                  <div 
+                    className="h-3 w-3 rounded-full" 
+                    style={{ backgroundColor: getRiskColor(index) }}
+                  ></div>
+                  <span className="text-xs">{label}</span>
+                </div>
+              ))}
             </div>
           </>
         )}
