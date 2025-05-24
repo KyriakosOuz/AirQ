@@ -737,7 +737,7 @@ export const healthApi = {
     return fetchWithAuth<HealthTip>(`/health/tip/?${queryParams}`);
   },
   
-  // Add new AI health tip endpoint
+  // Add new AI health tip endpoint with longer timeout
   getAIHealthTip: async (params: { 
     region: string; 
     pollutant: string; 
@@ -745,11 +745,12 @@ export const healthApi = {
     end_date: string; 
   }) => {
     const queryParams = new URLSearchParams(params as any).toString();
+    // Use 45 second timeout for AI processing
     return fetchWithAuth<{
       tip: string;
       riskLevel: string;
       personalized: boolean;
-    }>(`/models/forecast/health-tip/?${queryParams}`);
+    }>(`/models/forecast/health-tip/?${queryParams}`, {}, 45000);
   }
 };
 

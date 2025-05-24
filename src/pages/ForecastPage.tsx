@@ -99,7 +99,7 @@ const ForecastPage: React.FC = () => {
     return `${year}-${month}-${day}`;
   };
 
-  // Function to load AI health tip
+  // Function to load AI health tip with improved error handling
   const loadAIHealthTip = async () => {
     if (!startDate || !endDate) return;
     
@@ -110,6 +110,8 @@ const ForecastPage: React.FC = () => {
       const start = formatDateForApi(startDate);
       const end = formatDateForApi(endDate);
       
+      console.log("Loading AI health tip with timeout of 45 seconds...");
+      
       const response = await healthApi.getAIHealthTip({
         region,
         pollutant,
@@ -119,12 +121,37 @@ const ForecastPage: React.FC = () => {
       
       if (response.success && response.data) {
         setAiHealthTip(response.data);
+        console.log("AI health tip loaded successfully");
       } else {
-        setAiTipError(response.error || "Failed to load AI health tip");
+        const errorMessage = response.error || "Failed to load AI health tip";
+        console.error("AI health tip error:", errorMessage);
+        setAiTipError(errorMessage);
+        
+        // Show different toast messages based on error type
+        if (errorMessage.includes("timeout") || errorMessage.includes("timed out")) {
+          toast.error("AI health tip is taking longer than expected. Please try again.", {
+            duration: 5000,
+          });
+        } else {
+          toast.error("Failed to load personalized health insights", {
+            duration: 4000,
+          });
+        }
       }
     } catch (error) {
-      setAiTipError("Error loading AI health tip");
       console.error("Error loading AI health tip:", error);
+      const errorMessage = error instanceof Error ? error.message : "Error loading AI health tip";
+      setAiTipError(errorMessage);
+      
+      if (errorMessage.includes("timeout") || errorMessage.includes("AbortError")) {
+        toast.error("AI processing timed out. Please try again in a moment.", {
+          duration: 5000,
+        });
+      } else {
+        toast.error("Unable to load personalized health insights", {
+          duration: 4000,
+        });
+      }
     } finally {
       setAiTipLoading(false);
     }
@@ -295,6 +322,16 @@ const ForecastPage: React.FC = () => {
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
             No forecast data available. Please update your selection and try again.
+          </AlertDescription>
+        </Alert>
+      )}
+      
+      {/* Show loading message for AI health tip if it's taking a while */}
+      {aiTipLoading && !loading && forecastData.length > 0 && (
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Generating personalized health insights... This may take up to 45 seconds.
           </AlertDescription>
         </Alert>
       )}
