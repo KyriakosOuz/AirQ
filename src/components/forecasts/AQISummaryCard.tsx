@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { format } from "date-fns";
@@ -7,20 +8,20 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 // Updated risk Score color mapping to match backend (0-4)
 const RISK_COLORS = [
-  "#22c55e", // Green (0) - Good
-  "#eab308", // Yellow (1) - Moderate
-  "#f97316", // Orange (2) - Unhealthy for Sensitive Groups
-  "#ef4444", // Red (3) - Unhealthy
-  "#9333ea"  // Purple (4) - Very Unhealthy
+  "#22c55e", // Green (0) - Low Risk
+  "#eab308", // Yellow (1) - Moderate Risk
+  "#f97316", // Orange (2) - Medium Risk
+  "#ef4444", // Red (3) - High Risk
+  "#9333ea"  // Purple (4) - Very High Risk
 ];
 
-// Updated risk score to AQI category mapping (0-4)
-const RISK_DESCRIPTIONS = [
-  "Good",                              // 0
-  "Moderate",                          // 1
-  "Unhealthy for Sensitive Groups",    // 2
-  "Unhealthy",                         // 3
-  "Very Unhealthy"                     // 4
+// Updated risk score to personalized risk descriptions (0-4)
+const PERSONALIZED_RISK_DESCRIPTIONS = [
+  "Low Risk",          // 0
+  "Moderate Risk",     // 1
+  "Medium Risk",       // 2
+  "High Risk",         // 3
+  "Very High Risk"     // 4
 ];
 
 // Function to safely get risk color with fallback
@@ -31,12 +32,12 @@ const getRiskColor = (riskScore: number): string => {
   return RISK_COLORS[riskScore];
 };
 
-// Function to safely get risk description with fallback
-const getRiskDescription = (riskScore: number): string => {
-  if (riskScore < 0 || riskScore >= RISK_DESCRIPTIONS.length) {
-    return "Unknown";
+// Function to safely get personalized risk description with fallback
+const getPersonalizedRiskDescription = (riskScore: number): string => {
+  if (riskScore < 0 || riskScore >= PERSONALIZED_RISK_DESCRIPTIONS.length) {
+    return "Unknown Risk";
   }
-  return RISK_DESCRIPTIONS[riskScore];
+  return PERSONALIZED_RISK_DESCRIPTIONS[riskScore];
 };
 
 // Function to get lighter background and darker text colors based on risk score
@@ -81,12 +82,47 @@ const getPollutantDisplay = (pollutantCode: string): string => {
   return map[pollutantCode] || pollutantCode;
 };
 
+// Function to get personalized risk explanation based on user profile and risk score
+const getPersonalizedRiskExplanation = (riskScore: number, profile: any): string => {
+  const hasHealthConditions = profile?.has_asthma || profile?.has_heart_disease || 
+    profile?.has_lung_disease || profile?.has_diabetes || profile?.is_smoker;
+  const isElderly = profile?.age && profile.age > 65;
+  
+  const baseExplanations = [
+    "Based on your health profile, air quality poses minimal risk to your health today.",
+    "Given your health conditions, you may experience mild symptoms. Consider limiting prolonged outdoor activities.",
+    "Your health profile indicates moderate risk. Sensitive individuals should reduce outdoor exertion.",
+    "Your personal risk is elevated due to your health conditions. Limit outdoor activities and consider staying indoors.",
+    "Your health profile puts you at very high risk. Avoid outdoor activities and stay indoors when possible."
+  ];
+  
+  let explanation = baseExplanations[riskScore] || "Air quality risk assessment unavailable.";
+  
+  // Add specific health condition context
+  if (hasHealthConditions || isElderly) {
+    const conditions = [];
+    if (profile?.has_asthma) conditions.push("asthma");
+    if (profile?.has_heart_disease) conditions.push("heart condition");
+    if (profile?.has_lung_disease) conditions.push("lung condition");
+    if (profile?.has_diabetes) conditions.push("diabetes");
+    if (profile?.is_smoker) conditions.push("smoking history");
+    if (isElderly) conditions.push("age over 65");
+    
+    if (conditions.length > 0) {
+      explanation += ` This personalized assessment considers your ${conditions.join(", ")}.`;
+    }
+  }
+  
+  return explanation;
+};
+
 interface AQISummaryCardProps {
   currentData: any | null;
   loading: boolean;
+  profile?: any;
 }
 
-const AQISummaryCard: React.FC<AQISummaryCardProps> = ({ currentData, loading }) => {
+const AQISummaryCard: React.FC<AQISummaryCardProps> = ({ currentData, loading, profile }) => {
   if (loading) {
     return (
       <Card>
@@ -113,11 +149,11 @@ const AQISummaryCard: React.FC<AQISummaryCardProps> = ({ currentData, loading })
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Current Air Quality</CardTitle>
+          <CardTitle>Personal Air Quality Risk</CardTitle>
           <CardDescription>No data available</CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground">Update the forecast to view current air quality information.</p>
+          <p className="text-muted-foreground">Update the forecast to view your personalized air quality risk assessment.</p>
         </CardContent>
       </Card>
     );
@@ -130,16 +166,16 @@ const AQISummaryCard: React.FC<AQISummaryCardProps> = ({ currentData, loading })
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Current Air Quality</CardTitle>
+        <CardTitle>Personal Air Quality Risk</CardTitle>
         <CardDescription>
-          Based on the forecast for today ({format(new Date(currentData.ds), "MMMM d, yyyy")})
+          Personalized assessment for today ({format(new Date(currentData.ds), "MMMM d, yyyy")})
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex items-center space-x-4">
           <div 
             className={cn(
-              "h-16 w-16 rounded-full flex items-center justify-center text-white font-semibold",
+              "h-16 w-16 rounded-full flex items-center justify-center text-white font-semibold text-xl",
               "transition-all duration-300 hover:scale-105"
             )}
             style={{ backgroundColor: getRiskColor(riskScore) }}
@@ -147,26 +183,21 @@ const AQISummaryCard: React.FC<AQISummaryCardProps> = ({ currentData, loading })
             {riskScore}
           </div>
           <div>
-            <p className="text-xl font-semibold">{currentData.category}</p>
+            <p className="text-xl font-semibold">{getPersonalizedRiskDescription(riskScore)}</p>
             <p className="text-lg">{getPollutantDisplay(currentData.pollutant_display || '')}: {currentData.yhat.toFixed(1)} μg/m³</p>
             <p className="text-sm text-muted-foreground">
-              Risk level: <span className="font-semibold">{getRiskDescription(riskScore)}</span>
+              General AQI: <span className="font-semibold">{currentData.category}</span>
             </p>
           </div>
         </div>
         
         <div className="mt-2">
-          <h4 className="font-medium mb-1">What this means:</h4>
+          <h4 className="font-medium mb-1">What this means for you:</h4>
           <p 
             className="text-sm p-3 rounded-md animate-fade-in"
             style={sectionColors}
           >
-            {currentData.category === "Good" && "Air quality is considered satisfactory, and air pollution poses little or no risk."}
-            {currentData.category === "Moderate" && "Air quality is acceptable. However, there may be a risk for some people, particularly those who are unusually sensitive to air pollution."}
-            {currentData.category === "Unhealthy for Sensitive Groups" && "Members of sensitive groups may experience health effects. The general public is less likely to be affected."}
-            {currentData.category === "Unhealthy" && "Some members of the general public may experience health effects; members of sensitive groups may experience more serious effects."}
-            {currentData.category === "Very Unhealthy" && "Health alert: The risk of health effects is increased for everyone."}
-            {currentData.category === "Hazardous" && "Health warning of emergency conditions: everyone is more likely to be affected."}
+            {getPersonalizedRiskExplanation(riskScore, profile)}
           </p>
         </div>
         

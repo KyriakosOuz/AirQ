@@ -126,13 +126,28 @@ const ForecastPage: React.FC = () => {
       const start = formatDateForApi(startDate);
       const end = formatDateForApi(endDate);
       
-      const response = await predictionApi.getForecastWithRisk({
+      // Include user profile in the API call for personalized risk assessment
+      const apiParams: any = {
         region, 
         pollutant,
         frequency,
         start_date: start,
         end_date: end
-      });
+      };
+
+      // Add user profile data for personalization if available
+      if (profile) {
+        apiParams.user_profile = {
+          age: profile.age,
+          has_asthma: profile.has_asthma,
+          has_heart_disease: profile.has_heart_disease,
+          has_lung_disease: profile.has_lung_disease,
+          has_diabetes: profile.has_diabetes,
+          is_smoker: profile.is_smoker
+        };
+      }
+      
+      const response = await predictionApi.getForecastWithRisk(apiParams);
       
       if (response.success && response.data) {
         const { forecast, current } = response.data;
@@ -153,7 +168,7 @@ const ForecastPage: React.FC = () => {
           });
         }
         
-        toast.success(`Updated forecast for ${getPollutantDisplay(pollutant)} in ${region}`);
+        toast.success(`Updated personalized forecast for ${getPollutantDisplay(pollutant)} in ${region}`);
       } else {
         toast.error("Failed to load forecast data");
         console.error("Failed to load forecast:", response.error);
@@ -263,10 +278,11 @@ const ForecastPage: React.FC = () => {
       {/* Cards Section */}
       {!initialLoad && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Current AQI Summary Card */}
+          {/* Current AQI Summary Card - Now with user profile */}
           <AQISummaryCard 
             currentData={currentData} 
             loading={loading}
+            profile={profile}
           />
           
           {/* Personalized Insight Card */}
