@@ -5,17 +5,21 @@ import { RegionSelector } from "@/components/ui/region-selector";
 import { PollutantSelector } from "@/components/ui/pollutant-selector";
 import { Pollutant } from "@/lib/types";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RefreshCw, Calendar, Info } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { format, startOfWeek, startOfMonth, endOfWeek, endOfMonth, addDays } from "date-fns";
+import { format, isBefore } from "date-fns";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Input } from "@/components/ui/input";
+import { 
+  getValidEndDates, 
+  isValidEndDate, 
+  getFrequencyAdjustedDate,
+  getTodayModifiers,
+  getTodayStyles 
+} from "@/lib/date-picker-utils";
 
 interface ForecastControlsProps {
   region: string;
@@ -55,24 +59,32 @@ const LabelWithTooltip = ({ label, tooltip }: { label: string; tooltip: string }
   </div>
 );
 
-const DatePickerField = ({ 
+const EnhancedDatePickerField = ({ 
   label, 
   tooltip, 
   date,
   frequency,
+  otherDate,
+  isEndDate = false,
+  disabled = false,
   onDateChange 
 }: { 
   label: string;
   tooltip: string;
   date: Date | undefined;
   frequency: string;
+  otherDate?: Date | undefined;
+  isEndDate?: boolean;
+  disabled?: boolean;
   onDateChange: (date: Date | undefined) => void;
 }) => {
+  const today = new Date();
+  
   // Date format based on frequency
   const getDateFormat = (selectedDate: Date) => {
     switch (frequency) {
       case "W":
-        return `Week of ${format(startOfWeek(selectedDate), "MMM d, yyyy")}`;
+        return format(selectedDate, "'Week of' MMM d, yyyy");
       case "M":
         return format(selectedDate, "MMMM yyyy");
       default:
@@ -87,18 +99,22 @@ const DatePickerField = ({
       return;
     }
 
-    switch (frequency) {
-      case "W":
-        onDateChange(startOfWeek(selectedDate));
-        break;
-      case "M":
-        onDateChange(startOfMonth(selectedDate));
-        break;
-      default:
-        onDateChange(selectedDate);
-        break;
-    }
+    const adjustedDate = getFrequencyAdjustedDate(selectedDate, frequency, isEndDate);
+    onDateChange(adjustedDate);
   };
+
+  // Get disabled dates function
+  const getDisabledDates = (date: Date) => {
+    if (isEndDate && otherDate) {
+      // For end date, disable dates before start date or invalid frequency dates
+      return !isValidEndDate(date, otherDate, frequency);
+    }
+    return false;
+  };
+
+  // Get modifiers for today highlighting
+  const todayModifiers = getTodayModifiers(date, today);
+  const todayStyles = getTodayStyles();
 
   return (
     <div className="space-y-2">
@@ -110,9 +126,11 @@ const DatePickerField = ({
         <PopoverTrigger asChild>
           <Button
             variant={"outline"}
+            disabled={disabled}
             className={cn(
               "w-full justify-start text-left font-normal",
-              !date && "text-muted-foreground"
+              !date && "text-muted-foreground",
+              disabled && "opacity-50 cursor-not-allowed"
             )}
           >
             <Calendar className="mr-2 h-4 w-4" />
@@ -124,15 +142,12 @@ const DatePickerField = ({
             mode="single"
             selected={date}
             onSelect={handleDateSelect}
+            disabled={getDisabledDates}
             initialFocus
             className={cn("p-3 pointer-events-auto")}
-            weekStartsOn={1} // Start week on Monday
-            modifiersStyles={{
-              selected: {
-                backgroundColor: "var(--color-primary)",
-                color: "white",
-              }
-            }}
+            weekStartsOn={1}
+            modifiers={todayModifiers}
+            modifiersStyles={todayStyles}
           />
         </PopoverContent>
       </Popover>
@@ -156,8 +171,6 @@ const ForecastControls: React.FC<ForecastControlsProps> = ({
   onEndDateChange,
   onUpdateForecast,
 }) => {
-  const isMobile = useIsMobile();
-
   return (
     <Card className="overflow-hidden border-border/40 shadow-sm">
       <CardContent className="p-4">
@@ -209,7 +222,7 @@ const ForecastControls: React.FC<ForecastControlsProps> = ({
           {/* Date Range Section */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Start Date picker */}
-            <DatePickerField
+            <EnhancedDatePickerField
               label="Start Date"
               tooltip="Select the start date for your forecast range" 
               date={startDate}
@@ -218,11 +231,14 @@ const ForecastControls: React.FC<ForecastControlsProps> = ({
             />
             
             {/* End Date picker */}
-            <DatePickerField
+            <EnhancedDatePickerField
               label="End Date"
-              tooltip="Select the end date for your forecast range" 
+              tooltip="Select the end date for your forecast range (must be after start date)" 
               date={endDate}
               frequency={frequency}
+              otherDate={startDate}
+              isEndDate={true}
+              disabled={!startDate}
               onDateChange={onEndDateChange}
             />
           </div>

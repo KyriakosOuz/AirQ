@@ -13,6 +13,7 @@ import AQISummaryCard from "@/components/forecasts/AQISummaryCard";
 import PersonalizedInsightCard from "@/components/forecasts/PersonalizedInsightCard";
 import { healthApi } from "@/lib/api";
 import { getPollutantDisplayName } from "@/lib/aqi-standardization";
+import { getFrequencyAdjustedDate, getValidEndDates } from "@/lib/date-picker-utils";
 
 // Main ForecastPage component
 const ForecastPage: React.FC = () => {
@@ -23,7 +24,7 @@ const ForecastPage: React.FC = () => {
   const [periods, setPeriods] = useState(7);
   const [chartType, setChartType] = useState<"bar" | "line">("bar");
   
-  // Date range state
+  // Date range state with today as default start date
   const [startDate, setStartDate] = useState<Date | undefined>(new Date());
   const [endDate, setEndDate] = useState<Date | undefined>(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)); // Default to 30 days ahead
   
@@ -69,27 +70,32 @@ const ForecastPage: React.FC = () => {
     }
   }, [frequency, startDate]);
 
-  // Adjust start date when frequency changes
-  useEffect(() => {
-    if (startDate) {
-      let adjustedStartDate: Date;
-      
-      switch (frequency) {
-        case "W":
-          adjustedStartDate = startOfWeek(startDate);
-          break;
-        case "M":
-          adjustedStartDate = startOfMonth(startDate);
-          break;
-        default:
-          adjustedStartDate = startDate;
-      }
-      
-      if (adjustedStartDate.getTime() !== startDate.getTime()) {
-        setStartDate(adjustedStartDate);
-      }
+  // Enhanced start date handler with frequency adjustment
+  const handleStartDateChange = (date: Date | undefined) => {
+    if (!date) {
+      setStartDate(undefined);
+      setEndDate(undefined);
+      return;
     }
-  }, [frequency]);
+    
+    const adjustedDate = getFrequencyAdjustedDate(date, frequency, false);
+    setStartDate(adjustedDate);
+    
+    // Auto-adjust end date based on frequency
+    const { minDate } = getValidEndDates(adjustedDate, frequency);
+    setEndDate(minDate);
+  };
+  
+  // Enhanced end date handler with validation
+  const handleEndDateChange = (date: Date | undefined) => {
+    if (!date || !startDate) {
+      setEndDate(undefined);
+      return;
+    }
+    
+    const adjustedDate = getFrequencyAdjustedDate(date, frequency, true);
+    setEndDate(adjustedDate);
+  };
 
   // Function to format date for API
   const formatDateForApi = (date: Date): string => {
@@ -255,9 +261,20 @@ const ForecastPage: React.FC = () => {
     setPollutant(value);
   };
   
-  // Handler for frequency change
+  // Handler for frequency change with date adjustment
   const handleFrequencyChange = (value: string) => {
     setFrequency(value);
+    
+    // Adjust existing dates to new frequency
+    if (startDate) {
+      const adjustedStartDate = getFrequencyAdjustedDate(startDate, value, false);
+      setStartDate(adjustedStartDate);
+      
+      if (endDate) {
+        const adjustedEndDate = getFrequencyAdjustedDate(endDate, value, true);
+        setEndDate(adjustedEndDate);
+      }
+    }
   };
   
   // Handler for chart type change
@@ -267,12 +284,29 @@ const ForecastPage: React.FC = () => {
   
   // Handler for start date change
   const handleStartDateChange = (date: Date | undefined) => {
-    setStartDate(date);
+    if (!date) {
+      setStartDate(undefined);
+      setEndDate(undefined);
+      return;
+    }
+    
+    const adjustedDate = getFrequencyAdjustedDate(date, frequency, false);
+    setStartDate(adjustedDate);
+    
+    // Auto-adjust end date based on frequency
+    const { minDate } = getValidEndDates(adjustedDate, frequency);
+    setEndDate(minDate);
   };
   
   // Handler for end date change
   const handleEndDateChange = (date: Date | undefined) => {
-    setEndDate(date);
+    if (!date || !startDate) {
+      setEndDate(undefined);
+      return;
+    }
+    
+    const adjustedDate = getFrequencyAdjustedDate(date, frequency, true);
+    setEndDate(adjustedDate);
   };
   
   return (
@@ -297,12 +331,12 @@ const ForecastPage: React.FC = () => {
         endDate={endDate}
         onRegionChange={setRegion}
         onPollutantChange={setPollutant}
-        onFrequencyChange={setFrequency}
+        onFrequencyChange={handleFrequencyChange}
         onPeriodsChange={() => {}} // Empty handler as we don't use periods anymore
         onChartTypeChange={setChartType}
         onForecastModeChange={() => {}} // Empty handler as we don't switch modes anymore
-        onStartDateChange={setStartDate}
-        onEndDateChange={setEndDate}
+        onStartDateChange={handleStartDateChange}
+        onEndDateChange={handleEndDateChange}
         onUpdateForecast={loadForecastData}
       />
 
