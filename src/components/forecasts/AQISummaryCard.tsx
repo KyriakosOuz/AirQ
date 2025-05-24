@@ -16,6 +16,11 @@ import {
   normalizeCategory
 } from "@/lib/aqi-standardization";
 
+// Function to remove emojis from text
+const removeEmojis = (text: string): string => {
+  return text.replace(/[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu, '').trim();
+};
+
 // Function to get lighter background and darker text colors based on risk score
 const getRiskSectionColors = (riskScore: number): { backgroundColor: string; color: string } => {
   const baseColor = getColorByRiskScore(riskScore);
@@ -117,6 +122,9 @@ const AQISummaryCard: React.FC<AQISummaryCardProps> = ({ currentData, loading, p
   const standardizedData = standardizeAqiDataPoint(currentData);
   const sectionColors = getRiskSectionColors(standardizedData.riskScore);
   
+  // Clean category name from emojis
+  const cleanCategory = removeEmojis(standardizedData.category);
+  
   return (
     <Card>
       <CardHeader>
@@ -137,10 +145,10 @@ const AQISummaryCard: React.FC<AQISummaryCardProps> = ({ currentData, loading, p
             {standardizedData.riskScore}
           </div>
           <div>
-            <p className="text-xl font-semibold">Your Risk: {standardizedData.category}</p>
+            <p className="text-xl font-semibold">Your Risk: {cleanCategory}</p>
             <p className="text-lg">{standardizedData.pollutantDisplay}: {standardizedData.value.toFixed(1)} μg/m³</p>
             <p className="text-sm text-muted-foreground">
-              General AQI: <span className="font-semibold">{standardizedData.category}</span>
+              General AQI: <span className="font-semibold">{cleanCategory}</span>
             </p>
           </div>
         </div>

@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ChevronDown, ChevronUp, Activity, AlertTriangle, Ban, Clock, Droplets, Eye, Home, Pill, Stethoscope, TreePine } from "lucide-react";
-import { parseAITip, getUrgencyColor, ParsedTipSection } from "@/lib/ai-tip-formatter";
+import { parseAITip, getUrgencyColor, ParsedTipSection, parseBoldText } from "@/lib/ai-tip-formatter";
 import { cn } from "@/lib/utils";
 
 interface FormattedAITipProps {
@@ -48,6 +48,22 @@ const FormattedAITip: React.FC<FormattedAITipProps> = ({ tipText, className }) =
     return <IconComponent className="h-4 w-4 flex-shrink-0" />;
   };
 
+  // Component to render text with bold formatting
+  const renderFormattedText = (text: string, className?: string) => {
+    const parts = parseBoldText(text);
+    return (
+      <span className={className}>
+        {parts.map((part, index) => (
+          part.bold ? (
+            <strong key={index}>{part.text}</strong>
+          ) : (
+            <span key={index}>{part.text}</span>
+          )
+        ))}
+      </span>
+    );
+  };
+
   const renderSection = (section: ParsedTipSection, index: number) => {
     const urgencyColors = getUrgencyColor(section.urgency || 'low');
     const isExpanded = expandedSections.has(index);
@@ -68,9 +84,10 @@ const FormattedAITip: React.FC<FormattedAITipProps> = ({ tipText, className }) =
                 {isLongContent ? (
                   <Collapsible open={isExpanded} onOpenChange={() => toggleSection(index)}>
                     <div className="flex items-start justify-between gap-2">
-                      <p className="text-sm leading-relaxed">
-                        {isExpanded ? section.content : `${section.content.substring(0, 100)}...`}
-                      </p>
+                      {renderFormattedText(
+                        isExpanded ? section.content : `${section.content.substring(0, 100)}...`,
+                        "text-sm leading-relaxed"
+                      )}
                       <CollapsibleTrigger asChild>
                         <Button variant="ghost" size="sm" className="flex-shrink-0">
                           {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -79,14 +96,14 @@ const FormattedAITip: React.FC<FormattedAITipProps> = ({ tipText, className }) =
                     </div>
                     <CollapsibleContent>
                       {isExpanded && (
-                        <p className="text-sm leading-relaxed mt-2">
-                          {section.content.substring(100)}
-                        </p>
+                        <div className="mt-2">
+                          {renderFormattedText(section.content.substring(100), "text-sm leading-relaxed")}
+                        </div>
                       )}
                     </CollapsibleContent>
                   </Collapsible>
                 ) : (
-                  <p className="text-sm leading-relaxed">{section.content}</p>
+                  renderFormattedText(section.content, "text-sm leading-relaxed")
                 )}
                 {section.urgency === 'high' && (
                   <Badge variant="destructive" className="mt-2 text-xs">
@@ -103,9 +120,7 @@ const FormattedAITip: React.FC<FormattedAITipProps> = ({ tipText, className }) =
           <div key={index} className="bg-purple-50 border border-purple-200 rounded-lg p-3 mb-3">
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 text-purple-600 flex-shrink-0" />
-              <p className="text-sm font-medium text-purple-800 leading-relaxed">
-                {section.content}
-              </p>
+              {renderFormattedText(section.content, "text-sm font-medium text-purple-800 leading-relaxed")}
             </div>
           </div>
         );
@@ -118,7 +133,7 @@ const FormattedAITip: React.FC<FormattedAITipProps> = ({ tipText, className }) =
                 <div className="w-2 h-2 rounded-full bg-current" />
                 {renderIcon(section.icon)}
               </div>
-              <p className="text-sm leading-relaxed flex-1">{section.content}</p>
+              {renderFormattedText(section.content, "text-sm leading-relaxed flex-1")}
             </div>
           </div>
         );
@@ -126,7 +141,7 @@ const FormattedAITip: React.FC<FormattedAITipProps> = ({ tipText, className }) =
       default:
         return (
           <div key={index} className="mb-3">
-            <p className="text-sm leading-relaxed text-gray-700">{section.content}</p>
+            {renderFormattedText(section.content, "text-sm leading-relaxed text-gray-700")}
           </div>
         );
     }
@@ -135,7 +150,7 @@ const FormattedAITip: React.FC<FormattedAITipProps> = ({ tipText, className }) =
   if (!parsedTip.sections.length) {
     return (
       <div className={className}>
-        <p className="text-sm leading-relaxed text-gray-700">{tipText}</p>
+        {renderFormattedText(tipText, "text-sm leading-relaxed text-gray-700")}
       </div>
     );
   }
