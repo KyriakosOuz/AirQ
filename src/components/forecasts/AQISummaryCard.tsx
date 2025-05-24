@@ -14,7 +14,9 @@ import {
   getAqiDescription,
   getPollutantDisplayName,
   AqiCategory,
-  normalizeCategory
+  normalizeCategory,
+  UI_POLLUTANT_DISPLAY_NAMES,
+  getRiskScoreColor
 } from "@/lib/aqi-standardization";
 import { Pollutant } from "@/lib/types";
 
@@ -77,17 +79,18 @@ const getPersonalizedRiskExplanation = (riskScore: number, category: AqiCategory
   return baseExplanation;
 };
 
-// Enhanced function to get custom pollutant display name for the card
+// Enhanced function to get pollutant display name prioritizing UI selection
 const getCardPollutantDisplayName = (pollutant: string, selectedPollutant?: Pollutant): string => {
   console.log("AQISummaryCard - Raw pollutant value:", pollutant);
   console.log("AQISummaryCard - Selected pollutant from UI:", selectedPollutant);
   
-  // First check if the selected pollutant from UI is "pollution"
-  if (selectedPollutant === "pollution") {
-    return "Combined Pollution";
+  // PRIORITY 1: Use the UI-selected pollutant if available
+  if (selectedPollutant && UI_POLLUTANT_DISPLAY_NAMES[selectedPollutant]) {
+    console.log("AQISummaryCard - Using UI selection:", UI_POLLUTANT_DISPLAY_NAMES[selectedPollutant]);
+    return UI_POLLUTANT_DISPLAY_NAMES[selectedPollutant];
   }
   
-  // Handle various forms of the pollution/averaged case
+  // PRIORITY 2: Handle various forms of the pollution/averaged case
   if (!pollutant || pollutant === "pollution" || 
       pollutant.toLowerCase().includes("pollution") || 
       pollutant.toLowerCase().includes("averaged") || 
@@ -96,7 +99,7 @@ const getCardPollutantDisplayName = (pollutant: string, selectedPollutant?: Poll
     return "Combined Pollution";
   }
   
-  // Use the standard pollutant display name function
+  // PRIORITY 3: Use the standard pollutant display name function
   const displayName = getPollutantDisplayName(pollutant);
   console.log("AQISummaryCard - Final display name:", displayName);
   
@@ -167,11 +170,8 @@ const AQISummaryCard: React.FC<AQISummaryCardProps> = ({
   // Clean general category name from emojis for display
   const cleanGeneralCategory = removeEmojis(standardizedData.category);
   
-  // Enhanced pollutant display logic with debugging and fallback
+  // Enhanced pollutant display logic with UI priority
   const pollutantToDisplay = currentData.pollutant || standardizedData.pollutant || "pollution";
-  console.log("AQISummaryCard - pollutantToDisplay:", pollutantToDisplay);
-  console.log("AQISummaryCard - currentData.pollutant:", currentData.pollutant);
-  console.log("AQISummaryCard - standardizedData.pollutant:", standardizedData.pollutant);
   
   const pollutantDisplayName = getCardPollutantDisplayName(pollutantToDisplay, selectedPollutant);
   
@@ -201,7 +201,7 @@ const AQISummaryCard: React.FC<AQISummaryCardProps> = ({
               "h-10 w-10 rounded-full flex items-center justify-center text-white font-semibold text-base",
               "transition-all duration-300 hover:scale-105"
             )}
-            style={{ backgroundColor: standardizedData.color }}
+            style={{ backgroundColor: getRiskScoreColor(standardizedData.riskScore) }}
           >
             {standardizedData.riskScore}
           </div>

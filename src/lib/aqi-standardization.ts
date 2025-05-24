@@ -1,4 +1,5 @@
 
+
 import { Pollutant } from "./types";
 
 // Standardized AQI categories with consistent naming
@@ -33,6 +34,16 @@ export const AQI_COLORS = {
   [AQI_CATEGORIES.HAZARDOUS]: "#7f1d1d"
 };
 
+// Distinct risk score colors - using blue gradient to avoid confusion with AQI colors
+export const RISK_SCORE_COLORS = {
+  1: "#3b82f6", // Blue-500
+  2: "#1d4ed8", // Blue-700
+  3: "#1e40af", // Blue-800
+  4: "#1e3a8a", // Blue-900
+  5: "#172554", // Blue-950
+  6: "#0f172a"  // Slate-900
+} as const;
+
 // Risk score to category mapping
 export const RISK_SCORE_TO_CATEGORY: Record<number, AqiCategory> = {
   1: AQI_CATEGORIES.GOOD,
@@ -61,6 +72,11 @@ export const getColorByCategory = (category: string): string => {
 export const getColorByRiskScore = (riskScore: number): string => {
   const category = RISK_SCORE_TO_CATEGORY[riskScore];
   return category ? AQI_COLORS[category] : "#6b7280";
+};
+
+// New function for risk score colors (distinct from AQI colors)
+export const getRiskScoreColor = (riskScore: number): string => {
+  return RISK_SCORE_COLORS[riskScore as keyof typeof RISK_SCORE_COLORS] || "#6b7280";
 };
 
 export const getCategoryByRiskScore = (riskScore: number): AqiCategory => {
@@ -119,6 +135,16 @@ export const getAqiDescription = (category: AqiCategory): string => {
     default:
       return "No data available.";
   }
+};
+
+// UI pollutant to display name mapping - prioritize UI selection
+export const UI_POLLUTANT_DISPLAY_NAMES: Record<Pollutant, string> = {
+  "pollution": "Combined Pollution",
+  "no2_conc": "Nitrogen Dioxide (NO₂)",
+  "o3_conc": "Ozone (O₃)",
+  "so2_conc": "Sulfur Dioxide (SO₂)",
+  "co_conc": "Carbon Monoxide (CO)",
+  "no_conc": "Nitric Oxide (NO)"
 };
 
 // Enhanced pollutant display names with comprehensive mappings
