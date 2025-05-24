@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Brain, AlertCircle, Info } from "lucide-react";
+import FormattedAITip from "./FormattedAITip";
 
 interface AIHealthTipCardProps {
   tip: string | null;
@@ -116,9 +117,7 @@ const AIHealthTipCard: React.FC<AIHealthTipCardProps> = ({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="p-4 bg-purple-50 rounded-lg border border-purple-100">
-          <p className="text-lg leading-relaxed">{tip}</p>
-        </div>
+        <FormattedAITip tipText={tip} />
         
         {!personalized && (
           <Alert>
