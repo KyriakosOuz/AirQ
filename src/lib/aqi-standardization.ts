@@ -1,5 +1,4 @@
 
-
 import { Pollutant } from "./types";
 
 // Standardized AQI categories with consistent naming
@@ -36,12 +35,22 @@ export const AQI_COLORS = {
 
 // Distinct risk score colors - using blue gradient to avoid confusion with AQI colors
 export const RISK_SCORE_COLORS = {
-  1: "#3b82f6", // Blue-500
-  2: "#1d4ed8", // Blue-700
-  3: "#1e40af", // Blue-800
-  4: "#1e3a8a", // Blue-900
-  5: "#172554", // Blue-950
-  6: "#0f172a"  // Slate-900
+  1: "#3b82f6", // Blue-500 - Minimal risk
+  2: "#1d4ed8", // Blue-700 - Low risk
+  3: "#1e40af", // Blue-800 - Moderate risk
+  4: "#1e3a8a", // Blue-900 - High risk
+  5: "#172554", // Blue-950 - Very high risk
+  6: "#0f172a"  // Slate-900 - Extremely high risk
+} as const;
+
+// Risk score labels
+export const RISK_SCORE_LABELS = {
+  1: "Minimal risk",
+  2: "Low risk",
+  3: "Moderate risk",
+  4: "High risk",
+  5: "Very high risk",
+  6: "Extremely high risk"
 } as const;
 
 // Risk score to category mapping
@@ -77,6 +86,11 @@ export const getColorByRiskScore = (riskScore: number): string => {
 // New function for risk score colors (distinct from AQI colors)
 export const getRiskScoreColor = (riskScore: number): string => {
   return RISK_SCORE_COLORS[riskScore as keyof typeof RISK_SCORE_COLORS] || "#6b7280";
+};
+
+// Function to get risk score label
+export const getRiskScoreLabel = (riskScore: number): string => {
+  return RISK_SCORE_LABELS[riskScore as keyof typeof RISK_SCORE_LABELS] || "Unknown risk";
 };
 
 export const getCategoryByRiskScore = (riskScore: number): AqiCategory => {
