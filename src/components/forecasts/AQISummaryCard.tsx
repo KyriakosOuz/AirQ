@@ -1,4 +1,5 @@
 
+
 import React from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { format } from "date-fns";
@@ -15,6 +16,7 @@ import {
   AqiCategory,
   normalizeCategory
 } from "@/lib/aqi-standardization";
+import { Pollutant } from "@/lib/types";
 
 // Function to remove emojis from text
 const removeEmojis = (text: string): string => {
@@ -75,17 +77,30 @@ const getPersonalizedRiskExplanation = (riskScore: number, category: AqiCategory
   return baseExplanation;
 };
 
-// Function to get custom pollutant display name for the card
-const getCardPollutantDisplayName = (pollutant: string): string => {
-  // Handle the main pollution case
-  if (pollutant === "pollution") {
+// Enhanced function to get custom pollutant display name for the card
+const getCardPollutantDisplayName = (pollutant: string, selectedPollutant?: Pollutant): string => {
+  console.log("AQISummaryCard - Raw pollutant value:", pollutant);
+  console.log("AQISummaryCard - Selected pollutant from UI:", selectedPollutant);
+  
+  // First check if the selected pollutant from UI is "pollution"
+  if (selectedPollutant === "pollution") {
     return "Combined Pollution";
   }
-  // Also handle potential variations
-  if (pollutant === "Pollution (Averaged from 5 pollutants)" || pollutant === "averaged" || pollutant === "combined") {
+  
+  // Handle various forms of the pollution/averaged case
+  if (!pollutant || pollutant === "pollution" || 
+      pollutant.toLowerCase().includes("pollution") || 
+      pollutant.toLowerCase().includes("averaged") || 
+      pollutant.toLowerCase().includes("combined") ||
+      pollutant === "Pollution (Averaged from 5 pollutants)") {
     return "Combined Pollution";
   }
-  return getPollutantDisplayName(pollutant);
+  
+  // Use the standard pollutant display name function
+  const displayName = getPollutantDisplayName(pollutant);
+  console.log("AQISummaryCard - Final display name:", displayName);
+  
+  return displayName;
 };
 
 interface AQISummaryCardProps {
@@ -94,9 +109,17 @@ interface AQISummaryCardProps {
   profile?: any;
   startDate?: Date;
   endDate?: Date;
+  selectedPollutant?: Pollutant;
 }
 
-const AQISummaryCard: React.FC<AQISummaryCardProps> = ({ currentData, loading, profile, startDate, endDate }) => {
+const AQISummaryCard: React.FC<AQISummaryCardProps> = ({ 
+  currentData, 
+  loading, 
+  profile, 
+  startDate, 
+  endDate,
+  selectedPollutant
+}) => {
   if (loading) {
     return (
       <Card>
@@ -144,9 +167,9 @@ const AQISummaryCard: React.FC<AQISummaryCardProps> = ({ currentData, loading, p
   // Clean general category name from emojis for display
   const cleanGeneralCategory = removeEmojis(standardizedData.category);
   
-  // Get the proper pollutant display name - use the pollutant from currentData first, then fallback to standardized
+  // Enhanced pollutant display logic with debugging and fallback
   const pollutantToDisplay = currentData.pollutant || standardizedData.pollutant || "pollution";
-  const pollutantDisplayName = getCardPollutantDisplayName(pollutantToDisplay);
+  const pollutantDisplayName = getCardPollutantDisplayName(pollutantToDisplay, selectedPollutant);
   
   // Format the date range for the description
   const getDateRangeDescription = () => {
@@ -214,3 +237,4 @@ const AQISummaryCard: React.FC<AQISummaryCardProps> = ({ currentData, loading, p
 };
 
 export default AQISummaryCard;
+

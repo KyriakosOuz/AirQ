@@ -162,7 +162,7 @@ const ForecastPage: React.FC = () => {
       setAiTipLoading(false);
     }
   };
-
+  
   // Function to load forecast data from API
   const loadForecastData = async () => {
     setLoading(true);
@@ -380,6 +380,7 @@ const ForecastPage: React.FC = () => {
               profile={profile}
               startDate={startDate}
               endDate={endDate}
+              selectedPollutant={pollutant}
             />
           </div>
           
