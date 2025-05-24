@@ -669,7 +669,7 @@ export const predictionApi = {
     }>>(`/models/predict/?${queryParams}`, {}, 8000);
   },
   
-  // Updated method to use the correct endpoint for forecast with risk assessment
+  // Updated method to properly handle user profile data and pollution endpoint
   getForecastWithRisk: async (params: { 
     pollutant: string; 
     region: string;
@@ -677,8 +677,30 @@ export const predictionApi = {
     periods?: number;
     start_date?: string;
     end_date?: string;
+    user_profile?: {
+      age?: number;
+      has_asthma?: boolean;
+      has_heart_disease?: boolean;
+      has_lung_disease?: boolean;
+      has_diabetes?: boolean;
+      is_smoker?: boolean;
+    };
   }) => {
-    const queryParams = new URLSearchParams(params as any).toString();
+    // Create query parameters but handle user_profile specially
+    const { user_profile, ...otherParams } = params;
+    const queryParams = new URLSearchParams(otherParams as any);
+    
+    // Add user_profile fields individually to avoid [object Object] in query string
+    if (user_profile) {
+      Object.entries(user_profile).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          queryParams.append(`user_profile_${key}`, String(value));
+        }
+      });
+    }
+    
+    console.log("Final query params:", queryParams.toString());
+    
     return fetchWithAuth<{
       forecast: Array<{
         ds: string;
@@ -692,7 +714,7 @@ export const predictionApi = {
         category: string;
         risk_score: number;
       }
-    }>(`/models/forecast/risk-timeline/?${queryParams}`, {}, 8000);
+    }>(`/models/forecast/risk-timeline/?${queryParams.toString()}`, {}, 8000);
   },
   
   compare: async (compareData: { pollutant: string; regions: string[] }) => {

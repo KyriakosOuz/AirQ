@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { predictionApi } from "@/lib/api";
@@ -126,7 +127,7 @@ const ForecastPage: React.FC = () => {
       const start = formatDateForApi(startDate);
       const end = formatDateForApi(endDate);
       
-      // Include user profile in the API call for personalized risk assessment
+      // Build API parameters - properly handle user profile data
       const apiParams: any = {
         region, 
         pollutant,
@@ -136,16 +137,26 @@ const ForecastPage: React.FC = () => {
       };
 
       // Add user profile data for personalization if available
-      if (profile) {
-        apiParams.user_profile = {
-          age: profile.age,
-          has_asthma: profile.has_asthma,
-          has_heart_disease: profile.has_heart_disease,
-          has_lung_disease: profile.has_lung_disease,
-          has_diabetes: profile.has_diabetes,
-          is_smoker: profile.is_smoker
+      // Make sure we properly serialize the profile data and don't send [object Object]
+      if (profile && (profile.age || profile.has_asthma || profile.has_heart_disease || 
+                     profile.has_lung_disease || profile.has_diabetes || profile.is_smoker)) {
+        // Create a clean user profile object with only the health-related fields
+        const userProfileData = {
+          ...(profile.age && { age: profile.age }),
+          ...(profile.has_asthma !== undefined && { has_asthma: profile.has_asthma }),
+          ...(profile.has_heart_disease !== undefined && { has_heart_disease: profile.has_heart_disease }),
+          ...(profile.has_lung_disease !== undefined && { has_lung_disease: profile.has_lung_disease }),
+          ...(profile.has_diabetes !== undefined && { has_diabetes: profile.has_diabetes }),
+          ...(profile.is_smoker !== undefined && { is_smoker: profile.is_smoker })
         };
+        
+        // Only add user_profile if we have actual data
+        if (Object.keys(userProfileData).length > 0) {
+          apiParams.user_profile = userProfileData;
+        }
       }
+      
+      console.log("API call parameters:", apiParams);
       
       const response = await predictionApi.getForecastWithRisk(apiParams);
       
