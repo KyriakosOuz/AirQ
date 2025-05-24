@@ -153,7 +153,8 @@ Important: These recommendations are AI-generated based on your profile and shou
           </Alert>
         )}
         
-        {/* Protective Actions */}
+        {/* Protective Actions - COMMENTED OUT */}
+        {/* 
         {standardizedData.riskScore >= 3 && (
           <Card className="border-dashed border-muted-foreground/30 bg-background/80">
             <CardHeader className="py-3 px-4">
@@ -186,6 +187,7 @@ Important: These recommendations are AI-generated based on your profile and shou
             </CardContent>
           </Card>
         )}
+        */}
         
         {/* AI Insights - Simple text version */}
         <Card className="border-dashed border-purple-300 bg-purple-50/50">
@@ -196,9 +198,9 @@ Important: These recommendations are AI-generated based on your profile and shou
             </CardTitle>
           </CardHeader>
           <CardContent className="py-2 px-4">
-            <pre className="text-xs leading-relaxed whitespace-pre-wrap text-gray-700 font-sans">
+            <div className="text-sm leading-relaxed whitespace-pre-wrap text-gray-700 font-sans">
               {mockAITip}
-            </pre>
+            </div>
           </CardContent>
         </Card>
       </CardContent>
