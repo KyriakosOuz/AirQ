@@ -1,4 +1,3 @@
-
 // Add the created_at field to the Dataset interface
 export interface Dataset {
   id: string;
@@ -15,8 +14,8 @@ export interface Region {
   label: string;
 }
 
-// Define the pollutant types - removing pm10_conc and pm25_conc
-export type Pollutant = "no2_conc" | "o3_conc" | "co_conc" | "no_conc" | "so2_conc";
+// Define the pollutant types - adding "pollution" for averaged data
+export type Pollutant = "pollution" | "no2_conc" | "o3_conc" | "co_conc" | "no_conc" | "so2_conc";
 
 // Define the AQI levels
 export type AqiLevel = "good" | "moderate" | "unhealthy-sensitive" | "unhealthy" | "very-unhealthy" | "hazardous";

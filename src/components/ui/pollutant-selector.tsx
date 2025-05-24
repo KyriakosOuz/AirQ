@@ -13,8 +13,9 @@ import {
 import { Pollutant } from "@/lib/types";
 import ErrorBoundary from "@/components/ErrorBoundary";
 
-// Defined pollutant options - removing PM10 and PM2.5
+// Updated pollutant options - adding "Pollution" as the first option
 const DEFAULT_POLLUTANT_OPTIONS = [
+  { value: "pollution" as Pollutant, label: "Pollution (Averaged from 5 pollutants)" },
   { value: "no2_conc" as Pollutant, label: "Nitrogen Dioxide (NO₂)" },
   { value: "o3_conc" as Pollutant, label: "Ozone (O₃)" },
   { value: "co_conc" as Pollutant, label: "Carbon Monoxide (CO)" },
@@ -25,7 +26,7 @@ const DEFAULT_POLLUTANT_OPTIONS = [
 interface PollutantSelectorProps {
   value: Pollutant | "";
   onValueChange: (value: Pollutant) => void;
-  pollutants?: Pollutant[]; // Add the pollutants prop as optional
+  pollutants?: Pollutant[];
   disabled?: boolean;
 }
 
@@ -45,7 +46,6 @@ export function PollutantSelector({
     return DEFAULT_POLLUTANT_OPTIONS;
   }, [pollutants]);
 
-  // Get pollutant label from value
   const selectedPollutantLabel = React.useMemo(() => {
     if (!value) return "";
     return availablePollutants.find(pollutant => pollutant.value === value)?.label || "";

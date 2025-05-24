@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { predictionApi } from "@/lib/api";
@@ -18,6 +17,7 @@ import PersonalizedInsightCard from "@/components/forecasts/PersonalizedInsightC
 // Function to get display name for pollutant
 const getPollutantDisplay = (pollutantCode: string): string => {
   const map: Record<string, string> = {
+    "pollution": "Averaged risk from 5 pollutants",
     "no2_conc": "NO₂",
     "o3_conc": "O₃",
     "so2_conc": "SO₂",
@@ -31,11 +31,11 @@ const getPollutantDisplay = (pollutantCode: string): string => {
 
 // Main ForecastPage component
 const ForecastPage: React.FC = () => {
-  // State hooks for user inputs
+  // State hooks for user inputs - setting default to "pollution" for averaged data
   const [region, setRegion] = useState("thessaloniki");
-  const [pollutant, setPollutant] = useState<Pollutant>("no2_conc");
-  const [frequency, setFrequency] = useState("D"); // Default to daily
-  const [periods, setPeriods] = useState(7); // Kept for backward compatibility
+  const [pollutant, setPollutant] = useState<Pollutant>("pollution");
+  const [frequency, setFrequency] = useState("D");
+  const [periods, setPeriods] = useState(7);
   const [chartType, setChartType] = useState<"bar" | "line">("bar");
   
   // Date range state

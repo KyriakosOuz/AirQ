@@ -93,6 +93,7 @@ const ForecastVisualization: React.FC<ForecastVisualizationProps> = ({
   // Function to get display name for pollutant
   const getPollutantDisplay = (pollutantCode: string): string => {
     const map: Record<string, string> = {
+      "pollution": "Averaged risk from 5 pollutants",
       "no2_conc": "NO₂",
       "o3_conc": "O₃",
       "so2_conc": "SO₂",
