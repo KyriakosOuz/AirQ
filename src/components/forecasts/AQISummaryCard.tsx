@@ -39,6 +39,34 @@ const getRiskDescription = (riskScore: number): string => {
   return RISK_DESCRIPTIONS[riskScore];
 };
 
+// Function to get lighter background and darker text colors based on risk score
+const getRiskSectionColors = (riskScore: number): { backgroundColor: string; color: string } => {
+  const baseColor = getRiskColor(riskScore);
+  
+  // Convert hex to RGB for manipulation
+  const hexToRgb = (hex: string) => {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? {
+      r: parseInt(result[1], 16),
+      g: parseInt(result[2], 16),
+      b: parseInt(result[3], 16)
+    } : { r: 0, g: 0, b: 0 };
+  };
+  
+  const rgb = hexToRgb(baseColor);
+  
+  // Create lighter background (add white, reduce opacity effect)
+  const backgroundColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.1)`;
+  
+  // Create darker text color (reduce RGB values for darker shade)
+  const darkerR = Math.max(0, Math.floor(rgb.r * 0.6));
+  const darkerG = Math.max(0, Math.floor(rgb.g * 0.6));
+  const darkerB = Math.max(0, Math.floor(rgb.b * 0.6));
+  const textColor = `rgb(${darkerR}, ${darkerG}, ${darkerB})`;
+  
+  return { backgroundColor, color: textColor };
+};
+
 // Function to get pollutant display name
 const getPollutantDisplay = (pollutantCode: string): string => {
   const map: Record<string, string> = {
@@ -97,6 +125,7 @@ const AQISummaryCard: React.FC<AQISummaryCardProps> = ({ currentData, loading })
 
   // Ensure risk_score is within valid range
   const riskScore = Math.max(0, Math.min(4, currentData.risk_score || 0));
+  const sectionColors = getRiskSectionColors(riskScore);
   
   return (
     <Card>
@@ -128,16 +157,10 @@ const AQISummaryCard: React.FC<AQISummaryCardProps> = ({ currentData, loading })
         
         <div className="mt-2">
           <h4 className="font-medium mb-1">What this means:</h4>
-          <p className={cn(
-            "text-sm p-3 rounded-md",
-            "animate-fade-in",
-            currentData.category === "Good" && "bg-green-50 text-green-800",
-            currentData.category === "Moderate" && "bg-yellow-50 text-yellow-800",
-            currentData.category === "Unhealthy for Sensitive Groups" && "bg-orange-50 text-orange-800",
-            currentData.category === "Unhealthy" && "bg-red-50 text-red-800",
-            currentData.category === "Very Unhealthy" && "bg-purple-50 text-purple-800",
-            currentData.category === "Hazardous" && "bg-red-100 text-red-900"
-          )}>
+          <p 
+            className="text-sm p-3 rounded-md animate-fade-in"
+            style={sectionColors}
+          >
             {currentData.category === "Good" && "Air quality is considered satisfactory, and air pollution poses little or no risk."}
             {currentData.category === "Moderate" && "Air quality is acceptable. However, there may be a risk for some people, particularly those who are unusually sensitive to air pollution."}
             {currentData.category === "Unhealthy for Sensitive Groups" && "Members of sensitive groups may experience health effects. The general public is less likely to be affected."}
