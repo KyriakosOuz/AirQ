@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
 import { InfoCircle } from "./InfoCircle";
+import FormattedAITip from "./FormattedAITip";
 import { 
   standardizeAqiDataPoint,
   AQI_CATEGORIES
@@ -108,6 +109,24 @@ const PersonalizedInsightCard: React.FC<PersonalizedInsightCardProps> = ({
   // Standardize the current data
   const standardizedData = standardizeAqiDataPoint(currentData);
   
+  // Mock AI tip for demonstration
+  const mockAITip = `🟡 **Moderate Risk**
+
+AI Health Recommendations
+Based on your health profile and forecasted air quality in Thessaloniki
+
+1. Limit outdoor activities during peak sun hours (10am–4pm).
+2. Wear a properly-fitted N95 mask if you go outside.
+3. Stay hydrated and avoid dehydrating beverages.
+4. Consult your doctor if symptoms worsen.
+5. Monitor daily air quality reports.
+
+- Keep rescue medication accessible if you have respiratory conditions
+- Consider using an air purifier indoors
+- Avoid vigorous exercise outdoors
+
+**Important:** These recommendations are AI-generated based on your profile and should not replace professional medical advice.`;
+  
   return (
     <Card>
       <CardHeader>
@@ -172,12 +191,18 @@ const PersonalizedInsightCard: React.FC<PersonalizedInsightCardProps> = ({
           </Card>
         )}
         
-        {/* AI Insights Placeholder */}
-        <div className="border border-dashed border-muted-foreground/50 rounded-lg p-4 bg-background/80">
-          <p className="italic text-muted-foreground">
-            🤖 Coming soon: AI-generated insights tailored to your health and forecast data.
-          </p>
-        </div>
+        {/* AI Insights with FormattedAITip */}
+        <Card className="border-dashed border-purple-300 bg-purple-50/50">
+          <CardHeader className="py-3 px-4">
+            <CardTitle className="text-base flex items-center gap-2">
+              🤖 AI-Generated Health Insights
+              <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full">Preview</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="py-2 px-4">
+            <FormattedAITip tipText={mockAITip} />
+          </CardContent>
+        </Card>
       </CardContent>
     </Card>
   );
