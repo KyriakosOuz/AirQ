@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { predictionApi } from "@/lib/api";
@@ -344,6 +343,8 @@ const ForecastPage: React.FC = () => {
               currentData={currentData}
               profile={profile}
               loading={loading}
+              aiHealthTip={aiHealthTip}
+              aiTipLoading={aiTipLoading}
             />
           </div>
         </div>

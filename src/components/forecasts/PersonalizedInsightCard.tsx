@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -70,13 +69,15 @@ interface PersonalizedInsightCardProps {
     riskLevel: string;
     personalized: boolean;
   } | null;
+  aiTipLoading?: boolean;
 }
 
 const PersonalizedInsightCard: React.FC<PersonalizedInsightCardProps> = ({ 
   currentData, 
   profile,
   loading,
-  aiHealthTip
+  aiHealthTip,
+  aiTipLoading = false
 }) => {
   const navigate = useNavigate();
   
@@ -180,25 +181,41 @@ const PersonalizedInsightCard: React.FC<PersonalizedInsightCardProps> = ({
         )}
         */}
         
-        {/* AI Insights - Using real backend data */}
-        {aiHealthTip && (
+        {/* AI Insights - Using real backend data with loading state */}
+        {(aiHealthTip || aiTipLoading) && (
           <Card className="border-dashed border-purple-300 bg-purple-50/50">
             <CardHeader className="py-3 px-4">
               <CardTitle className="text-base flex items-center gap-2">
                 🤖 AI-Generated Health Insights
-                <span className={`text-xs px-2 py-1 rounded-full ${
-                  aiHealthTip.personalized 
-                    ? 'bg-green-100 text-green-700' 
-                    : 'bg-purple-100 text-purple-700'
-                }`}>
-                  {aiHealthTip.personalized ? 'Personalized' : 'General'} • Risk: {aiHealthTip.riskLevel}
-                </span>
+                {aiTipLoading ? (
+                  <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full flex items-center gap-1">
+                    <div className="w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                    Loading...
+                  </span>
+                ) : aiHealthTip && (
+                  <span className={`text-xs px-2 py-1 rounded-full ${
+                    aiHealthTip.personalized 
+                      ? 'bg-green-100 text-green-700' 
+                      : 'bg-purple-100 text-purple-700'
+                  }`}>
+                    {aiHealthTip.personalized ? 'Personalized' : 'General'} • Risk: {aiHealthTip.riskLevel}
+                  </span>
+                )}
               </CardTitle>
             </CardHeader>
             <CardContent className="py-2 px-4">
-              <div className="text-sm leading-relaxed whitespace-pre-wrap text-gray-700 font-sans">
-                {aiHealthTip.tip}
-              </div>
+              {aiTipLoading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-4 w-5/6" />
+                  <Skeleton className="h-4 w-2/3" />
+                </div>
+              ) : (
+                <div className="text-sm leading-relaxed whitespace-pre-wrap text-gray-700 font-sans">
+                  {aiHealthTip?.tip}
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
