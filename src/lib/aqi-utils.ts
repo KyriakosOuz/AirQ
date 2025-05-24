@@ -94,7 +94,7 @@ export const AQI_THRESHOLDS: Record<Pollutant, Array<[number, string]>> = {
     [200, "unhealthy"],
     [Infinity, "very-unhealthy"]
   ]
-];
+};
 
 // Function to determine AQI level based on pollutant value
 export function getAqiLevelForPollutant(pollutant: Pollutant, value: number): AqiLevel {
