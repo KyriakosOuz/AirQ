@@ -122,8 +122,12 @@ const AQISummaryCard: React.FC<AQISummaryCardProps> = ({ currentData, loading, p
   const standardizedData = standardizeAqiDataPoint(currentData);
   const sectionColors = getRiskSectionColors(standardizedData.riskScore);
   
-  // Clean category name from emojis
-  const cleanCategory = removeEmojis(standardizedData.category);
+  // Get the personalized risk category based on the actual risk score
+  const personalizedRiskCategory = getCategoryByRiskScore(standardizedData.riskScore);
+  const cleanPersonalizedCategory = removeEmojis(personalizedRiskCategory);
+  
+  // Clean general category name from emojis for display
+  const cleanGeneralCategory = removeEmojis(standardizedData.category);
   
   // Get the proper pollutant display name - ensure we use the correct pollutant from current data
   const pollutantDisplayName = getPollutantDisplayName(currentData.pollutant || standardizedData.pollutant);
@@ -148,10 +152,10 @@ const AQISummaryCard: React.FC<AQISummaryCardProps> = ({ currentData, loading, p
             {standardizedData.riskScore}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-gray-900 truncate">Your Risk: {cleanCategory}</p>
+            <p className="text-sm font-semibold text-gray-900 truncate">Your Risk: {cleanPersonalizedCategory}</p>
             <p className="text-xs text-gray-600 truncate">{pollutantDisplayName}: {standardizedData.value.toFixed(1)} μg/m³</p>
             <p className="text-xs text-muted-foreground">
-              General AQI: <span className="font-medium">{cleanCategory}</span>
+              General AQI: <span className="font-medium">{cleanGeneralCategory}</span>
             </p>
           </div>
         </div>
@@ -162,7 +166,7 @@ const AQISummaryCard: React.FC<AQISummaryCardProps> = ({ currentData, loading, p
             className="text-xs leading-relaxed p-2 rounded-md animate-fade-in"
             style={sectionColors}
           >
-            {getPersonalizedRiskExplanation(standardizedData.riskScore, standardizedData.category, profile)}
+            {getPersonalizedRiskExplanation(standardizedData.riskScore, personalizedRiskCategory, profile)}
           </p>
         </div>
         
