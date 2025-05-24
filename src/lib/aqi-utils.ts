@@ -3,6 +3,13 @@ import { AqiLevel, Pollutant } from "./types";
 
 // Define AQI thresholds for different pollutants
 export const AQI_THRESHOLDS: Record<Pollutant, Array<[number, string]>> = {
+  "pollution": [
+    [1, "good"],
+    [2, "moderate"],
+    [3, "unhealthy-sensitive"],
+    [4, "unhealthy"],
+    [Infinity, "very-unhealthy"]
+  ],
   "no2_conc": [
     [40, "good"],
     [100, "moderate"],
