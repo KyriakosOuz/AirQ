@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { predictionApi } from "@/lib/api";
@@ -7,10 +8,10 @@ import { useUserStore } from "@/stores/userStore";
 import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { startOfMonth, startOfWeek, endOfMonth, endOfWeek, addDays, addMonths, addWeeks } from "date-fns";
-import { ForecastControls } from "@/components/forecasts/ForecastControls";
-import { ForecastVisualization } from "@/components/forecasts/ForecastVisualization";
-import { AQISummaryCard } from "@/components/forecasts/AQISummaryCard";
-import { PersonalizedInsightCard } from "@/components/forecasts/PersonalizedInsightCard";
+import ForecastControls from "@/components/forecasts/ForecastControls";
+import ForecastVisualization from "@/components/forecasts/ForecastVisualization";
+import AQISummaryCard from "@/components/forecasts/AQISummaryCard";
+import PersonalizedInsightCard from "@/components/forecasts/PersonalizedInsightCard";
 import { healthApi } from "@/lib/api";
 import { getPollutantDisplayName } from "@/lib/aqi-standardization";
 
