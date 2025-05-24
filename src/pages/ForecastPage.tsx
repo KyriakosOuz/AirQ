@@ -9,27 +9,13 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { startOfMonth, startOfWeek, endOfMonth, endOfWeek, addDays, addMonths, addWeeks } from "date-fns";
 import AIHealthTipCard from "@/components/forecasts/AIHealthTipCard";
 import { healthApi } from "@/lib/api";
+import { getPollutantDisplayName } from "@/lib/aqi-standardization";
 
 // Import our components
 import ForecastControls from "@/components/forecasts/ForecastControls";
 import ForecastVisualization from "@/components/forecasts/ForecastVisualization";
 import AQISummaryCard from "@/components/forecasts/AQISummaryCard";
 import PersonalizedInsightCard from "@/components/forecasts/PersonalizedInsightCard";
-
-// Function to get display name for pollutant
-const getPollutantDisplay = (pollutantCode: string): string => {
-  const map: Record<string, string> = {
-    "pollution": "Averaged risk from 5 pollutants",
-    "no2_conc": "NO₂",
-    "o3_conc": "O₃",
-    "so2_conc": "SO₂",
-    "co_conc": "CO",
-    "no_conc": "NO",
-    "pm10_conc": "PM10",
-    "pm25_conc": "PM2.5"
-  };
-  return map[pollutantCode] || pollutantCode;
-};
 
 // Main ForecastPage component
 const ForecastPage: React.FC = () => {
@@ -178,7 +164,6 @@ const ForecastPage: React.FC = () => {
       };
 
       // Add user profile data for personalization if available
-      // Make sure we properly serialize the profile data and don't send [object Object]
       if (profile && (profile.age || profile.has_asthma || profile.has_heart_disease || 
                      profile.has_lung_disease || profile.has_diabetes || profile.is_smoker)) {
         // Create a clean user profile object with only the health-related fields
@@ -204,10 +189,10 @@ const ForecastPage: React.FC = () => {
       if (response.success && response.data) {
         const { forecast, current } = response.data;
         
-        // Enhance forecast data with additional display properties
+        // Enhance forecast data with additional display properties using standardized system
         const enhancedForecast = forecast.map(item => ({
           ...item,
-          pollutant_display: getPollutantDisplay(pollutant)
+          pollutant_display: getPollutantDisplayName(pollutant)
         }));
         
         setForecastData(enhancedForecast);
@@ -216,11 +201,11 @@ const ForecastPage: React.FC = () => {
         if (current) {
           setCurrentData({
             ...current,
-            pollutant_display: getPollutantDisplay(pollutant)
+            pollutant_display: getPollutantDisplayName(pollutant)
           });
         }
         
-        toast.success(`Updated personalized forecast for ${getPollutantDisplay(pollutant)} in ${region}`);
+        toast.success(`Updated personalized forecast for ${getPollutantDisplayName(pollutant)} in ${region}`);
         
         // Load AI health tip after successful forecast load
         loadAIHealthTip();
@@ -286,14 +271,14 @@ const ForecastPage: React.FC = () => {
         forecastMode="daterange"
         startDate={startDate}
         endDate={endDate}
-        onRegionChange={handleRegionChange}
-        onPollutantChange={handlePollutantChange}
-        onFrequencyChange={handleFrequencyChange}
+        onRegionChange={setRegion}
+        onPollutantChange={setPollutant}
+        onFrequencyChange={setFrequency}
         onPeriodsChange={() => {}} // Empty handler as we don't use periods anymore
-        onChartTypeChange={handleChartTypeChange}
+        onChartTypeChange={setChartType}
         onForecastModeChange={() => {}} // Empty handler as we don't switch modes anymore
-        onStartDateChange={handleStartDateChange}
-        onEndDateChange={handleEndDateChange}
+        onStartDateChange={setStartDate}
+        onEndDateChange={setEndDate}
         onUpdateForecast={loadForecastData}
       />
 

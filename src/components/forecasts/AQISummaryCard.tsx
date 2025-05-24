@@ -5,11 +5,18 @@ import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getRiskColor, getRiskLabel } from "@/lib/aqi-utils";
+import { 
+  standardizeAqiDataPoint, 
+  getColorByRiskScore, 
+  getCategoryByRiskScore,
+  normalizeRiskScore,
+  getAqiDescription,
+  getPollutantDisplayName
+} from "@/lib/aqi-standardization";
 
 // Function to get lighter background and darker text colors based on risk score
 const getRiskSectionColors = (riskScore: number): { backgroundColor: string; color: string } => {
-  const baseColor = getRiskColor(riskScore);
+  const baseColor = getColorByRiskScore(riskScore);
   
   // Convert hex to RGB for manipulation
   const hexToRgb = (hex: string) => {
@@ -35,36 +42,13 @@ const getRiskSectionColors = (riskScore: number): { backgroundColor: string; col
   return { backgroundColor, color: textColor };
 };
 
-// Function to get pollutant display name
-const getPollutantDisplay = (pollutantCode: string): string => {
-  const map: Record<string, string> = {
-    "no2_conc": "NO₂",
-    "o3_conc": "O₃",
-    "so2_conc": "SO₂",
-    "co_conc": "CO",
-    "no_conc": "NO",
-    "pm10_conc": "PM10",
-    "pm25_conc": "PM2.5"
-  };
-  return map[pollutantCode] || pollutantCode;
-};
-
 // Function to get personalized risk explanation based on user profile and risk score
-const getPersonalizedRiskExplanation = (riskScore: number, profile: any): string => {
+const getPersonalizedRiskExplanation = (riskScore: number, category: string, profile: any): string => {
   const hasHealthConditions = profile?.has_asthma || profile?.has_heart_disease || 
     profile?.has_lung_disease || profile?.has_diabetes || profile?.is_smoker;
   const isElderly = profile?.age && profile.age > 65;
   
-  const baseExplanations = [
-    "", // Index 0 - unused
-    "Based on your health profile, air quality poses minimal risk to your health today.",
-    "Given your health conditions, you may experience mild symptoms. Consider limiting prolonged outdoor activities.",
-    "Your health profile indicates moderate risk. Sensitive individuals should reduce outdoor exertion.",
-    "Your personal risk is elevated due to your health conditions. Limit outdoor activities and consider staying indoors.",
-    "Your health profile puts you at very high risk. Avoid outdoor activities and stay indoors when possible."
-  ];
-  
-  let explanation = baseExplanations[riskScore] || "Air quality risk assessment unavailable.";
+  let baseExplanation = getAqiDescription(category);
   
   // Add specific health condition context
   if (hasHealthConditions || isElderly) {
@@ -77,11 +61,11 @@ const getPersonalizedRiskExplanation = (riskScore: number, profile: any): string
     if (isElderly) conditions.push("age over 65");
     
     if (conditions.length > 0) {
-      explanation += ` This personalized assessment considers your ${conditions.join(", ")}.`;
+      baseExplanation += ` This personalized assessment considers your ${conditions.join(", ")}.`;
     }
   }
   
-  return explanation;
+  return baseExplanation;
 };
 
 interface AQISummaryCardProps {
@@ -127,18 +111,16 @@ const AQISummaryCard: React.FC<AQISummaryCardProps> = ({ currentData, loading, p
     );
   }
 
-  // Ensure risk_score is within valid range (1-5)
-  const riskScore = Math.max(1, Math.min(5, currentData.risk_score || 1));
-  const sectionColors = getRiskSectionColors(riskScore);
-  const personalizedRiskLabel = getRiskLabel(riskScore);
-  const generalCategory = currentData.category || "Unknown";
+  // Standardize the data using the new system
+  const standardizedData = standardizeAqiDataPoint(currentData);
+  const sectionColors = getRiskSectionColors(standardizedData.riskScore);
   
   return (
     <Card>
       <CardHeader>
         <CardTitle>Personal Air Quality Risk</CardTitle>
         <CardDescription>
-          Personalized assessment for today ({format(new Date(currentData.ds), "MMMM d, yyyy")})
+          Personalized assessment for today ({format(new Date(standardizedData.date), "MMMM d, yyyy")})
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -148,15 +130,15 @@ const AQISummaryCard: React.FC<AQISummaryCardProps> = ({ currentData, loading, p
               "h-16 w-16 rounded-full flex items-center justify-center text-white font-semibold text-xl",
               "transition-all duration-300 hover:scale-105"
             )}
-            style={{ backgroundColor: getRiskColor(riskScore) }}
+            style={{ backgroundColor: standardizedData.color }}
           >
-            {riskScore}
+            {standardizedData.riskScore}
           </div>
           <div>
-            <p className="text-xl font-semibold">Your Risk: {personalizedRiskLabel}</p>
-            <p className="text-lg">{getPollutantDisplay(currentData.pollutant_display || '')}: {currentData.yhat.toFixed(1)} μg/m³</p>
+            <p className="text-xl font-semibold">Your Risk: {standardizedData.category}</p>
+            <p className="text-lg">{standardizedData.pollutantDisplay}: {standardizedData.value.toFixed(1)} μg/m³</p>
             <p className="text-sm text-muted-foreground">
-              General AQI: <span className="font-semibold">{generalCategory}</span>
+              General AQI: <span className="font-semibold">{standardizedData.category}</span>
             </p>
           </div>
         </div>
@@ -167,7 +149,7 @@ const AQISummaryCard: React.FC<AQISummaryCardProps> = ({ currentData, loading, p
             className="text-sm p-3 rounded-md animate-fade-in"
             style={sectionColors}
           >
-            {getPersonalizedRiskExplanation(riskScore, profile)}
+            {getPersonalizedRiskExplanation(standardizedData.riskScore, standardizedData.category, profile)}
           </p>
         </div>
         

@@ -7,9 +7,13 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
 import { InfoCircle } from "./InfoCircle";
+import { 
+  standardizeAqiDataPoint,
+  AQI_CATEGORIES
+} from "@/lib/aqi-standardization";
 
-// Simple health advice based on risk score and user health conditions (1-5 range)
-const getHealthAdvice = (riskScore: number, profile: any) => {
+// Simple health advice based on standardized risk score and user health conditions
+const getHealthAdvice = (riskScore: number, category: string, profile: any) => {
   if (!profile) {
     return "Sign in and complete your health profile for personalized recommendations.";
   }
@@ -38,18 +42,20 @@ const getHealthAdvice = (riskScore: number, profile: any) => {
     return "⚠️ Air pollution may affect blood sugar levels. Monitor your glucose more frequently today.";
   }
   
-  // General advice based on risk score (1-5)
-  switch (riskScore) {
-    case 1:
+  // General advice based on standardized categories
+  switch (category) {
+    case AQI_CATEGORIES.GOOD:
       return "Air quality is good. Enjoy outdoor activities as normal.";
-    case 2:
+    case AQI_CATEGORIES.MODERATE:
       return "Air quality is acceptable. Unusually sensitive people should consider reducing prolonged outdoor exertion.";
-    case 3:
+    case AQI_CATEGORIES.UNHEALTHY_SENSITIVE:
       return "Members of sensitive groups may experience health effects. Consider reducing prolonged outdoor activities.";
-    case 4:
+    case AQI_CATEGORIES.UNHEALTHY:
       return "Everyone may begin to experience health effects. Limit time spent outdoors, especially if you feel symptoms.";
-    case 5:
+    case AQI_CATEGORIES.VERY_UNHEALTHY:
       return "Health alert: Everyone may experience more serious health effects. Avoid outdoor activities and wear a mask if going outside is necessary.";
+    case AQI_CATEGORIES.HAZARDOUS:
+      return "Health emergency: Everyone should avoid all outdoor activities. Stay indoors with air purification if possible.";
     default:
       return "Monitor air quality and adjust activities accordingly.";
   }
@@ -99,6 +105,9 @@ const PersonalizedInsightCard: React.FC<PersonalizedInsightCardProps> = ({
     );
   }
   
+  // Standardize the current data
+  const standardizedData = standardizeAqiDataPoint(currentData);
+  
   return (
     <Card>
       <CardHeader>
@@ -109,7 +118,7 @@ const PersonalizedInsightCard: React.FC<PersonalizedInsightCardProps> = ({
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="p-4 bg-muted rounded-lg transition-all hover:bg-muted/80">
-          <p className="text-lg">{getHealthAdvice(currentData.risk_score, profile)}</p>
+          <p className="text-lg">{getHealthAdvice(standardizedData.riskScore, standardizedData.category, profile)}</p>
         </div>
         
         {!profile && (
@@ -130,7 +139,7 @@ const PersonalizedInsightCard: React.FC<PersonalizedInsightCardProps> = ({
         )}
         
         {/* Protective Actions */}
-        {currentData.risk_score >= 3 && (
+        {standardizedData.riskScore >= 3 && (
           <Card className="border-dashed border-muted-foreground/30 bg-background/80">
             <CardHeader className="py-3 px-4">
               <CardTitle className="text-base flex items-center gap-1">
@@ -140,7 +149,7 @@ const PersonalizedInsightCard: React.FC<PersonalizedInsightCardProps> = ({
             </CardHeader>
             <CardContent className="py-2 px-4">
               <ul className="list-disc pl-5 space-y-1 text-sm">
-                {currentData.risk_score >= 4 && (
+                {standardizedData.riskScore >= 4 && (
                   <>
                     <li>Limit outdoor activities, especially during peak pollution hours</li>
                     <li>Keep windows closed if possible</li>
@@ -152,8 +161,11 @@ const PersonalizedInsightCard: React.FC<PersonalizedInsightCardProps> = ({
                 {(profile?.has_asthma || profile?.has_lung_disease) && (
                   <li>Keep rescue medication accessible</li>
                 )}
-                {currentData.risk_score >= 5 && (
+                {standardizedData.riskScore >= 5 && (
                   <li>Wear a N95 mask when outdoors</li>
+                )}
+                {standardizedData.riskScore >= 6 && (
+                  <li>Avoid all outdoor activities - health emergency conditions</li>
                 )}
               </ul>
             </CardContent>

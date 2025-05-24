@@ -1,0 +1,166 @@
+
+import { Pollutant } from "./types";
+
+// Standardized AQI categories with consistent naming
+export const AQI_CATEGORIES = {
+  GOOD: "Good",
+  MODERATE: "Moderate", 
+  UNHEALTHY_SENSITIVE: "Unhealthy for Sensitive Groups",
+  UNHEALTHY: "Unhealthy",
+  VERY_UNHEALTHY: "Very Unhealthy",
+  HAZARDOUS: "Hazardous"
+} as const;
+
+export type AqiCategory = typeof AQI_CATEGORIES[keyof typeof AQI_CATEGORIES];
+
+// Standardized risk scores (1-6 to include hazardous)
+export const RISK_SCORES = {
+  GOOD: 1,
+  MODERATE: 2,
+  UNHEALTHY_SENSITIVE: 3,
+  UNHEALTHY: 4,
+  VERY_UNHEALTHY: 5,
+  HAZARDOUS: 6
+} as const;
+
+// Color mapping for both categories and risk scores
+export const AQI_COLORS = {
+  [AQI_CATEGORIES.GOOD]: "#22c55e",
+  [AQI_CATEGORIES.MODERATE]: "#eab308",
+  [AQI_CATEGORIES.UNHEALTHY_SENSITIVE]: "#f97316",
+  [AQI_CATEGORIES.UNHEALTHY]: "#ef4444",
+  [AQI_CATEGORIES.VERY_UNHEALTHY]: "#9333ea",
+  [AQI_CATEGORIES.HAZARDOUS]: "#7f1d1d"
+};
+
+// Risk score to category mapping
+export const RISK_SCORE_TO_CATEGORY: Record<number, AqiCategory> = {
+  1: AQI_CATEGORIES.GOOD,
+  2: AQI_CATEGORIES.MODERATE,
+  3: AQI_CATEGORIES.UNHEALTHY_SENSITIVE,
+  4: AQI_CATEGORIES.UNHEALTHY,
+  5: AQI_CATEGORIES.VERY_UNHEALTHY,
+  6: AQI_CATEGORIES.HAZARDOUS
+};
+
+// Category to risk score mapping
+export const CATEGORY_TO_RISK_SCORE: Record<AqiCategory, number> = {
+  [AQI_CATEGORIES.GOOD]: 1,
+  [AQI_CATEGORIES.MODERATE]: 2,
+  [AQI_CATEGORIES.UNHEALTHY_SENSITIVE]: 3,
+  [AQI_CATEGORIES.UNHEALTHY]: 4,
+  [AQI_CATEGORIES.VERY_UNHEALTHY]: 5,
+  [AQI_CATEGORIES.HAZARDOUS]: 6
+};
+
+// Standardized functions
+export const getColorByCategory = (category: string): string => {
+  return AQI_COLORS[category as AqiCategory] || "#6b7280";
+};
+
+export const getColorByRiskScore = (riskScore: number): string => {
+  const category = RISK_SCORE_TO_CATEGORY[riskScore];
+  return category ? AQI_COLORS[category] : "#6b7280";
+};
+
+export const getCategoryByRiskScore = (riskScore: number): AqiCategory => {
+  return RISK_SCORE_TO_CATEGORY[riskScore] || AQI_CATEGORIES.MODERATE;
+};
+
+export const getRiskScoreByCategory = (category: string): number => {
+  return CATEGORY_TO_RISK_SCORE[category as AqiCategory] || 2;
+};
+
+// Validate and normalize risk scores
+export const normalizeRiskScore = (riskScore: number | undefined | null): number => {
+  if (typeof riskScore !== 'number' || isNaN(riskScore)) {
+    return 2; // Default to moderate
+  }
+  return Math.max(1, Math.min(6, Math.round(riskScore)));
+};
+
+// Validate and normalize categories
+export const normalizeCategory = (category: string | undefined | null): AqiCategory => {
+  if (!category) return AQI_CATEGORIES.MODERATE;
+  
+  // Check if it's already a valid category
+  const validCategories = Object.values(AQI_CATEGORIES);
+  if (validCategories.includes(category as AqiCategory)) {
+    return category as AqiCategory;
+  }
+  
+  // Try to map common variations
+  const categoryLower = category.toLowerCase();
+  if (categoryLower.includes('good')) return AQI_CATEGORIES.GOOD;
+  if (categoryLower.includes('moderate')) return AQI_CATEGORIES.MODERATE;
+  if (categoryLower.includes('sensitive')) return AQI_CATEGORIES.UNHEALTHY_SENSITIVE;
+  if (categoryLower.includes('unhealthy') && !categoryLower.includes('very')) return AQI_CATEGORIES.UNHEALTHY;
+  if (categoryLower.includes('very')) return AQI_CATEGORIES.VERY_UNHEALTHY;
+  if (categoryLower.includes('hazardous')) return AQI_CATEGORIES.HAZARDOUS;
+  
+  return AQI_CATEGORIES.MODERATE; // Default fallback
+};
+
+// Get AQI description
+export const getAqiDescription = (category: AqiCategory): string => {
+  switch (category) {
+    case AQI_CATEGORIES.GOOD:
+      return "Air quality is considered satisfactory, and air pollution poses little or no risk.";
+    case AQI_CATEGORIES.MODERATE:
+      return "Air quality is acceptable; however, for some pollutants there may be a moderate health concern for a very small number of people.";
+    case AQI_CATEGORIES.UNHEALTHY_SENSITIVE:
+      return "Members of sensitive groups may experience health effects. The general public is not likely to be affected.";
+    case AQI_CATEGORIES.UNHEALTHY:
+      return "Everyone may begin to experience health effects; members of sensitive groups may experience more serious health effects.";
+    case AQI_CATEGORIES.VERY_UNHEALTHY:
+      return "Health warnings of emergency conditions. The entire population is more likely to be affected.";
+    case AQI_CATEGORIES.HAZARDOUS:
+      return "Health alert: everyone may experience more serious health effects.";
+    default:
+      return "No data available.";
+  }
+};
+
+// Pollutant display names
+export const POLLUTANT_DISPLAY_NAMES: Record<string, string> = {
+  "pollution": "Averaged risk from 5 pollutants",
+  "no2_conc": "NO₂",
+  "o3_conc": "O₃",
+  "so2_conc": "SO₂",
+  "co_conc": "CO",
+  "no_conc": "NO",
+  "pm10_conc": "PM10",
+  "pm25_conc": "PM2.5"
+};
+
+export const getPollutantDisplayName = (pollutantCode: string): string => {
+  return POLLUTANT_DISPLAY_NAMES[pollutantCode] || pollutantCode;
+};
+
+// Data validation and standardization
+export interface StandardizedAqiData {
+  riskScore: number;
+  category: AqiCategory;
+  color: string;
+  value: number;
+  pollutant: string;
+  pollutantDisplay: string;
+  date: string;
+}
+
+export const standardizeAqiDataPoint = (dataPoint: any): StandardizedAqiData => {
+  const riskScore = normalizeRiskScore(dataPoint.risk_score);
+  const category = dataPoint.category ? 
+    normalizeCategory(dataPoint.category) : 
+    getCategoryByRiskScore(riskScore);
+  
+  return {
+    riskScore,
+    category,
+    color: getColorByCategory(category),
+    value: typeof dataPoint.yhat === 'number' ? dataPoint.yhat : 0,
+    pollutant: dataPoint.pollutant || 'unknown',
+    pollutantDisplay: getPollutantDisplayName(dataPoint.pollutant || 'unknown'),
+    date: dataPoint.ds || new Date().toISOString()
+  };
+};

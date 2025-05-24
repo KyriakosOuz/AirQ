@@ -1,37 +1,71 @@
-
 import { AqiLevel, Pollutant } from "./types";
 
-// Standardized AQI risk score labels (1-5) - aligned with backend
+// Re-export everything from the new standardized system
+export * from './aqi-standardization';
+
+// Keep backward compatibility for existing imports
+import { 
+  AQI_CATEGORIES, 
+  AqiCategory,
+  getColorByCategory, 
+  getColorByRiskScore,
+  getCategoryByRiskScore,
+  normalizeRiskScore,
+  normalizeCategory,
+  getAqiDescription as getStandardizedAqiDescription
+} from './aqi-standardization';
+
+// Legacy compatibility functions - these will use the new standardized system
 export const RISK_SCORE_LABELS = [
   "", // Index 0 - unused
-  "Good",                              // 1
-  "Moderate",                          // 2
-  "Unhealthy for Sensitive Groups",    // 3
-  "Unhealthy",                         // 4
-  "Very Unhealthy"                     // 5
+  AQI_CATEGORIES.GOOD,
+  AQI_CATEGORIES.MODERATE,
+  AQI_CATEGORIES.UNHEALTHY_SENSITIVE,
+  AQI_CATEGORIES.UNHEALTHY,
+  AQI_CATEGORIES.VERY_UNHEALTHY,
+  AQI_CATEGORIES.HAZARDOUS
 ];
 
-// Standardized risk score colors (1-5) - aligned with backend
 export const RISK_SCORE_COLORS = [
   "", // Index 0 - unused
-  "#22c55e", // Green (1) - Good
-  "#eab308", // Yellow (2) - Moderate
-  "#f97316", // Orange (3) - Unhealthy for Sensitive Groups
-  "#ef4444", // Red (4) - Unhealthy
-  "#9333ea"  // Purple (5) - Very Unhealthy
+  getColorByCategory(AQI_CATEGORIES.GOOD),
+  getColorByCategory(AQI_CATEGORIES.MODERATE),
+  getColorByCategory(AQI_CATEGORIES.UNHEALTHY_SENSITIVE),
+  getColorByCategory(AQI_CATEGORIES.UNHEALTHY),
+  getColorByCategory(AQI_CATEGORIES.VERY_UNHEALTHY),
+  getColorByCategory(AQI_CATEGORIES.HAZARDOUS)
 ];
 
-// Category-based color mapping for general AQI display
+// Legacy category colors - now using standardized colors
 export const CATEGORY_COLORS: Record<string, string> = {
-  "Good": "#22c55e",
-  "Moderate": "#eab308",
-  "Unhealthy for Sensitive Groups": "#f97316",
-  "Unhealthy": "#ef4444",
-  "Very Unhealthy": "#9333ea",
-  "Hazardous": "#7f1d1d"
+  "Good": getColorByCategory(AQI_CATEGORIES.GOOD),
+  "Moderate": getColorByCategory(AQI_CATEGORIES.MODERATE),
+  "Unhealthy for Sensitive Groups": getColorByCategory(AQI_CATEGORIES.UNHEALTHY_SENSITIVE),
+  "Unhealthy": getColorByCategory(AQI_CATEGORIES.UNHEALTHY),
+  "Very Unhealthy": getColorByCategory(AQI_CATEGORIES.VERY_UNHEALTHY),
+  "Hazardous": getColorByCategory(AQI_CATEGORIES.HAZARDOUS)
 };
 
-// Label normalization mapping for CSS classes and keys
+// Legacy functions - now using standardized system
+export const getCategoryColor = (category: string): string => {
+  return getColorByCategory(category);
+};
+
+export const getRiskColor = (riskScore: number): string => {
+  return getColorByRiskScore(normalizeRiskScore(riskScore));
+};
+
+export const getRiskLabel = (riskScore: number): string => {
+  const normalizedScore = normalizeRiskScore(riskScore);
+  return getCategoryByRiskScore(normalizedScore);
+};
+
+export const getAqiDescription = (aqiLevel: AqiLevel): string => {
+  const category = normalizeCategory(aqiLevel);
+  return getStandardizedAqiDescription(category);
+};
+
+// Keep existing normalization function for backward compatibility
 export const CATEGORY_NORMALIZATION: Record<string, string> = {
   "Good": "good",
   "Moderate": "moderate", 
@@ -41,33 +75,11 @@ export const CATEGORY_NORMALIZATION: Record<string, string> = {
   "Hazardous": "hazardous"
 };
 
-// Function to get color based on backend category
-export const getCategoryColor = (category: string): string => {
-  return CATEGORY_COLORS[category] || "#6b7280"; // Gray fallback
-};
-
-// Function to safely get risk color with fallback (1-5 range)
-export const getRiskColor = (riskScore: number): string => {
-  if (riskScore < 1 || riskScore >= RISK_SCORE_COLORS.length) {
-    return "#6b7280"; // Gray fallback for invalid scores
-  }
-  return RISK_SCORE_COLORS[riskScore];
-};
-
-// Function to safely get risk label with fallback (1-5 range)
-export const getRiskLabel = (riskScore: number): string => {
-  if (riskScore < 1 || riskScore >= RISK_SCORE_LABELS.length) {
-    return "Unknown";
-  }
-  return RISK_SCORE_LABELS[riskScore];
-};
-
-// Function to normalize category labels for CSS classes
 export const normalizeCategoryLabel = (category: string): string => {
   return CATEGORY_NORMALIZATION[category] || category.toLowerCase().replace(/\s+/g, "-");
 };
 
-// Define AQI thresholds for different pollutants
+// Keep existing AQI thresholds for pollutant calculations
 export const AQI_THRESHOLDS: Record<Pollutant, Array<[number, string]>> = {
   "pollution": [
     [1, "good"],
@@ -113,10 +125,9 @@ export const AQI_THRESHOLDS: Record<Pollutant, Array<[number, string]>> = {
   ]
 };
 
-// Function to determine AQI level based on pollutant value
 export function getAqiLevelForPollutant(pollutant: Pollutant, value: number): AqiLevel {
   const thresholds = AQI_THRESHOLDS[pollutant];
-  if (!thresholds) return "moderate"; // Default if pollutant not found
+  if (!thresholds) return "moderate";
   
   for (const [threshold, level] of thresholds) {
     if (value <= threshold) {
@@ -124,25 +135,5 @@ export function getAqiLevelForPollutant(pollutant: Pollutant, value: number): Aq
     }
   }
   
-  return "hazardous"; // Default to worst case if no match
-}
-
-// Get text description for the AQI level
-export function getAqiDescription(aqiLevel: AqiLevel): string {
-  switch (aqiLevel) {
-    case "good":
-      return "Air quality is considered satisfactory, and air pollution poses little or no risk.";
-    case "moderate":
-      return "Air quality is acceptable; however, for some pollutants there may be a moderate health concern for a very small number of people.";
-    case "unhealthy-sensitive":
-      return "Members of sensitive groups may experience health effects. The general public is not likely to be affected.";
-    case "unhealthy":
-      return "Everyone may begin to experience health effects; members of sensitive groups may experience more serious health effects.";
-    case "very-unhealthy":
-      return "Health warnings of emergency conditions. The entire population is more likely to be affected.";
-    case "hazardous":
-      return "Health alert: everyone may experience more serious health effects.";
-    default:
-      return "No data available.";
-  }
+  return "hazardous";
 }

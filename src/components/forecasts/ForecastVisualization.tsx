@@ -17,26 +17,30 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { getRiskColor, getRiskLabel, getCategoryColor, RISK_SCORE_LABELS } from "@/lib/aqi-utils";
+import { 
+  standardizeAqiDataPoint,
+  getColorByRiskScore,
+  getCategoryByRiskScore,
+  AQI_CATEGORIES,
+  getColorByCategory,
+  getPollutantDisplayName
+} from "@/lib/aqi-standardization";
 
-// Custom tooltip for the forecast chart with separated general and personalized data
+// Custom tooltip for the forecast chart with standardized data display
 const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
-    const date = new Date(data.ds);
-    const riskScore = data.risk_score || 1;
-    const generalCategory = data.category || "Unknown";
-    const personalizedRisk = getRiskLabel(riskScore);
+    const standardizedData = standardizeAqiDataPoint(data);
+    const date = new Date(standardizedData.date);
     
     return (
       <div className="bg-background border rounded-md p-3 shadow-md">
         <p className="font-medium">{format(date, "MMM d, yyyy")}</p>
-        <p className="text-sm text-muted-foreground">{data.pollutant_display} Level: {data.yhat.toFixed(1)} μg/m³</p>
-        <p className="text-sm" style={{ color: getCategoryColor(generalCategory) }}>
-          General: {generalCategory}
+        <p className="text-sm text-muted-foreground">
+          {standardizedData.pollutantDisplay} Level: {standardizedData.value.toFixed(1)} μg/m³
         </p>
-        <p className="text-sm" style={{ color: getRiskColor(riskScore) }}>
-          Your risk: {riskScore} ({personalizedRisk})
+        <p className="text-sm" style={{ color: standardizedData.color }}>
+          Risk Level: {standardizedData.riskScore} ({standardizedData.category})
         </p>
       </div>
     );
@@ -63,21 +67,6 @@ const ForecastVisualization: React.FC<ForecastVisualizationProps> = ({
   periods,
   forecastMode
 }) => {
-  // Function to get display name for pollutant
-  const getPollutantDisplay = (pollutantCode: string): string => {
-    const map: Record<string, string> = {
-      "pollution": "Averaged risk from 5 pollutants",
-      "no2_conc": "NO₂",
-      "o3_conc": "O₃",
-      "so2_conc": "SO₂",
-      "co_conc": "CO",
-      "no_conc": "NO",
-      "pm10_conc": "PM10",
-      "pm25_conc": "PM2.5"
-    };
-    return map[pollutantCode] || pollutantCode;
-  };
-
   // Get frequency display name
   const getFrequencyDisplay = (freq: string): string => {
     switch (freq) {
@@ -118,11 +107,14 @@ const ForecastVisualization: React.FC<ForecastVisualizationProps> = ({
     );
   }
 
+  // Standardize all data points
+  const standardizedData = data.map(item => standardizeAqiDataPoint(item));
+
   return (
     <Card className="w-full">
       <CardHeader>
         <CardTitle>
-          {getPollutantDisplay(pollutant)} Forecast
+          {getPollutantDisplayName(pollutant)} Forecast
         </CardTitle>
         <CardDescription>
           {forecastMode === "periods" ? (
@@ -157,10 +149,13 @@ const ForecastVisualization: React.FC<ForecastVisualizationProps> = ({
                     />
                     <YAxis />
                     <Tooltip content={<CustomTooltip />} />
-                    <Bar dataKey="yhat" name={getPollutantDisplay(pollutant)}>
-                      {data.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={getCategoryColor(entry.category || "Moderate")} />
-                      ))}
+                    <Bar dataKey="yhat" name={getPollutantDisplayName(pollutant)}>
+                      {data.map((entry, index) => {
+                        const standardized = standardizeAqiDataPoint(entry);
+                        return (
+                          <Cell key={`cell-${index}`} fill={standardized.color} />
+                        );
+                      })}
                     </Bar>
                   </BarChart>
                 ) : (
@@ -182,17 +177,18 @@ const ForecastVisualization: React.FC<ForecastVisualizationProps> = ({
                     <Line 
                       type="monotone" 
                       dataKey="yhat" 
-                      name={getPollutantDisplay(pollutant)}
+                      name={getPollutantDisplayName(pollutant)}
                       stroke="#6366f1"
                       strokeWidth={2}
                       dot={(props) => {
                         const { cx, cy, payload } = props;
+                        const standardized = standardizeAqiDataPoint(payload);
                         return (
                           <circle 
                             cx={cx} 
                             cy={cy} 
                             r={5} 
-                            fill={getCategoryColor(payload.category || "Moderate")} 
+                            fill={standardized.color} 
                             stroke="none"
                           />
                         );
@@ -203,15 +199,15 @@ const ForecastVisualization: React.FC<ForecastVisualizationProps> = ({
               </ResponsiveContainer>
             </div>
             
-            {/* Updated Risk Legend using standardized labels (1-5) */}
+            {/* Updated Risk Legend using standardized system */}
             <div className="mt-4 flex flex-wrap gap-2 justify-center">
-              {RISK_SCORE_LABELS.slice(1).map((label, index) => (
-                <div key={label} className="flex items-center space-x-1">
+              {Object.entries(AQI_CATEGORIES).map(([key, category], index) => (
+                <div key={category} className="flex items-center space-x-1">
                   <div 
                     className="h-3 w-3 rounded-full" 
-                    style={{ backgroundColor: getRiskColor(index + 1) }}
+                    style={{ backgroundColor: getColorByCategory(category) }}
                   ></div>
-                  <span className="text-xs">{index + 1}: {label}</span>
+                  <span className="text-xs">{index + 1}: {category}</span>
                 </div>
               ))}
             </div>
