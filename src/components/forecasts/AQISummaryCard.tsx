@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { format } from "date-fns";
@@ -91,9 +92,11 @@ interface AQISummaryCardProps {
   currentData: any | null;
   loading: boolean;
   profile?: any;
+  startDate?: Date;
+  endDate?: Date;
 }
 
-const AQISummaryCard: React.FC<AQISummaryCardProps> = ({ currentData, loading, profile }) => {
+const AQISummaryCard: React.FC<AQISummaryCardProps> = ({ currentData, loading, profile, startDate, endDate }) => {
   if (loading) {
     return (
       <Card>
@@ -145,12 +148,23 @@ const AQISummaryCard: React.FC<AQISummaryCardProps> = ({ currentData, loading, p
   const pollutantToDisplay = currentData.pollutant || standardizedData.pollutant || "pollution";
   const pollutantDisplayName = getCardPollutantDisplayName(pollutantToDisplay);
   
+  // Format the date range for the description
+  const getDateRangeDescription = () => {
+    if (startDate && endDate) {
+      const startFormatted = format(startDate, "MMM do");
+      const endFormatted = format(endDate, "MMM do");
+      return `Personalized assessment for ${startFormatted} to ${endFormatted}`;
+    }
+    // Fallback to current data date if start/end dates are not available
+    return `Personalized assessment for ${format(new Date(standardizedData.date), "MMM d, yyyy")}`;
+  };
+  
   return (
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="text-base">Personal Air Quality Risk</CardTitle>
         <CardDescription className="text-xs">
-          Personalized assessment for {format(new Date(standardizedData.date), "MMM d, yyyy")}
+          {getDateRangeDescription()}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
