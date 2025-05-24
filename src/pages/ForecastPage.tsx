@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { predictionApi } from "@/lib/api";
@@ -280,33 +281,6 @@ const ForecastPage: React.FC = () => {
   // Handler for chart type change
   const handleChartTypeChange = (type: "bar" | "line") => {
     setChartType(type);
-  };
-  
-  // Handler for start date change
-  const handleStartDateChange = (date: Date | undefined) => {
-    if (!date) {
-      setStartDate(undefined);
-      setEndDate(undefined);
-      return;
-    }
-    
-    const adjustedDate = getFrequencyAdjustedDate(date, frequency, false);
-    setStartDate(adjustedDate);
-    
-    // Auto-adjust end date based on frequency
-    const { minDate } = getValidEndDates(adjustedDate, frequency);
-    setEndDate(minDate);
-  };
-  
-  // Handler for end date change
-  const handleEndDateChange = (date: Date | undefined) => {
-    if (!date || !startDate) {
-      setEndDate(undefined);
-      return;
-    }
-    
-    const adjustedDate = getFrequencyAdjustedDate(date, frequency, true);
-    setEndDate(adjustedDate);
   };
   
   return (
