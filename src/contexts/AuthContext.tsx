@@ -133,7 +133,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       if (data) {
         // Create a typed profile with all required fields
-        // ensuring we have defaults for fields that might not exist in the database
         const profile: UserProfile = {
           id: data.user_id,
           email: user?.email || '',
@@ -141,10 +140,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           has_asthma: data.has_asthma || false,
           is_smoker: data.is_smoker || false,
           has_heart_disease: data.has_heart_disease || false,
-          // Handle potentially missing fields with defaults
-          has_diabetes: false, // Default since it's missing in DB
-          has_lung_disease: false, // Default since it's missing in DB
-          // Handle role with proper type casting
+          has_diabetes: data.has_diabetes || false,
+          has_lung_disease: data.has_lung_disease || false,
           role: (data.role as UserRole) || 'user'
         };
         
@@ -172,14 +169,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { error: new Error('User not authenticated') };
       }
       
-      // Prepare data object with only fields that exist in the database
+      // Prepare data object with all health fields
       const dbData = {
         user_id: user.id,
         age: profileData.age,
         has_asthma: profileData.has_asthma,
         is_smoker: profileData.is_smoker,
         has_heart_disease: profileData.has_heart_disease,
-        // Note: has_diabetes and has_lung_disease are intentionally omitted since they don't exist in DB
+        has_diabetes: profileData.has_diabetes,
+        has_lung_disease: profileData.has_lung_disease,
         updated_at: new Date().toISOString(),
       };
       
@@ -193,8 +191,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { error };
       }
       
-      // Update local state - we maintain all fields in the local state
-      // even if some aren't in the database yet
+      // Update local state
       if (userProfile) {
         updateProfile({
           ...userProfile,
