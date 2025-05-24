@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -64,12 +65,18 @@ interface PersonalizedInsightCardProps {
   currentData: any | null;
   profile: any;
   loading: boolean;
+  aiHealthTip?: {
+    tip: string;
+    riskLevel: string;
+    personalized: boolean;
+  } | null;
 }
 
 const PersonalizedInsightCard: React.FC<PersonalizedInsightCardProps> = ({ 
   currentData, 
   profile,
-  loading
+  loading,
+  aiHealthTip
 }) => {
   const navigate = useNavigate();
   
@@ -106,22 +113,6 @@ const PersonalizedInsightCard: React.FC<PersonalizedInsightCardProps> = ({
   
   // Standardize the current data
   const standardizedData = standardizeAqiDataPoint(currentData);
-  
-  // Mock AI tip for demonstration - plain text version
-  const mockAITip = `Moderate Risk - AI Health Recommendations
-
-Based on your health profile and forecasted air quality in Thessaloniki:
-
-• Limit outdoor activities during peak sun hours (10am–4pm)
-• Wear a properly-fitted N95 mask if you go outside
-• Stay hydrated and avoid dehydrating beverages
-• Consult your doctor if symptoms worsen
-• Monitor daily air quality reports
-• Keep rescue medication accessible if you have respiratory conditions
-• Consider using an air purifier indoors
-• Avoid vigorous exercise outdoors
-
-Important: These recommendations are AI-generated based on your profile and should not replace professional medical advice.`;
   
   return (
     <Card>
@@ -189,20 +180,28 @@ Important: These recommendations are AI-generated based on your profile and shou
         )}
         */}
         
-        {/* AI Insights - Simple text version */}
-        <Card className="border-dashed border-purple-300 bg-purple-50/50">
-          <CardHeader className="py-3 px-4">
-            <CardTitle className="text-base flex items-center gap-2">
-              🤖 AI-Generated Health Insights
-              <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full">Preview</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="py-2 px-4">
-            <div className="text-sm leading-relaxed whitespace-pre-wrap text-gray-700 font-sans">
-              {mockAITip}
-            </div>
-          </CardContent>
-        </Card>
+        {/* AI Insights - Using real backend data */}
+        {aiHealthTip && (
+          <Card className="border-dashed border-purple-300 bg-purple-50/50">
+            <CardHeader className="py-3 px-4">
+              <CardTitle className="text-base flex items-center gap-2">
+                🤖 AI-Generated Health Insights
+                <span className={`text-xs px-2 py-1 rounded-full ${
+                  aiHealthTip.personalized 
+                    ? 'bg-green-100 text-green-700' 
+                    : 'bg-purple-100 text-purple-700'
+                }`}>
+                  {aiHealthTip.personalized ? 'Personalized' : 'General'} • Risk: {aiHealthTip.riskLevel}
+                </span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="py-2 px-4">
+              <div className="text-sm leading-relaxed whitespace-pre-wrap text-gray-700 font-sans">
+                {aiHealthTip.tip}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </CardContent>
     </Card>
   );
