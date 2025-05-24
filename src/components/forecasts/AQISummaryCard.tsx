@@ -11,7 +11,9 @@ import {
   getCategoryByRiskScore,
   normalizeRiskScore,
   getAqiDescription,
-  getPollutantDisplayName
+  getPollutantDisplayName,
+  AqiCategory,
+  normalizeCategory
 } from "@/lib/aqi-standardization";
 
 // Function to get lighter background and darker text colors based on risk score
@@ -43,7 +45,7 @@ const getRiskSectionColors = (riskScore: number): { backgroundColor: string; col
 };
 
 // Function to get personalized risk explanation based on user profile and risk score
-const getPersonalizedRiskExplanation = (riskScore: number, category: string, profile: any): string => {
+const getPersonalizedRiskExplanation = (riskScore: number, category: AqiCategory, profile: any): string => {
   const hasHealthConditions = profile?.has_asthma || profile?.has_heart_disease || 
     profile?.has_lung_disease || profile?.has_diabetes || profile?.is_smoker;
   const isElderly = profile?.age && profile.age > 65;
