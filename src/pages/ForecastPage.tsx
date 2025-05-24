@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { predictionApi } from "@/lib/api";
@@ -8,6 +7,8 @@ import { useUserStore } from "@/stores/userStore";
 import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { startOfMonth, startOfWeek, endOfMonth, endOfWeek, addDays, addMonths, addWeeks } from "date-fns";
+import AIHealthTipCard from "@/components/forecasts/AIHealthTipCard";
+import { healthApi } from "@/lib/api";
 
 // Import our components
 import ForecastControls from "@/components/forecasts/ForecastControls";
@@ -48,6 +49,15 @@ const ForecastPage: React.FC = () => {
   const [forecastData, setForecastData] = useState<any[]>([]);
   const [currentData, setCurrentData] = useState<any>(null);
   const [initialLoad, setInitialLoad] = useState(true);
+  
+  // Add state for AI health tip
+  const [aiHealthTip, setAiHealthTip] = useState<{
+    tip: string;
+    riskLevel: string;
+    personalized: boolean;
+  } | null>(null);
+  const [aiTipLoading, setAiTipLoading] = useState(false);
+  const [aiTipError, setAiTipError] = useState<string | null>(null);
   
   // Get user profile from store
   const { profile } = useUserStore();
@@ -104,6 +114,37 @@ const ForecastPage: React.FC = () => {
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
+  };
+
+  // Function to load AI health tip
+  const loadAIHealthTip = async () => {
+    if (!startDate || !endDate) return;
+    
+    setAiTipLoading(true);
+    setAiTipError(null);
+    
+    try {
+      const start = formatDateForApi(startDate);
+      const end = formatDateForApi(endDate);
+      
+      const response = await healthApi.getAIHealthTip({
+        region,
+        pollutant,
+        start_date: start,
+        end_date: end
+      });
+      
+      if (response.success && response.data) {
+        setAiHealthTip(response.data);
+      } else {
+        setAiTipError(response.error || "Failed to load AI health tip");
+      }
+    } catch (error) {
+      setAiTipError("Error loading AI health tip");
+      console.error("Error loading AI health tip:", error);
+    } finally {
+      setAiTipLoading(false);
+    }
   };
 
   // Function to load forecast data from API
@@ -180,6 +221,9 @@ const ForecastPage: React.FC = () => {
         }
         
         toast.success(`Updated personalized forecast for ${getPollutantDisplay(pollutant)} in ${region}`);
+        
+        // Load AI health tip after successful forecast load
+        loadAIHealthTip();
       } else {
         toast.error("Failed to load forecast data");
         console.error("Failed to load forecast:", response.error);
@@ -271,6 +315,17 @@ const ForecastPage: React.FC = () => {
             No forecast data available. Please update your selection and try again.
           </AlertDescription>
         </Alert>
+      )}
+      
+      {/* AI Health Tip Section */}
+      {!initialLoad && (
+        <AIHealthTipCard
+          tip={aiHealthTip?.tip || null}
+          riskLevel={aiHealthTip?.riskLevel || null}
+          personalized={aiHealthTip?.personalized || false}
+          loading={aiTipLoading}
+          error={aiTipError}
+        />
       )}
       
       {/* Forecast Chart Section */}

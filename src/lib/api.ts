@@ -735,6 +735,21 @@ export const healthApi = {
     } as any).toString();
     
     return fetchWithAuth<HealthTip>(`/health/tip/?${queryParams}`);
+  },
+  
+  // Add new AI health tip endpoint
+  getAIHealthTip: async (params: { 
+    region: string; 
+    pollutant: string; 
+    start_date: string; 
+    end_date: string; 
+  }) => {
+    const queryParams = new URLSearchParams(params as any).toString();
+    return fetchWithAuth<{
+      tip: string;
+      riskLevel: string;
+      personalized: boolean;
+    }>(`/models/forecast/health-tip/?${queryParams}`);
   }
 };
 
