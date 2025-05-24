@@ -191,7 +191,9 @@ export type Database = {
           age: number | null
           created_at: string | null
           has_asthma: boolean | null
+          has_diabetes: boolean | null
           has_heart_disease: boolean | null
+          has_lung_disease: boolean | null
           is_smoker: boolean | null
           role: string | null
           updated_at: string | null
@@ -201,7 +203,9 @@ export type Database = {
           age?: number | null
           created_at?: string | null
           has_asthma?: boolean | null
+          has_diabetes?: boolean | null
           has_heart_disease?: boolean | null
+          has_lung_disease?: boolean | null
           is_smoker?: boolean | null
           role?: string | null
           updated_at?: string | null
@@ -211,7 +215,9 @@ export type Database = {
           age?: number | null
           created_at?: string | null
           has_asthma?: boolean | null
+          has_diabetes?: boolean | null
           has_heart_disease?: boolean | null
+          has_lung_disease?: boolean | null
           is_smoker?: boolean | null
           role?: string | null
           updated_at?: string | null
