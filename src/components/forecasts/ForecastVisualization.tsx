@@ -17,32 +17,22 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
-// Updated risk score color mapping to handle all possible values (0-9)
+// Updated risk score color mapping to match backend (0-4)
 const RISK_COLORS = [
   "#22c55e", // Green (0) - Good
-  "#65a30d", // Light Green (1) - Good
-  "#eab308", // Yellow (2) - Moderate
-  "#f59e0b", // Amber (3) - Moderate
-  "#f97316", // Orange (4) - Unhealthy for Sensitive Groups
-  "#ea580c", // Dark Orange (5) - Unhealthy for Sensitive Groups
-  "#ef4444", // Red (6) - Unhealthy
-  "#dc2626", // Dark Red (7) - Very Unhealthy
-  "#9333ea", // Purple (8) - Very Unhealthy
-  "#7c2d12"  // Dark Brown (9) - Hazardous
+  "#eab308", // Yellow (1) - Moderate
+  "#f97316", // Orange (2) - Unhealthy for Sensitive Groups
+  "#ef4444", // Red (3) - Unhealthy
+  "#9333ea"  // Purple (4) - Very Unhealthy
 ];
 
-// Updated risk score to description mapping to handle all possible values (0-9)
+// Updated risk score to description mapping (0-4)
 const RISK_DESCRIPTIONS = [
   "Good",                              // 0
-  "Good",                              // 1
-  "Moderate",                          // 2
-  "Moderate",                          // 3
-  "Unhealthy for Sensitive Groups",    // 4
-  "Unhealthy for Sensitive Groups",    // 5
-  "Unhealthy",                         // 6
-  "Very Unhealthy",                    // 7
-  "Very Unhealthy",                    // 8
-  "Hazardous"                          // 9
+  "Moderate",                          // 1
+  "Unhealthy for Sensitive Groups",    // 2
+  "Unhealthy",                         // 3
+  "Very Unhealthy"                     // 4
 ];
 
 // Function to safely get risk color with fallback

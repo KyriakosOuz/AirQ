@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { format } from "date-fns";
@@ -6,32 +5,22 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 
-// Updated risk Score color mapping to match ForecastVisualization (0-9)
+// Updated risk Score color mapping to match backend (0-4)
 const RISK_COLORS = [
   "#22c55e", // Green (0) - Good
-  "#65a30d", // Light Green (1) - Good
-  "#eab308", // Yellow (2) - Moderate
-  "#f59e0b", // Amber (3) - Moderate
-  "#f97316", // Orange (4) - Unhealthy for Sensitive Groups
-  "#ea580c", // Dark Orange (5) - Unhealthy for Sensitive Groups
-  "#ef4444", // Red (6) - Unhealthy
-  "#dc2626", // Dark Red (7) - Very Unhealthy
-  "#9333ea", // Purple (8) - Very Unhealthy
-  "#7c2d12"  // Dark Brown (9) - Hazardous
+  "#eab308", // Yellow (1) - Moderate
+  "#f97316", // Orange (2) - Unhealthy for Sensitive Groups
+  "#ef4444", // Red (3) - Unhealthy
+  "#9333ea"  // Purple (4) - Very Unhealthy
 ];
 
-// Updated risk score to AQI category mapping (0-9)
+// Updated risk score to AQI category mapping (0-4)
 const RISK_DESCRIPTIONS = [
   "Good",                              // 0
-  "Good",                              // 1
-  "Moderate",                          // 2
-  "Moderate",                          // 3
-  "Unhealthy for Sensitive Groups",    // 4
-  "Unhealthy for Sensitive Groups",    // 5
-  "Unhealthy",                         // 6
-  "Very Unhealthy",                    // 7
-  "Very Unhealthy",                    // 8
-  "Hazardous"                          // 9
+  "Moderate",                          // 1
+  "Unhealthy for Sensitive Groups",    // 2
+  "Unhealthy",                         // 3
+  "Very Unhealthy"                     // 4
 ];
 
 // Function to safely get risk color with fallback
@@ -107,7 +96,7 @@ const AQISummaryCard: React.FC<AQISummaryCardProps> = ({ currentData, loading })
   }
 
   // Ensure risk_score is within valid range
-  const riskScore = Math.max(0, Math.min(9, currentData.risk_score || 0));
+  const riskScore = Math.max(0, Math.min(4, currentData.risk_score || 0));
   
   return (
     <Card>
