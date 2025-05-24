@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { format } from "date-fns";
@@ -145,7 +144,7 @@ const AQISummaryCard: React.FC<AQISummaryCardProps> = ({ currentData, loading, p
       <CardHeader className="pb-3">
         <CardTitle className="text-base">Personal Air Quality Risk</CardTitle>
         <CardDescription className="text-xs">
-          Personalized assessment for today ({format(new Date(standardizedData.date), "MMM d, yyyy")})
+          Personalized assessment for {format(new Date(standardizedData.date), "MMM d, yyyy")}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
