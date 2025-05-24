@@ -56,6 +56,7 @@ const getPersonalizedRiskExplanation = (riskScore: number, profile: any): string
   const isElderly = profile?.age && profile.age > 65;
   
   const baseExplanations = [
+    "", // Index 0 - unused
     "Based on your health profile, air quality poses minimal risk to your health today.",
     "Given your health conditions, you may experience mild symptoms. Consider limiting prolonged outdoor activities.",
     "Your health profile indicates moderate risk. Sensitive individuals should reduce outdoor exertion.",
@@ -126,8 +127,8 @@ const AQISummaryCard: React.FC<AQISummaryCardProps> = ({ currentData, loading, p
     );
   }
 
-  // Ensure risk_score is within valid range
-  const riskScore = Math.max(0, Math.min(4, currentData.risk_score || 0));
+  // Ensure risk_score is within valid range (1-5)
+  const riskScore = Math.max(1, Math.min(5, currentData.risk_score || 1));
   const sectionColors = getRiskSectionColors(riskScore);
   const personalizedRiskLabel = getRiskLabel(riskScore);
   const generalCategory = currentData.category || "Unknown";

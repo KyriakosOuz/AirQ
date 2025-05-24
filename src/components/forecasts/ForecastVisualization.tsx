@@ -17,14 +17,14 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { getRiskColor, getRiskLabel, RISK_SCORE_LABELS } from "@/lib/aqi-utils";
+import { getRiskColor, getRiskLabel, getCategoryColor, RISK_SCORE_LABELS } from "@/lib/aqi-utils";
 
 // Custom tooltip for the forecast chart with separated general and personalized data
 const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
     const date = new Date(data.ds);
-    const riskScore = data.risk_score || 0;
+    const riskScore = data.risk_score || 1;
     const generalCategory = data.category || "Unknown";
     const personalizedRisk = getRiskLabel(riskScore);
     
@@ -32,7 +32,9 @@ const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>)
       <div className="bg-background border rounded-md p-3 shadow-md">
         <p className="font-medium">{format(date, "MMM d, yyyy")}</p>
         <p className="text-sm text-muted-foreground">{data.pollutant_display} Level: {data.yhat.toFixed(1)} μg/m³</p>
-        <p className="text-sm">General: {generalCategory}</p>
+        <p className="text-sm" style={{ color: getCategoryColor(generalCategory) }}>
+          General: {generalCategory}
+        </p>
         <p className="text-sm" style={{ color: getRiskColor(riskScore) }}>
           Your risk: {riskScore} ({personalizedRisk})
         </p>
@@ -157,7 +159,7 @@ const ForecastVisualization: React.FC<ForecastVisualizationProps> = ({
                     <Tooltip content={<CustomTooltip />} />
                     <Bar dataKey="yhat" name={getPollutantDisplay(pollutant)}>
                       {data.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={getRiskColor(entry.risk_score || 0)} />
+                        <Cell key={`cell-${index}`} fill={getCategoryColor(entry.category || "Moderate")} />
                       ))}
                     </Bar>
                   </BarChart>
@@ -190,7 +192,7 @@ const ForecastVisualization: React.FC<ForecastVisualizationProps> = ({
                             cx={cx} 
                             cy={cy} 
                             r={5} 
-                            fill={getRiskColor(payload.risk_score || 0)} 
+                            fill={getCategoryColor(payload.category || "Moderate")} 
                             stroke="none"
                           />
                         );
@@ -201,15 +203,15 @@ const ForecastVisualization: React.FC<ForecastVisualizationProps> = ({
               </ResponsiveContainer>
             </div>
             
-            {/* Updated Risk Legend using standardized labels */}
+            {/* Updated Risk Legend using standardized labels (1-5) */}
             <div className="mt-4 flex flex-wrap gap-2 justify-center">
-              {RISK_SCORE_LABELS.map((label, index) => (
+              {RISK_SCORE_LABELS.slice(1).map((label, index) => (
                 <div key={label} className="flex items-center space-x-1">
                   <div 
                     className="h-3 w-3 rounded-full" 
-                    style={{ backgroundColor: getRiskColor(index) }}
+                    style={{ backgroundColor: getRiskColor(index + 1) }}
                   ></div>
-                  <span className="text-xs">{label}</span>
+                  <span className="text-xs">{index + 1}: {label}</span>
                 </div>
               ))}
             </div>

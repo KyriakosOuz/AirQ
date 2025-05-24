@@ -1,23 +1,35 @@
 
 import { AqiLevel, Pollutant } from "./types";
 
-// Standardized AQI risk score labels (0-4) - aligned with backend
+// Standardized AQI risk score labels (1-5) - aligned with backend
 export const RISK_SCORE_LABELS = [
-  "Good",                              // 0
-  "Moderate",                          // 1
-  "Unhealthy for Sensitive Groups",    // 2
-  "Unhealthy",                         // 3
-  "Very Unhealthy"                     // 4
+  "", // Index 0 - unused
+  "Good",                              // 1
+  "Moderate",                          // 2
+  "Unhealthy for Sensitive Groups",    // 3
+  "Unhealthy",                         // 4
+  "Very Unhealthy"                     // 5
 ];
 
-// Standardized risk score colors (0-4) - aligned with backend
+// Standardized risk score colors (1-5) - aligned with backend
 export const RISK_SCORE_COLORS = [
-  "#22c55e", // Green (0) - Good
-  "#eab308", // Yellow (1) - Moderate
-  "#f97316", // Orange (2) - Unhealthy for Sensitive Groups
-  "#ef4444", // Red (3) - Unhealthy
-  "#9333ea"  // Purple (4) - Very Unhealthy
+  "", // Index 0 - unused
+  "#22c55e", // Green (1) - Good
+  "#eab308", // Yellow (2) - Moderate
+  "#f97316", // Orange (3) - Unhealthy for Sensitive Groups
+  "#ef4444", // Red (4) - Unhealthy
+  "#9333ea"  // Purple (5) - Very Unhealthy
 ];
+
+// Category-based color mapping for general AQI display
+export const CATEGORY_COLORS: Record<string, string> = {
+  "Good": "#22c55e",
+  "Moderate": "#eab308",
+  "Unhealthy for Sensitive Groups": "#f97316",
+  "Unhealthy": "#ef4444",
+  "Very Unhealthy": "#9333ea",
+  "Hazardous": "#7f1d1d"
+};
 
 // Label normalization mapping for CSS classes and keys
 export const CATEGORY_NORMALIZATION: Record<string, string> = {
@@ -29,17 +41,22 @@ export const CATEGORY_NORMALIZATION: Record<string, string> = {
   "Hazardous": "hazardous"
 };
 
-// Function to safely get risk color with fallback
+// Function to get color based on backend category
+export const getCategoryColor = (category: string): string => {
+  return CATEGORY_COLORS[category] || "#6b7280"; // Gray fallback
+};
+
+// Function to safely get risk color with fallback (1-5 range)
 export const getRiskColor = (riskScore: number): string => {
-  if (riskScore < 0 || riskScore >= RISK_SCORE_COLORS.length) {
+  if (riskScore < 1 || riskScore >= RISK_SCORE_COLORS.length) {
     return "#6b7280"; // Gray fallback for invalid scores
   }
   return RISK_SCORE_COLORS[riskScore];
 };
 
-// Function to safely get risk label with fallback
+// Function to safely get risk label with fallback (1-5 range)
 export const getRiskLabel = (riskScore: number): string => {
-  if (riskScore < 0 || riskScore >= RISK_SCORE_LABELS.length) {
+  if (riskScore < 1 || riskScore >= RISK_SCORE_LABELS.length) {
     return "Unknown";
   }
   return RISK_SCORE_LABELS[riskScore];

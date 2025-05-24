@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -7,47 +8,47 @@ import { useNavigate } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
 import { InfoCircle } from "./InfoCircle";
 
-// Simple health advice based on risk score and user health conditions
+// Simple health advice based on risk score and user health conditions (1-5 range)
 const getHealthAdvice = (riskScore: number, profile: any) => {
   if (!profile) {
     return "Sign in and complete your health profile for personalized recommendations.";
   }
 
-  if (riskScore >= 3 && profile.has_asthma) {
+  if (riskScore >= 4 && profile.has_asthma) {
     return "⚠️ You may experience breathing difficulty due to asthma. Consider staying indoors today.";
   }
   
-  if (riskScore >= 2 && profile.has_lung_disease) {
+  if (riskScore >= 3 && profile.has_lung_disease) {
     return "⚠️ Your lung condition may be aggravated. Limit outdoor activities and keep medication accessible.";
   }
   
-  if (riskScore >= 2 && profile.has_heart_disease) {
+  if (riskScore >= 3 && profile.has_heart_disease) {
     return "⚠️ Heart symptoms may worsen. Avoid physical exertion outdoors and monitor your symptoms closely.";
   }
   
-  if (riskScore >= 3 && profile.age && profile.age > 65) {
+  if (riskScore >= 4 && profile.age && profile.age > 65) {
     return "⚠️ Older adults are more sensitive to air pollution. Consider staying indoors with windows closed.";
   }
   
-  if (riskScore >= 2 && profile.is_smoker) {
+  if (riskScore >= 3 && profile.is_smoker) {
     return "⚠️ The combination of smoking and air pollution increases respiratory risks. Consider reducing smoking today.";
   }
   
-  if (riskScore >= 1 && profile.has_diabetes) {
+  if (riskScore >= 2 && profile.has_diabetes) {
     return "⚠️ Air pollution may affect blood sugar levels. Monitor your glucose more frequently today.";
   }
   
-  // General advice based on risk score
+  // General advice based on risk score (1-5)
   switch (riskScore) {
-    case 0:
-      return "Air quality is good. Enjoy outdoor activities as normal.";
     case 1:
-      return "Air quality is acceptable. Unusually sensitive people should consider reducing prolonged outdoor exertion.";
+      return "Air quality is good. Enjoy outdoor activities as normal.";
     case 2:
-      return "Members of sensitive groups may experience health effects. Consider reducing prolonged outdoor activities.";
+      return "Air quality is acceptable. Unusually sensitive people should consider reducing prolonged outdoor exertion.";
     case 3:
-      return "Everyone may begin to experience health effects. Limit time spent outdoors, especially if you feel symptoms.";
+      return "Members of sensitive groups may experience health effects. Consider reducing prolonged outdoor activities.";
     case 4:
+      return "Everyone may begin to experience health effects. Limit time spent outdoors, especially if you feel symptoms.";
+    case 5:
       return "Health alert: Everyone may experience more serious health effects. Avoid outdoor activities and wear a mask if going outside is necessary.";
     default:
       return "Monitor air quality and adjust activities accordingly.";
@@ -129,7 +130,7 @@ const PersonalizedInsightCard: React.FC<PersonalizedInsightCardProps> = ({
         )}
         
         {/* Protective Actions */}
-        {currentData.risk_score >= 2 && (
+        {currentData.risk_score >= 3 && (
           <Card className="border-dashed border-muted-foreground/30 bg-background/80">
             <CardHeader className="py-3 px-4">
               <CardTitle className="text-base flex items-center gap-1">
@@ -139,7 +140,7 @@ const PersonalizedInsightCard: React.FC<PersonalizedInsightCardProps> = ({
             </CardHeader>
             <CardContent className="py-2 px-4">
               <ul className="list-disc pl-5 space-y-1 text-sm">
-                {currentData.risk_score >= 3 && (
+                {currentData.risk_score >= 4 && (
                   <>
                     <li>Limit outdoor activities, especially during peak pollution hours</li>
                     <li>Keep windows closed if possible</li>
@@ -151,7 +152,7 @@ const PersonalizedInsightCard: React.FC<PersonalizedInsightCardProps> = ({
                 {(profile?.has_asthma || profile?.has_lung_disease) && (
                   <li>Keep rescue medication accessible</li>
                 )}
-                {currentData.risk_score >= 4 && (
+                {currentData.risk_score >= 5 && (
                   <li>Wear a N95 mask when outdoors</li>
                 )}
               </ul>
