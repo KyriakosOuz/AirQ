@@ -7,15 +7,12 @@ import { useUserStore } from "@/stores/userStore";
 import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { startOfMonth, startOfWeek, endOfMonth, endOfWeek, addDays, addMonths, addWeeks } from "date-fns";
-import AIHealthTipCard from "@/components/forecasts/AIHealthTipCard";
+import { ForecastControls } from "@/components/forecasts/ForecastControls";
+import { ForecastVisualization } from "@/components/forecasts/ForecastVisualization";
+import { AQISummaryCard } from "@/components/forecasts/AQISummaryCard";
+import { PersonalizedInsightCard } from "@/components/forecasts/PersonalizedInsightCard";
 import { healthApi } from "@/lib/api";
 import { getPollutantDisplayName } from "@/lib/aqi-standardization";
-
-// Import our components
-import ForecastControls from "@/components/forecasts/ForecastControls";
-import ForecastVisualization from "@/components/forecasts/ForecastVisualization";
-import AQISummaryCard from "@/components/forecasts/AQISummaryCard";
-import PersonalizedInsightCard from "@/components/forecasts/PersonalizedInsightCard";
 
 // Main ForecastPage component
 const ForecastPage: React.FC = () => {
@@ -302,7 +299,8 @@ const ForecastPage: React.FC = () => {
         </Alert>
       )}
       
-      {/* AI Health Tip Section */}
+      {/* AI Health Tip Section - Commented out */}
+      {/* 
       {!initialLoad && (
         <AIHealthTipCard
           tip={aiHealthTip?.tip || null}
@@ -312,6 +310,7 @@ const ForecastPage: React.FC = () => {
           error={aiTipError}
         />
       )}
+      */}
       
       {/* Forecast Chart Section */}
       {(forecastData.length > 0 || loading) && (
@@ -326,22 +325,26 @@ const ForecastPage: React.FC = () => {
         />
       )}
       
-      {/* Cards Section */}
+      {/* Cards Section with adjusted proportions */}
       {!initialLoad && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Current AQI Summary Card - Now with user profile */}
-          <AQISummaryCard 
-            currentData={currentData} 
-            loading={loading}
-            profile={profile}
-          />
+        <div className="grid grid-cols-3 gap-6">
+          {/* Current AQI Summary Card - Now 33% width */}
+          <div className="col-span-1">
+            <AQISummaryCard 
+              currentData={currentData} 
+              loading={loading}
+              profile={profile}
+            />
+          </div>
           
-          {/* Personalized Insight Card */}
-          <PersonalizedInsightCard 
-            currentData={currentData}
-            profile={profile}
-            loading={loading}
-          />
+          {/* Personalized Insight Card - Now 67% width */}
+          <div className="col-span-2">
+            <PersonalizedInsightCard 
+              currentData={currentData}
+              profile={profile}
+              loading={loading}
+            />
+          </div>
         </div>
       )}
     </div>

@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -7,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
 import { InfoCircle } from "./InfoCircle";
-import FormattedAITip from "./FormattedAITip";
 import { 
   standardizeAqiDataPoint,
   AQI_CATEGORIES
@@ -109,23 +107,21 @@ const PersonalizedInsightCard: React.FC<PersonalizedInsightCardProps> = ({
   // Standardize the current data
   const standardizedData = standardizeAqiDataPoint(currentData);
   
-  // Mock AI tip for demonstration
-  const mockAITip = `🟡 **Moderate Risk**
+  // Mock AI tip for demonstration - plain text version
+  const mockAITip = `Moderate Risk - AI Health Recommendations
 
-AI Health Recommendations
-Based on your health profile and forecasted air quality in Thessaloniki
+Based on your health profile and forecasted air quality in Thessaloniki:
 
-1. Limit outdoor activities during peak sun hours (10am–4pm).
-2. Wear a properly-fitted N95 mask if you go outside.
-3. Stay hydrated and avoid dehydrating beverages.
-4. Consult your doctor if symptoms worsen.
-5. Monitor daily air quality reports.
+• Limit outdoor activities during peak sun hours (10am–4pm)
+• Wear a properly-fitted N95 mask if you go outside
+• Stay hydrated and avoid dehydrating beverages
+• Consult your doctor if symptoms worsen
+• Monitor daily air quality reports
+• Keep rescue medication accessible if you have respiratory conditions
+• Consider using an air purifier indoors
+• Avoid vigorous exercise outdoors
 
-- Keep rescue medication accessible if you have respiratory conditions
-- Consider using an air purifier indoors
-- Avoid vigorous exercise outdoors
-
-**Important:** These recommendations are AI-generated based on your profile and should not replace professional medical advice.`;
+Important: These recommendations are AI-generated based on your profile and should not replace professional medical advice.`;
   
   return (
     <Card>
@@ -191,7 +187,7 @@ Based on your health profile and forecasted air quality in Thessaloniki
           </Card>
         )}
         
-        {/* AI Insights with FormattedAITip */}
+        {/* AI Insights - Simple text version */}
         <Card className="border-dashed border-purple-300 bg-purple-50/50">
           <CardHeader className="py-3 px-4">
             <CardTitle className="text-base flex items-center gap-2">
@@ -200,7 +196,9 @@ Based on your health profile and forecasted air quality in Thessaloniki
             </CardTitle>
           </CardHeader>
           <CardContent className="py-2 px-4">
-            <FormattedAITip tipText={mockAITip} />
+            <pre className="text-xs leading-relaxed whitespace-pre-wrap text-gray-700 font-sans">
+              {mockAITip}
+            </pre>
           </CardContent>
         </Card>
       </CardContent>
