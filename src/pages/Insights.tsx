@@ -7,12 +7,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RegionSelector } from "@/components/ui/region-selector";
 import { PollutantSelector } from "@/components/ui/pollutant-selector";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { PollutionMap } from "@/components/insights/PollutionMap";
 import { insightApi } from "@/lib/api";
 import { Pollutant } from "@/lib/types";
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts";
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, PolarGrid, PolarAngleAxis, PolarRadiusAxis, RadialBarChart, RadialBar } from "recharts";
 import { toast } from "sonner";
-import { AlertCircle, TrendingUp, Calendar, Trophy, MapPin } from "lucide-react";
+import { AlertCircle, TrendingUp, Calendar, Trophy } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 // Chart configuration for consistent styling
@@ -79,17 +78,12 @@ const Insights: React.FC = () => {
     setLoading(true);
     setErrors({});
     
-    console.log('Fetching insights for:', { region, pollutant, year });
-    
     try {
       // Fetch trend data
-      console.log('Fetching trend data...');
       const trendResponse = await insightApi.getTrend({ 
         pollutant, 
         region 
       });
-      
-      console.log('Trend response:', trendResponse);
       
       if (trendResponse.success && trendResponse.data) {
         const transformedTrendData = trendResponse.data.labels.map((yearLabel, index) => ({
@@ -108,13 +102,10 @@ const Insights: React.FC = () => {
       }
       
       // Fetch seasonal data
-      console.log('Fetching seasonal data...');
       const seasonalResponse = await insightApi.getSeasonality({ 
         pollutant, 
         region 
       });
-      
-      console.log('Seasonal response:', seasonalResponse);
       
       if (seasonalResponse.success && seasonalResponse.data) {
         const transformedSeasonalData = seasonalResponse.data.labels.map((month, index) => ({
@@ -129,17 +120,13 @@ const Insights: React.FC = () => {
       }
       
       // Fetch top polluted data
-      console.log('Fetching top polluted data...');
       const topPollutedResponse = await insightApi.getTopPolluted({
         pollutant,
         year
       });
       
-      console.log('Top polluted response:', topPollutedResponse);
-      
       if (topPollutedResponse.success && topPollutedResponse.data) {
         const safeData = Array.isArray(topPollutedResponse.data) ? topPollutedResponse.data : [];
-        console.log('Setting top polluted data:', safeData);
         setTopPollutedData(safeData);
       } else {
         console.error("Failed to fetch top polluted data:", topPollutedResponse.error);
@@ -153,11 +140,6 @@ const Insights: React.FC = () => {
     } catch (error) {
       console.error("Error fetching insights:", error);
       toast.error("Failed to load insights data");
-      setErrors({
-        trend: "Failed to load trend data",
-        seasonal: "Failed to load seasonal data", 
-        topPolluted: "Failed to load top polluted data"
-      });
     } finally {
       setLoading(false);
     }
@@ -231,7 +213,7 @@ const Insights: React.FC = () => {
       
       {/* Charts Section */}
       <Tabs defaultValue="trend" className="w-full">
-        <TabsList className="grid grid-cols-4 mb-4">
+        <TabsList className="grid grid-cols-3 mb-4">
           <TabsTrigger value="trend" className="flex items-center gap-2">
             <TrendingUp className="h-4 w-4" />
             Annual Trend
@@ -243,10 +225,6 @@ const Insights: React.FC = () => {
           <TabsTrigger value="top-polluted" className="flex items-center gap-2">
             <Trophy className="h-4 w-4" />
             Top Polluted Areas
-          </TabsTrigger>
-          <TabsTrigger value="pollution-map" className="flex items-center gap-2">
-            <MapPin className="h-4 w-4" />
-            Pollution Map
           </TabsTrigger>
         </TabsList>
         
@@ -369,17 +347,6 @@ const Insights: React.FC = () => {
               )}
             </CardContent>
           </Card>
-        </TabsContent>
-        
-        <TabsContent value="pollution-map">
-          <PollutionMap
-            data={topPollutedData}
-            pollutant={pollutant}
-            year={year}
-            unit={dataUnit}
-            loading={loading}
-            error={errors.topPolluted}
-          />
         </TabsContent>
       </Tabs>
     </div>
