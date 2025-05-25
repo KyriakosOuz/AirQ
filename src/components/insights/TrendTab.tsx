@@ -62,7 +62,7 @@ export const TrendTab: React.FC<TrendTabProps> = ({
       </CardHeader>
       <CardContent>
         {loading ? (
-          <div className="h-[400px] flex items-center justify-center">
+          <div className="h-[600px] flex items-center justify-center">
             <div className="text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
               <p className="text-muted-foreground">Loading trend data...</p>
@@ -74,9 +74,9 @@ export const TrendTab: React.FC<TrendTabProps> = ({
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         ) : data.length > 0 ? (
-          <ChartContainer config={chartConfig} className="h-[400px]">
+          <ChartContainer config={chartConfig} className="h-[600px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+              <LineChart data={data} margin={{ top: 10, right: 15, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="year" />
                 <YAxis label={{ value: dataUnit, angle: -90, position: 'insideLeft' }} />
@@ -92,7 +92,7 @@ export const TrendTab: React.FC<TrendTabProps> = ({
             </ResponsiveContainer>
           </ChartContainer>
         ) : (
-          <div className="h-[400px] flex items-center justify-center text-muted-foreground">
+          <div className="h-[600px] flex items-center justify-center text-muted-foreground">
             No trend data available
           </div>
         )}

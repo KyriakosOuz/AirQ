@@ -56,7 +56,7 @@ export const TopPollutedTab: React.FC<TopPollutedTabProps> = ({
       </CardHeader>
       <CardContent>
         {loading ? (
-          <div className="h-[400px] flex items-center justify-center">
+          <div className="h-[600px] flex items-center justify-center">
             <div className="text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
               <p className="text-muted-foreground">Loading top polluted data...</p>
@@ -68,12 +68,12 @@ export const TopPollutedTab: React.FC<TopPollutedTabProps> = ({
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         ) : data.length > 0 ? (
-          <ChartContainer config={chartConfig} className="h-[400px]">
+          <ChartContainer config={chartConfig} className="h-[600px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart 
                 layout="vertical" 
                 data={data} 
-                margin={{ top: 10, right: 30, left: 50, bottom: 0 }}
+                margin={{ top: 10, right: 15, left: 50, bottom: 0 }}
               >
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis type="number" label={{ value: dataUnit, position: 'insideBottom', offset: -5 }} />
@@ -84,7 +84,7 @@ export const TopPollutedTab: React.FC<TopPollutedTabProps> = ({
             </ResponsiveContainer>
           </ChartContainer>
         ) : (
-          <div className="h-[400px] flex items-center justify-center text-muted-foreground">
+          <div className="h-[600px] flex items-center justify-center text-muted-foreground">
             No top polluted regions data available
           </div>
         )}
