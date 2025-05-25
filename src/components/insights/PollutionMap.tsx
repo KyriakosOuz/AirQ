@@ -31,14 +31,6 @@ const getPollutionColor = (value: number, maxValue: number): string => {
   return '#32CD32'; // Lime green
 };
 
-// Calculate circle radius based on pollution value
-const getCircleRadius = (value: number, maxValue: number): number => {
-  const minRadius = 1000; // meters
-  const maxRadius = 5000; // meters
-  const intensity = value / maxValue;
-  return minRadius + (intensity * (maxRadius - minRadius));
-};
-
 interface PollutionMapProps {
   data: Array<{ name: string; value: number }>;
   pollutant: Pollutant;
@@ -118,7 +110,7 @@ export const PollutionMap: React.FC<PollutionMapProps> = ({
 
     const maxValue = Math.max(...data.map(d => d.value));
 
-    // Prepare GeoJSON data
+    // Prepare GeoJSON data with proper typing
     const features = data.map(region => {
       const regionKey = region.name.toLowerCase().replace(/\s+/g, '-');
       const coordinates = REGION_COORDINATES[regionKey];
@@ -126,22 +118,22 @@ export const PollutionMap: React.FC<PollutionMapProps> = ({
       if (!coordinates) return null;
 
       return {
-        type: 'Feature',
+        type: "Feature" as const,
         properties: {
           name: region.name,
           value: region.value,
           color: getPollutionColor(region.value, maxValue),
-          radius: getCircleRadius(region.value, maxValue)
+          intensity: region.value / maxValue
         },
         geometry: {
-          type: 'Point',
+          type: "Point" as const,
           coordinates: coordinates
         }
       };
-    }).filter(feature => feature !== null);
+    }).filter((feature): feature is NonNullable<typeof feature> => feature !== null);
 
     const geojsonData = {
-      type: 'FeatureCollection',
+      type: "FeatureCollection" as const,
       features: features
     };
 
@@ -151,25 +143,24 @@ export const PollutionMap: React.FC<PollutionMapProps> = ({
       data: geojsonData
     });
 
-    // Add circle layer for pollution areas
+    // Add circle layer for pollution areas with larger, more visible circles
     map.current.addLayer({
       id: 'pollution-circles',
       type: 'circle',
       source: 'pollution-data',
       paint: {
-        'circle-radius': {
-          type: 'exponential',
-          property: 'radius',
-          stops: [
-            [1000, 10],
-            [5000, 50]
-          ]
-        },
+        'circle-radius': [
+          'interpolate',
+          ['linear'],
+          ['get', 'intensity'],
+          0, 15,
+          1, 40
+        ],
         'circle-color': ['get', 'color'],
-        'circle-opacity': 0.6,
-        'circle-stroke-width': 2,
+        'circle-opacity': 0.7,
+        'circle-stroke-width': 3,
         'circle-stroke-color': '#ffffff',
-        'circle-stroke-opacity': 0.8
+        'circle-stroke-opacity': 1
       }
     });
 
@@ -179,16 +170,16 @@ export const PollutionMap: React.FC<PollutionMapProps> = ({
       type: 'symbol',
       source: 'pollution-data',
       layout: {
-        'text-field': ['concat', ['get', 'value'], ` ${unit}`],
+        'text-field': ['concat', ['to-string', ['get', 'value']], ` ${unit}`],
         'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
-        'text-size': 12,
+        'text-size': 14,
         'text-anchor': 'center',
         'text-offset': [0, 0]
       },
       paint: {
         'text-color': '#ffffff',
         'text-halo-color': '#000000',
-        'text-halo-width': 1
+        'text-halo-width': 2
       }
     });
 
@@ -197,8 +188,15 @@ export const PollutionMap: React.FC<PollutionMapProps> = ({
       if (!e.features || e.features.length === 0) return;
       
       const feature = e.features[0];
-      const coordinates = feature.geometry.coordinates.slice();
-      const { name, value } = feature.properties;
+      const geometry = feature.geometry;
+      
+      // Type guard to ensure we have Point geometry
+      if (geometry.type !== 'Point') return;
+      
+      const coordinates = geometry.coordinates.slice() as [number, number];
+      const { name, value } = feature.properties || {};
+
+      if (!name || value === undefined) return;
 
       // Create popup
       new mapboxgl.Popup()
@@ -207,7 +205,7 @@ export const PollutionMap: React.FC<PollutionMapProps> = ({
           <div class="p-3">
             <h3 class="font-semibold text-sm mb-1">${name}</h3>
             <p class="text-sm text-gray-600 mb-1">${getPollutantDisplayName(pollutant)}</p>
-            <p class="text-lg font-bold mb-1" style="color: ${getPollutionColor(value, maxValue)}">${value.toFixed(2)} ${unit}</p>
+            <p class="text-lg font-bold mb-1" style="color: ${getPollutionColor(value, maxValue)}">${Number(value).toFixed(2)} ${unit}</p>
             <p class="text-xs text-gray-500">Year: ${year}</p>
           </div>
         `)
@@ -266,7 +264,7 @@ export const PollutionMap: React.FC<PollutionMapProps> = ({
               <span>High</span>
             </div>
             <div className="text-center text-xs text-muted-foreground">
-              Circle size represents pollution intensity. Click on areas for details.
+              Circle size and color represent pollution intensity. Click on areas for details.
             </div>
           </div>
           
