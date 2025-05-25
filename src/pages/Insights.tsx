@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { insightApi } from "@/lib/api";
@@ -20,8 +21,6 @@ const Insights: React.FC = () => {
   const [region, setRegion] = useState("thessaloniki");
   const [pollutant, setPollutant] = useState<Pollutant>("no2_conc");
   const [year, setYear] = useState<number>(2023);
-  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
-  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
   const [selectedYear, setSelectedYear] = useState<number | undefined>(undefined);
   const [isAvailabilityOpen, setIsAvailabilityOpen] = useState(true);
   
@@ -95,16 +94,9 @@ const Insights: React.FC = () => {
     setErrors(prev => ({ ...prev, seasonal: undefined }));
     
     try {
-      console.log("Fetching seasonal data for:", { pollutant, region, year, startDate, endDate });
+      console.log("Fetching seasonal data for:", { pollutant, region, year });
       
-      // Prepare API parameters with optional date range
-      const apiParams: any = { pollutant, region, year };
-      if (startDate && endDate) {
-        apiParams.startDate = startDate.toISOString().split('T')[0];
-        apiParams.endDate = endDate.toISOString().split('T')[0];
-      }
-      
-      const seasonalResponse = await insightApi.getSeasonality(apiParams);
+      const seasonalResponse = await insightApi.getSeasonality({ pollutant, region, year });
       
       console.log("Seasonal API response:", seasonalResponse);
       
@@ -141,18 +133,9 @@ const Insights: React.FC = () => {
     setErrors(prev => ({ ...prev, topPolluted: undefined }));
     
     try {
-      console.log("Fetching top polluted data for:", { pollutant, startDate });
+      console.log("Fetching top polluted data for:", { pollutant, year });
       
-      // For top polluted, use the date if available, otherwise use current year
-      const apiParams: any = { pollutant };
-      if (startDate) {
-        // Extract year from the selected date
-        apiParams.year = startDate.getFullYear();
-      } else {
-        apiParams.year = new Date().getFullYear();
-      }
-      
-      const topPollutedResponse = await insightApi.getTopPolluted(apiParams);
+      const topPollutedResponse = await insightApi.getTopPolluted({ pollutant, year });
       
       console.log("Top polluted API response:", topPollutedResponse);
       
@@ -223,7 +206,7 @@ const Insights: React.FC = () => {
     } else if (activeTab === "top-polluted") {
       fetchTopPollutedData();
     }
-  }, [activeTab, region, pollutant, year, startDate, endDate]);
+  }, [activeTab, region, pollutant, year]);
 
   const handleTabChange = (value: string) => {
     setActiveTab(value);
@@ -239,17 +222,6 @@ const Insights: React.FC = () => {
   
   const handleYearChange = (value: string) => {
     setYear(parseInt(value));
-  };
-
-  const handleStartDateChange = (date: Date | undefined) => {
-    setStartDate(date);
-    if (date && endDate && date > endDate) {
-      setEndDate(undefined);
-    }
-  };
-
-  const handleEndDateChange = (date: Date | undefined) => {
-    setEndDate(date);
   };
 
   const isLoading = trendLoading || seasonalLoading || topPollutedLoading;
@@ -298,10 +270,8 @@ const Insights: React.FC = () => {
       {/* Current Selection Breadcrumb */}
       <CurrentSelectionBreadcrumb
         region={region}
-        year={activeTab === "seasonality" ? year : selectedYear}
+        year={activeTab === "seasonality" || activeTab === "top-polluted" ? year : selectedYear}
         pollutant={pollutant}
-        startDate={startDate}
-        endDate={endDate}
       />
       
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
@@ -326,13 +296,9 @@ const Insights: React.FC = () => {
           region={region}
           pollutant={pollutant}
           year={year}
-          startDate={startDate}
-          endDate={endDate}
           onRegionChange={handleRegionChange}
           onPollutantChange={handlePollutantChange}
           onYearChange={handleYearChange}
-          onStartDateChange={handleStartDateChange}
-          onEndDateChange={handleEndDateChange}
           loading={isLoading}
         />
         
@@ -362,7 +328,7 @@ const Insights: React.FC = () => {
         <TabsContent value="top-polluted">
           <TopPollutedTab
             pollutant={pollutant}
-            year={startDate ? startDate.getFullYear() : new Date().getFullYear()}
+            year={year}
             data={topPollutedData}
             loading={topPollutedLoading}
             error={errors.topPolluted}
