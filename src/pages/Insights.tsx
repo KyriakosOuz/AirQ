@@ -80,20 +80,32 @@ const Insights: React.FC = () => {
     
     try {
       // Fetch trend data
+      console.log("Fetching trend data for:", { pollutant, region });
       const trendResponse = await insightApi.getTrend({ 
         pollutant, 
         region 
       });
       
+      console.log("Trend API response:", trendResponse);
+      
       if (trendResponse.success && trendResponse.data) {
-        const transformedTrendData = trendResponse.data.labels.map((yearLabel, index) => ({
-          year: yearLabel,
-          value: trendResponse.data.values[index],
-          delta: trendResponse.data.deltas?.[index] || 0
-        }));
-        setTrendData(transformedTrendData);
-        if (trendResponse.data.unit) {
-          setDataUnit(trendResponse.data.unit);
+        // Extract data from response.trend structure
+        const trendSection = trendResponse.data.trend;
+        if (trendSection && trendSection.labels && trendSection.values) {
+          const transformedTrendData = trendSection.labels.map((yearLabel, index) => ({
+            year: yearLabel,
+            value: trendSection.values[index],
+            delta: trendSection.deltas?.[index] || 0
+          }));
+          setTrendData(transformedTrendData);
+          if (trendSection.unit) {
+            setDataUnit(trendSection.unit);
+          }
+          console.log("Transformed trend data:", transformedTrendData);
+        } else {
+          console.error("Invalid trend data structure:", trendResponse.data);
+          setErrors(prev => ({ ...prev, trend: "Invalid trend data structure" }));
+          setTrendData([]);
         }
       } else {
         console.error("Failed to fetch trend data:", trendResponse.error);
@@ -102,17 +114,29 @@ const Insights: React.FC = () => {
       }
       
       // Fetch seasonal data
+      console.log("Fetching seasonal data for:", { pollutant, region });
       const seasonalResponse = await insightApi.getSeasonality({ 
         pollutant, 
         region 
       });
       
+      console.log("Seasonal API response:", seasonalResponse);
+      
       if (seasonalResponse.success && seasonalResponse.data) {
-        const transformedSeasonalData = seasonalResponse.data.labels.map((month, index) => ({
-          month,
-          value: seasonalResponse.data.values[index]
-        }));
-        setSeasonalData(transformedSeasonalData);
+        // Extract data from response.seasonal_avg structure
+        const seasonalSection = seasonalResponse.data.seasonal_avg;
+        if (seasonalSection && seasonalSection.labels && seasonalSection.values) {
+          const transformedSeasonalData = seasonalSection.labels.map((month, index) => ({
+            month,
+            value: seasonalSection.values[index]
+          }));
+          setSeasonalData(transformedSeasonalData);
+          console.log("Transformed seasonal data:", transformedSeasonalData);
+        } else {
+          console.error("Invalid seasonal data structure:", seasonalResponse.data);
+          setErrors(prev => ({ ...prev, seasonal: "Invalid seasonal data structure" }));
+          setSeasonalData([]);
+        }
       } else {
         console.error("Failed to fetch seasonality data:", seasonalResponse.error);
         setErrors(prev => ({ ...prev, seasonal: "Seasonal data unavailable" }));
@@ -120,14 +144,29 @@ const Insights: React.FC = () => {
       }
       
       // Fetch top polluted data
+      console.log("Fetching top polluted data for:", { pollutant, year });
       const topPollutedResponse = await insightApi.getTopPolluted({
         pollutant,
         year
       });
       
+      console.log("Top polluted API response:", topPollutedResponse);
+      
       if (topPollutedResponse.success && topPollutedResponse.data) {
-        const safeData = Array.isArray(topPollutedResponse.data) ? topPollutedResponse.data : [];
-        setTopPollutedData(safeData);
+        // Extract data from response.top_regions structure
+        const topRegions = topPollutedResponse.data.top_regions;
+        if (Array.isArray(topRegions)) {
+          const transformedTopPollutedData = topRegions.map(({ region, average }) => ({
+            name: region,
+            value: average
+          }));
+          setTopPollutedData(transformedTopPollutedData);
+          console.log("Transformed top polluted data:", transformedTopPollutedData);
+        } else {
+          console.error("Invalid top polluted data structure:", topPollutedResponse.data);
+          setErrors(prev => ({ ...prev, topPolluted: "Invalid top polluted data structure" }));
+          setTopPollutedData([]);
+        }
       } else {
         console.error("Failed to fetch top polluted data:", topPollutedResponse.error);
         setErrors(prev => ({ ...prev, topPolluted: "Top polluted regions data unavailable" }));
