@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { userApi } from "@/lib/api";
 import { useUserStore } from "@/stores/userStore";
 import { toast } from "sonner";
@@ -20,6 +21,9 @@ const profileFormSchema = z.object({
   has_heart_disease: z.boolean().optional(),
   has_diabetes: z.boolean().optional(),
   has_lung_disease: z.boolean().optional(),
+  accept_terms: z.boolean().refine((val) => val === true, {
+    message: "You must accept the terms and conditions to save your health profile",
+  }),
 });
 
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
@@ -40,6 +44,7 @@ const ProfilePage: React.FC = () => {
       has_heart_disease: profile?.has_heart_disease || false,
       has_diabetes: profile?.has_diabetes || false,
       has_lung_disease: profile?.has_lung_disease || false,
+      accept_terms: false,
     },
   });
   
@@ -53,6 +58,7 @@ const ProfilePage: React.FC = () => {
         has_heart_disease: profile.has_heart_disease || false,
         has_diabetes: profile.has_diabetes || false,
         has_lung_disease: profile.has_lung_disease || false,
+        accept_terms: false, // Always reset to false for new saves
       });
     }
   }, [profile, form]);
@@ -60,7 +66,7 @@ const ProfilePage: React.FC = () => {
   const onSubmit = async (data: ProfileFormValues) => {
     setSaving(true);
     try {
-      // Clean up the data for submission
+      // Clean up the data for submission (exclude accept_terms from API call)
       const profileData = {
         age: data.age || null,
         has_asthma: data.has_asthma || false,
@@ -82,6 +88,8 @@ const ProfilePage: React.FC = () => {
           };
           updateProfile(updatedProfile);
           toast.success("Profile saved successfully");
+          // Reset the terms acceptance after successful save
+          form.setValue("accept_terms", false);
         } else {
           toast.error("Could not update profile: Profile not initialized");
         }
@@ -263,6 +271,35 @@ const ProfilePage: React.FC = () => {
                       )}
                     />
                   </div>
+                </div>
+                
+                {/* Terms & Conditions Acceptance */}
+                <div className="border-t pt-6">
+                  <FormField
+                    control={form.control}
+                    name="accept_terms"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel className="text-sm font-medium">
+                            I accept the terms and conditions
+                          </FormLabel>
+                          <FormDescription className="text-sm text-muted-foreground">
+                            By checking this box, you agree that your health data will be stored securely 
+                            and used only to provide personalized air quality recommendations. We will never 
+                            share your personal health information with third parties or use it for any other 
+                            purpose without your explicit consent.
+                          </FormDescription>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
                 </div>
                 
                 <Button type="submit" disabled={saving}>
