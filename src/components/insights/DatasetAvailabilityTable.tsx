@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { CheckCircle, MinusCircle, Database, Calendar, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Pollutant } from "@/lib/types";
 
 interface DatasetAvailability {
   region: string;
@@ -25,15 +26,19 @@ interface DatasetAvailabilityMatrix {
 interface DatasetAvailabilityTableProps {
   data: DatasetAvailabilityMatrix;
   onRegionYearSelect: (region: string, year: number) => void;
+  onPollutantSelect: (region: string, pollutant: Pollutant) => void;
   selectedRegion?: string;
   selectedYear?: number;
+  selectedPollutant?: Pollutant;
 }
 
 export const DatasetAvailabilityTable: React.FC<DatasetAvailabilityTableProps> = ({
   data,
   onRegionYearSelect,
+  onPollutantSelect,
   selectedRegion,
-  selectedYear
+  selectedYear,
+  selectedPollutant
 }) => {
   const years = Array.from(
     { length: data.yearRange.max - data.yearRange.min + 1 },
@@ -56,6 +61,21 @@ export const DatasetAvailabilityTable: React.FC<DatasetAvailabilityTableProps> =
     return regionData?.pollutants || [];
   };
 
+  const mapToPollutantType = (pollutant: string): Pollutant => {
+    return pollutant as Pollutant;
+  };
+
+  const getPollutantDisplayName = (pollutant: string) => {
+    const names: Record<string, string> = {
+      'no2_conc': 'NO₂',
+      'o3_conc': 'O₃',
+      'co_conc': 'CO',
+      'no_conc': 'NO',
+      'so2_conc': 'SO₂'
+    };
+    return names[pollutant] || pollutant.replace('_conc', '').toUpperCase();
+  };
+
   return (
     <Card className="mb-6">
       <CardHeader>
@@ -66,7 +86,7 @@ export const DatasetAvailabilityTable: React.FC<DatasetAvailabilityTableProps> =
               Available Datasets
             </CardTitle>
             <CardDescription>
-              Explore historical air quality data across regions and years (2017-2024)
+              Click on regions/years to explore data, or select specific pollutants for detailed analysis
             </CardDescription>
           </div>
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
@@ -94,7 +114,7 @@ export const DatasetAvailabilityTable: React.FC<DatasetAvailabilityTableProps> =
               <span className="text-sm">No Data</span>
             </div>
             <div className="text-sm text-muted-foreground">
-              Click on available datasets to explore the data
+              Click available datasets to explore • Click pollutant badges for specific analysis
             </div>
           </div>
 
@@ -104,13 +124,26 @@ export const DatasetAvailabilityTable: React.FC<DatasetAvailabilityTableProps> =
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-48">Region</TableHead>
-                  <TableHead className="text-center">Pollutants</TableHead>
+                  <TableHead className="text-center min-w-48">Available Pollutants</TableHead>
                   {years.map(year => (
                     <TableHead key={year} className="text-center min-w-16">
                       {year}
                     </TableHead>
                   ))}
-                  <TableHead className="text-center">Total</TableHead>
+                  <TableHead className="text-center">
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="cursor-help">Total</span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="w-[200px] text-xs">
+                            Total datasets = Years with data × Number of pollutants for this region
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -122,9 +155,15 @@ export const DatasetAvailabilityTable: React.FC<DatasetAvailabilityTableProps> =
                     <TableCell className="text-center">
                       <div className="flex flex-wrap gap-1 justify-center">
                         {getRegionPollutants(regionData.region).map(pollutant => (
-                          <Badge key={pollutant} variant="secondary" className="text-xs">
-                            {pollutant.replace('_conc', '').toUpperCase()}
-                          </Badge>
+                          <Button
+                            key={pollutant}
+                            variant={selectedRegion === regionData.region && selectedPollutant === pollutant ? "default" : "secondary"}
+                            size="sm"
+                            className="h-6 px-2 text-xs"
+                            onClick={() => onPollutantSelect(regionData.region, mapToPollutantType(pollutant))}
+                          >
+                            {getPollutantDisplayName(pollutant)}
+                          </Button>
                         ))}
                       </div>
                     </TableCell>
@@ -168,7 +207,20 @@ export const DatasetAvailabilityTable: React.FC<DatasetAvailabilityTableProps> =
                       );
                     })}
                     <TableCell className="text-center">
-                      <Badge variant="outline">{regionData.totalDatasets}</Badge>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge variant="outline" className="cursor-help">
+                              {regionData.totalDatasets}
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="w-[200px] text-xs">
+                              {regionData.availableYears.length} years × {regionData.pollutants.length} pollutants = {regionData.totalDatasets} total datasets
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     </TableCell>
                   </TableRow>
                 ))}

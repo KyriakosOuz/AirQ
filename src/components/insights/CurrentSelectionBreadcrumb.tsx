@@ -54,8 +54,10 @@ export const CurrentSelectionBreadcrumb: React.FC<CurrentSelectionBreadcrumbProp
     return `${startStr} - ${endStr}`;
   };
 
-  // Don't show breadcrumb if no meaningful selection is made
-  if (!region && !year && !pollutant) {
+  // Show breadcrumb if we have meaningful selections
+  const hasSelection = region || year || pollutant || (startDate && endDate);
+  
+  if (!hasSelection) {
     return null;
   }
 
@@ -70,24 +72,28 @@ export const CurrentSelectionBreadcrumb: React.FC<CurrentSelectionBreadcrumbProp
               <MapPin className="h-3 w-3" />
               {getRegionDisplayName(region)}
             </Badge>
-            <ChevronRight className="h-3 w-3 text-muted-foreground" />
-          </>
-        )}
-        
-        {(year || (startDate && endDate)) && (
-          <>
-            <Badge variant="secondary" className="flex items-center gap-1">
-              <Calendar className="h-3 w-3" />
-              {year || formatDateRange(startDate, endDate)}
-            </Badge>
-            <ChevronRight className="h-3 w-3 text-muted-foreground" />
+            {(year || pollutant || (startDate && endDate)) && (
+              <ChevronRight className="h-3 w-3 text-muted-foreground" />
+            )}
           </>
         )}
         
         {pollutant && (
+          <>
+            <Badge variant="secondary" className="flex items-center gap-1">
+              <Atom className="h-3 w-3" />
+              {getPollutantDisplayName(pollutant)}
+            </Badge>
+            {(year || (startDate && endDate)) && (
+              <ChevronRight className="h-3 w-3 text-muted-foreground" />
+            )}
+          </>
+        )}
+        
+        {(year || (startDate && endDate)) && (
           <Badge variant="secondary" className="flex items-center gap-1">
-            <Atom className="h-3 w-3" />
-            {getPollutantDisplayName(pollutant)}
+            <Calendar className="h-3 w-3" />
+            {year || formatDateRange(startDate, endDate)}
           </Badge>
         )}
       </div>

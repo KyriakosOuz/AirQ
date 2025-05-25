@@ -12,13 +12,6 @@ import { format } from "date-fns";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { 
-  getValidEndDates, 
-  isValidEndDate, 
-  getFrequencyAdjustedDate,
-  getTodayModifiers,
-  getTodayStyles 
-} from "@/lib/date-picker-utils";
 
 interface InsightFiltersProps {
   activeTab: string;
@@ -35,7 +28,7 @@ interface InsightFiltersProps {
   loading?: boolean;
 }
 
-// Helper components for better organization
+// Helper components
 const LabelWithTooltip = ({ label, tooltip }: { label: string; tooltip: string }) => (
   <div className="flex items-center gap-1">
     <label className="text-sm font-medium">{label}</label>
@@ -56,46 +49,28 @@ const DatePickerField = ({
   label, 
   tooltip, 
   date,
-  otherDate,
-  isEndDate = false,
+  year,
   disabled = false,
   onDateChange 
 }: { 
   label: string;
   tooltip: string;
   date: Date | undefined;
-  otherDate?: Date | undefined;
-  isEndDate?: boolean;
+  year?: number;
   disabled?: boolean;
   onDateChange: (date: Date | undefined) => void;
 }) => {
-  const today = new Date();
-  
-  // Handle date selection
-  const handleDateSelect = (selectedDate: Date | undefined) => {
-    onDateChange(selectedDate);
-  };
-
-  // Get disabled dates function
+  // For seasonality tab, constrain dates to the selected year
   const getDisabledDates = (date: Date) => {
-    if (isEndDate && otherDate) {
-      // For end date, disable dates before start date
-      return date < otherDate;
+    if (year) {
+      return date.getFullYear() !== year;
     }
-    // For start date, disable future dates
-    return date > today;
+    return date > new Date();
   };
-
-  // Get modifiers for today highlighting
-  const todayModifiers = getTodayModifiers(date, today);
-  const todayStyles = getTodayStyles();
 
   return (
     <div className="space-y-2">
-      <LabelWithTooltip 
-        label={label} 
-        tooltip={tooltip} 
-      />
+      <LabelWithTooltip label={label} tooltip={tooltip} />
       <Popover>
         <PopoverTrigger asChild>
           <Button
@@ -115,13 +90,11 @@ const DatePickerField = ({
           <CalendarComponent
             mode="single"
             selected={date}
-            onSelect={handleDateSelect}
+            onSelect={onDateChange}
             disabled={getDisabledDates}
             initialFocus
-            className={cn("p-3 pointer-events-auto")}
+            className="p-3"
             weekStartsOn={1}
-            modifiers={todayModifiers}
-            modifiersStyles={todayStyles}
           />
         </PopoverContent>
       </Popover>
@@ -143,17 +116,43 @@ export const InsightFilters: React.FC<InsightFiltersProps> = ({
   onEndDateChange,
   loading = false
 }) => {
-  const years = Array.from({ length: 9 }, (_, i) => 2015 + i);
+  const years = Array.from({ length: 8 }, (_, i) => 2017 + i); // 2017-2024
 
   // Determine which filters to show based on active tab
   const showRegion = activeTab === "trend" || activeTab === "seasonality";
   const showPollutant = true; // All tabs use pollutant
-  const showYear = activeTab === "top-polluted";
-  const showDateRange = activeTab === "trend";
+  const showYear = activeTab === "seasonality"; // Only seasonality needs year selector
+  const showDateRange = activeTab === "seasonality"; // Only seasonality has date picker
+  const showSingleDate = activeTab === "top-polluted"; // Top polluted uses single date
 
   return (
     <div className="space-y-4">
-      {/* Main filters row */}
+      {/* Tab-specific filter descriptions */}
+      {activeTab === "trend" && (
+        <div className="p-3 bg-blue-50 rounded-lg">
+          <p className="text-sm text-blue-800">
+            <strong>Annual Trend:</strong> Shows historical data across all available years for the selected region and pollutant.
+          </p>
+        </div>
+      )}
+      
+      {activeTab === "seasonality" && (
+        <div className="p-3 bg-green-50 rounded-lg">
+          <p className="text-sm text-green-800">
+            <strong>Seasonality:</strong> Shows seasonal patterns for a specific year. Select region, pollutant, year, and optionally narrow down to specific dates.
+          </p>
+        </div>
+      )}
+      
+      {activeTab === "top-polluted" && (
+        <div className="p-3 bg-purple-50 rounded-lg">
+          <p className="text-sm text-purple-800">
+            <strong>Top Polluted Areas:</strong> Compares all regions for a specific pollutant and date/period.
+          </p>
+        </div>
+      )}
+
+      {/* Main filters */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {showRegion && (
           <Card>
@@ -212,32 +211,50 @@ export const InsightFilters: React.FC<InsightFiltersProps> = ({
         )}
       </div>
 
-      {/* Date range picker for Annual Trend tab */}
+      {/* Date controls for seasonality tab */}
       {showDateRange && (
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">Date Range</CardTitle>
+            <CardTitle className="text-base">Date Range (Optional)</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <DatePickerField
                 label="From Date"
-                tooltip="Select the start date for the trend analysis"
+                tooltip={`Select start date within ${year} for seasonal analysis`}
                 date={startDate}
+                year={year}
                 onDateChange={onStartDateChange || (() => {})}
                 disabled={loading}
               />
               
               <DatePickerField
                 label="To Date"
-                tooltip="Select the end date for the trend analysis"
+                tooltip={`Select end date within ${year} for seasonal analysis`}
                 date={endDate}
-                otherDate={startDate}
-                isEndDate={true}
+                year={year}
                 disabled={loading || !startDate}
                 onDateChange={onEndDateChange || (() => {})}
               />
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Single date picker for top polluted tab */}
+      {showSingleDate && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Date</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <DatePickerField
+              label="Select Date"
+              tooltip="Choose a specific date to compare pollution levels across all regions"
+              date={startDate}
+              onDateChange={onStartDateChange || (() => {})}
+              disabled={loading}
+            />
           </CardContent>
         </Card>
       )}

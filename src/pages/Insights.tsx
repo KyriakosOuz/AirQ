@@ -51,16 +51,10 @@ const Insights: React.FC = () => {
     setErrors(prev => ({ ...prev, trend: undefined }));
     
     try {
-      console.log("Fetching trend data for:", { pollutant, region, startDate, endDate });
+      console.log("Fetching trend data for:", { pollutant, region });
       
-      // Prepare API parameters
-      const apiParams: any = { pollutant, region };
-      if (startDate && endDate) {
-        apiParams.startDate = startDate.toISOString().split('T')[0];
-        apiParams.endDate = endDate.toISOString().split('T')[0];
-      }
-      
-      const trendResponse = await insightApi.getTrend(apiParams);
+      // For trend tab, we want all available years for the region/pollutant
+      const trendResponse = await insightApi.getTrend({ pollutant, region });
       
       console.log("Trend API response:", trendResponse);
       
@@ -101,11 +95,16 @@ const Insights: React.FC = () => {
     setErrors(prev => ({ ...prev, seasonal: undefined }));
     
     try {
-      console.log("Fetching seasonal data for:", { pollutant, region });
-      const seasonalResponse = await insightApi.getSeasonality({ 
-        pollutant, 
-        region 
-      });
+      console.log("Fetching seasonal data for:", { pollutant, region, year, startDate, endDate });
+      
+      // Prepare API parameters with optional date range
+      const apiParams: any = { pollutant, region, year };
+      if (startDate && endDate) {
+        apiParams.startDate = startDate.toISOString().split('T')[0];
+        apiParams.endDate = endDate.toISOString().split('T')[0];
+      }
+      
+      const seasonalResponse = await insightApi.getSeasonality(apiParams);
       
       console.log("Seasonal API response:", seasonalResponse);
       
@@ -142,11 +141,18 @@ const Insights: React.FC = () => {
     setErrors(prev => ({ ...prev, topPolluted: undefined }));
     
     try {
-      console.log("Fetching top polluted data for:", { pollutant, year });
-      const topPollutedResponse = await insightApi.getTopPolluted({
-        pollutant,
-        year
-      });
+      console.log("Fetching top polluted data for:", { pollutant, startDate });
+      
+      // For top polluted, use the date if available, otherwise use current year
+      const apiParams: any = { pollutant };
+      if (startDate) {
+        // Extract year from the selected date
+        apiParams.year = startDate.getFullYear();
+      } else {
+        apiParams.year = new Date().getFullYear();
+      }
+      
+      const topPollutedResponse = await insightApi.getTopPolluted(apiParams);
       
       console.log("Top polluted API response:", topPollutedResponse);
       
@@ -184,19 +190,28 @@ const Insights: React.FC = () => {
     setSelectedYear(selectedYear);
     setYear(selectedYear);
     
-    // Set smart date range defaults for the selected year
-    const startOfYear = new Date(selectedYear, 0, 1);
-    const endOfYear = new Date(selectedYear, 11, 31);
-    setStartDate(startOfYear);
-    setEndDate(endOfYear);
-    
-    // Switch to Annual Trend tab to show the data
+    // Switch to Annual Trend tab to show all years for this region
     setActiveTab("trend");
     
     // Close availability table to focus on data
     setIsAvailabilityOpen(false);
     
     toast.success(`Selected ${getRegionDisplayName(selectedRegion)} data for ${selectedYear}`);
+  };
+
+  // Handle pollutant selection from availability table
+  const handlePollutantSelect = (selectedRegion: string, selectedPollutant: Pollutant) => {
+    console.log("Selected region/pollutant:", selectedRegion, selectedPollutant);
+    setRegion(selectedRegion);
+    setPollutant(selectedPollutant);
+    
+    // Switch to Annual Trend tab to show trend for this pollutant
+    setActiveTab("trend");
+    
+    // Close availability table to focus on data
+    setIsAvailabilityOpen(false);
+    
+    toast.success(`Selected ${selectedPollutant.replace('_conc', '').toUpperCase()} analysis for ${getRegionDisplayName(selectedRegion)}`);
   };
 
   // Fetch data based on active tab and filters
@@ -271,8 +286,10 @@ const Insights: React.FC = () => {
             <DatasetAvailabilityTable
               data={availabilityData}
               onRegionYearSelect={handleRegionYearSelect}
+              onPollutantSelect={handlePollutantSelect}
               selectedRegion={region}
               selectedYear={selectedYear}
+              selectedPollutant={pollutant}
             />
           ) : null}
         </CollapsibleContent>
@@ -281,7 +298,7 @@ const Insights: React.FC = () => {
       {/* Current Selection Breadcrumb */}
       <CurrentSelectionBreadcrumb
         region={region}
-        year={selectedYear}
+        year={activeTab === "seasonality" ? year : selectedYear}
         pollutant={pollutant}
         startDate={startDate}
         endDate={endDate}
@@ -345,7 +362,7 @@ const Insights: React.FC = () => {
         <TabsContent value="top-polluted">
           <TopPollutedTab
             pollutant={pollutant}
-            year={year}
+            year={startDate ? startDate.getFullYear() : new Date().getFullYear()}
             data={topPollutedData}
             loading={topPollutedLoading}
             error={errors.topPolluted}
