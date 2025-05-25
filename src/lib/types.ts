@@ -1,3 +1,4 @@
+
 // Add the created_at field to the Dataset interface
 export interface Dataset {
   id: string;
@@ -76,11 +77,13 @@ export interface TrendChart {
   labels: string[];
   values: number[];
   deltas: number[];
+  unit?: string;
 }
 
 export interface SeasonalityChart {
   labels: string[];
   values: number[];
+  unit?: string;
 }
 
 // Forecast data types
