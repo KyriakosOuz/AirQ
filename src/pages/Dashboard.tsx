@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -45,11 +44,11 @@ const Dashboard: React.FC = () => {
         });
         
         if (trendResponse.success && trendResponse.data) {
-          // Convert TrendChart to array format expected by charts
-          const chartData = trendResponse.data.labels.map((label, index) => ({
+          // Convert TrendChart to array format expected by charts - access nested trend property
+          const chartData = trendResponse.data.trend.labels.map((label, index) => ({
             year: label,
-            value: trendResponse.data.values[index],
-            delta: trendResponse.data.deltas[index]
+            value: trendResponse.data.trend.values[index],
+            delta: trendResponse.data.trend.deltas[index]
           }));
           setTrendData(chartData);
         } else {
@@ -64,10 +63,10 @@ const Dashboard: React.FC = () => {
         });
         
         if (seasonalResponse.success && seasonalResponse.data) {
-          // Convert SeasonalityChart to array format expected by charts
-          const chartData = seasonalResponse.data.labels.map((label, index) => ({
+          // Convert SeasonalityChart to array format expected by charts - access nested seasonal_avg property
+          const chartData = seasonalResponse.data.seasonal_avg.labels.map((label, index) => ({
             name: label,
-            value: seasonalResponse.data.values[index]
+            value: seasonalResponse.data.seasonal_avg.values[index]
           }));
           setSeasonalData(chartData);
         } else {
@@ -136,11 +135,11 @@ const Dashboard: React.FC = () => {
       // Re-fetch trend data
       const trendResponse = await insightApi.getTrend({ pollutant, region });
       if (trendResponse.success && trendResponse.data) {
-        // Convert TrendChart to array format expected by charts
-        const chartData = trendResponse.data.labels.map((label, index) => ({
+        // Convert TrendChart to array format expected by charts - access nested trend property
+        const chartData = trendResponse.data.trend.labels.map((label, index) => ({
           year: label,
-          value: trendResponse.data.values[index],
-          delta: trendResponse.data.deltas[index]
+          value: trendResponse.data.trend.values[index],
+          delta: trendResponse.data.trend.deltas[index]
         }));
         setTrendData(chartData);
       }
@@ -148,10 +147,10 @@ const Dashboard: React.FC = () => {
       // Re-fetch seasonal data
       const seasonalResponse = await insightApi.getSeasonality({ pollutant, region });
       if (seasonalResponse.success && seasonalResponse.data) {
-        // Convert SeasonalityChart to array format expected by charts
-        const chartData = seasonalResponse.data.labels.map((label, index) => ({
+        // Convert SeasonalityChart to array format expected by charts - access nested seasonal_avg property
+        const chartData = seasonalResponse.data.seasonal_avg.labels.map((label, index) => ({
           name: label,
-          value: seasonalResponse.data.values[index]
+          value: seasonalResponse.data.seasonal_avg.values[index]
         }));
         setSeasonalData(chartData);
       }
