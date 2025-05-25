@@ -79,12 +79,17 @@ const Insights: React.FC = () => {
     setLoading(true);
     setErrors({});
     
+    console.log('Fetching insights for:', { region, pollutant, year });
+    
     try {
       // Fetch trend data
+      console.log('Fetching trend data...');
       const trendResponse = await insightApi.getTrend({ 
         pollutant, 
         region 
       });
+      
+      console.log('Trend response:', trendResponse);
       
       if (trendResponse.success && trendResponse.data) {
         const transformedTrendData = trendResponse.data.labels.map((yearLabel, index) => ({
@@ -103,10 +108,13 @@ const Insights: React.FC = () => {
       }
       
       // Fetch seasonal data
+      console.log('Fetching seasonal data...');
       const seasonalResponse = await insightApi.getSeasonality({ 
         pollutant, 
         region 
       });
+      
+      console.log('Seasonal response:', seasonalResponse);
       
       if (seasonalResponse.success && seasonalResponse.data) {
         const transformedSeasonalData = seasonalResponse.data.labels.map((month, index) => ({
@@ -121,13 +129,17 @@ const Insights: React.FC = () => {
       }
       
       // Fetch top polluted data
+      console.log('Fetching top polluted data...');
       const topPollutedResponse = await insightApi.getTopPolluted({
         pollutant,
         year
       });
       
+      console.log('Top polluted response:', topPollutedResponse);
+      
       if (topPollutedResponse.success && topPollutedResponse.data) {
         const safeData = Array.isArray(topPollutedResponse.data) ? topPollutedResponse.data : [];
+        console.log('Setting top polluted data:', safeData);
         setTopPollutedData(safeData);
       } else {
         console.error("Failed to fetch top polluted data:", topPollutedResponse.error);
@@ -141,6 +153,11 @@ const Insights: React.FC = () => {
     } catch (error) {
       console.error("Error fetching insights:", error);
       toast.error("Failed to load insights data");
+      setErrors({
+        trend: "Failed to load trend data",
+        seasonal: "Failed to load seasonal data", 
+        topPolluted: "Failed to load top polluted data"
+      });
     } finally {
       setLoading(false);
     }

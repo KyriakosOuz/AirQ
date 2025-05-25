@@ -65,6 +65,17 @@ export const PollutionMap: React.FC<PollutionMapProps> = ({
     return pollutantNames[pollutant] || pollutant;
   };
 
+  // Validate data before processing
+  const isValidData = (data: any): data is Array<{ name: string; value: number }> => {
+    return Array.isArray(data) && data.length > 0 && data.every(item => 
+      item && 
+      typeof item === 'object' && 
+      typeof item.name === 'string' && 
+      typeof item.value === 'number' && 
+      !isNaN(item.value)
+    );
+  };
+
   // Initialize map
   useEffect(() => {
     if (!mapContainer.current) return;
@@ -95,7 +106,9 @@ export const PollutionMap: React.FC<PollutionMapProps> = ({
 
   // Update pollution areas when data changes
   useEffect(() => {
-    if (!map.current || !mapLoaded || !data.length) return;
+    if (!map.current || !mapLoaded) return;
+
+    console.log('Map update effect triggered with data:', data);
 
     // Remove existing sources and layers
     if (map.current.getSource('pollution-data')) {
@@ -108,118 +121,139 @@ export const PollutionMap: React.FC<PollutionMapProps> = ({
       map.current.removeSource('pollution-data');
     }
 
-    const maxValue = Math.max(...data.map(d => d.value));
+    // Validate data before proceeding
+    if (!isValidData(data)) {
+      console.log('Invalid or empty data, skipping map update:', data);
+      return;
+    }
 
-    // Prepare GeoJSON data with proper typing
-    const features = data.map(region => {
-      const regionKey = region.name.toLowerCase().replace(/\s+/g, '-');
-      const coordinates = REGION_COORDINATES[regionKey];
-      
-      if (!coordinates) return null;
+    try {
+      const maxValue = Math.max(...data.map(d => d.value));
 
-      return {
-        type: "Feature" as const,
-        properties: {
-          name: region.name,
-          value: region.value,
-          color: getPollutionColor(region.value, maxValue),
-          intensity: region.value / maxValue
-        },
-        geometry: {
-          type: "Point" as const,
-          coordinates: coordinates
+      // Prepare GeoJSON data with proper typing
+      const features = data.map(region => {
+        const regionKey = region.name.toLowerCase().replace(/\s+/g, '-');
+        const coordinates = REGION_COORDINATES[regionKey];
+        
+        if (!coordinates) {
+          console.warn(`No coordinates found for region: ${region.name}`);
+          return null;
         }
+
+        return {
+          type: "Feature" as const,
+          properties: {
+            name: region.name,
+            value: region.value,
+            color: getPollutionColor(region.value, maxValue),
+            intensity: region.value / maxValue
+          },
+          geometry: {
+            type: "Point" as const,
+            coordinates: coordinates
+          }
+        };
+      }).filter((feature): feature is NonNullable<typeof feature> => feature !== null);
+
+      if (features.length === 0) {
+        console.log('No valid features found for mapping');
+        return;
+      }
+
+      const geojsonData = {
+        type: "FeatureCollection" as const,
+        features: features
       };
-    }).filter((feature): feature is NonNullable<typeof feature> => feature !== null);
 
-    const geojsonData = {
-      type: "FeatureCollection" as const,
-      features: features
-    };
+      console.log('Adding map data with features:', features.length);
 
-    // Add source
-    map.current.addSource('pollution-data', {
-      type: 'geojson',
-      data: geojsonData
-    });
+      // Add source
+      map.current.addSource('pollution-data', {
+        type: 'geojson',
+        data: geojsonData
+      });
 
-    // Add circle layer for pollution areas with larger, more visible circles
-    map.current.addLayer({
-      id: 'pollution-circles',
-      type: 'circle',
-      source: 'pollution-data',
-      paint: {
-        'circle-radius': [
-          'interpolate',
-          ['linear'],
-          ['get', 'intensity'],
-          0, 15,
-          1, 40
-        ],
-        'circle-color': ['get', 'color'],
-        'circle-opacity': 0.7,
-        'circle-stroke-width': 3,
-        'circle-stroke-color': '#ffffff',
-        'circle-stroke-opacity': 1
-      }
-    });
+      // Add circle layer for pollution areas with larger, more visible circles
+      map.current.addLayer({
+        id: 'pollution-circles',
+        type: 'circle',
+        source: 'pollution-data',
+        paint: {
+          'circle-radius': [
+            'interpolate',
+            ['linear'],
+            ['get', 'intensity'],
+            0, 15,
+            1, 40
+          ],
+          'circle-color': ['get', 'color'],
+          'circle-opacity': 0.7,
+          'circle-stroke-width': 3,
+          'circle-stroke-color': '#ffffff',
+          'circle-stroke-opacity': 1
+        }
+      });
 
-    // Add label layer
-    map.current.addLayer({
-      id: 'pollution-labels',
-      type: 'symbol',
-      source: 'pollution-data',
-      layout: {
-        'text-field': ['concat', ['to-string', ['get', 'value']], ` ${unit}`],
-        'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
-        'text-size': 14,
-        'text-anchor': 'center',
-        'text-offset': [0, 0]
-      },
-      paint: {
-        'text-color': '#ffffff',
-        'text-halo-color': '#000000',
-        'text-halo-width': 2
-      }
-    });
+      // Add label layer
+      map.current.addLayer({
+        id: 'pollution-labels',
+        type: 'symbol',
+        source: 'pollution-data',
+        layout: {
+          'text-field': ['concat', ['to-string', ['get', 'value']], ` ${unit}`],
+          'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+          'text-size': 14,
+          'text-anchor': 'center',
+          'text-offset': [0, 0]
+        },
+        paint: {
+          'text-color': '#ffffff',
+          'text-halo-color': '#000000',
+          'text-halo-width': 2
+        }
+      });
 
-    // Add click event for popups
-    map.current.on('click', 'pollution-circles', (e) => {
-      if (!e.features || e.features.length === 0) return;
-      
-      const feature = e.features[0];
-      const geometry = feature.geometry;
-      
-      // Type guard to ensure we have Point geometry
-      if (geometry.type !== 'Point') return;
-      
-      const coordinates = geometry.coordinates.slice() as [number, number];
-      const { name, value } = feature.properties || {};
+      // Add click event for popups
+      map.current.on('click', 'pollution-circles', (e) => {
+        if (!e.features || e.features.length === 0) return;
+        
+        const feature = e.features[0];
+        const geometry = feature.geometry;
+        
+        // Type guard to ensure we have Point geometry
+        if (geometry.type !== 'Point') return;
+        
+        const coordinates = geometry.coordinates.slice() as [number, number];
+        const { name, value } = feature.properties || {};
 
-      if (!name || value === undefined) return;
+        if (!name || value === undefined) return;
 
-      // Create popup
-      new mapboxgl.Popup()
-        .setLngLat(coordinates)
-        .setHTML(`
-          <div class="p-3">
-            <h3 class="font-semibold text-sm mb-1">${name}</h3>
-            <p class="text-sm text-gray-600 mb-1">${getPollutantDisplayName(pollutant)}</p>
-            <p class="text-lg font-bold mb-1" style="color: ${getPollutionColor(value, maxValue)}">${Number(value).toFixed(2)} ${unit}</p>
-            <p class="text-xs text-gray-500">Year: ${year}</p>
-          </div>
-        `)
-        .addTo(map.current!);
-    });
+        // Create popup
+        new mapboxgl.Popup()
+          .setLngLat(coordinates)
+          .setHTML(`
+            <div class="p-3">
+              <h3 class="font-semibold text-sm mb-1">${name}</h3>
+              <p class="text-sm text-gray-600 mb-1">${getPollutantDisplayName(pollutant)}</p>
+              <p class="text-lg font-bold mb-1" style="color: ${getPollutionColor(value, maxValue)}">${Number(value).toFixed(2)} ${unit}</p>
+              <p class="text-xs text-gray-500">Year: ${year}</p>
+            </div>
+          `)
+          .addTo(map.current!);
+      });
 
-    // Add hover effects
-    map.current.on('mouseenter', 'pollution-circles', () => {
-      map.current!.getCanvas().style.cursor = 'pointer';
-    });
+      // Add hover effects
+      map.current.on('mouseenter', 'pollution-circles', () => {
+        map.current!.getCanvas().style.cursor = 'pointer';
+      });
 
-    map.current.on('mouseleave', 'pollution-circles', () => {
-      map.current!.getCanvas().style.cursor = '';
-    });
+      map.current.on('mouseleave', 'pollution-circles', () => {
+        map.current!.getCanvas().style.cursor = '';
+      });
+
+    } catch (error) {
+      console.error('Error updating map data:', error);
+    }
 
   }, [data, pollutant, year, unit, mapLoaded]);
 
@@ -271,6 +305,12 @@ export const PollutionMap: React.FC<PollutionMapProps> = ({
           {loading && (
             <div className="text-center text-muted-foreground">
               Loading map data...
+            </div>
+          )}
+
+          {!loading && !isValidData(data) && (
+            <div className="text-center text-muted-foreground">
+              No pollution data available for mapping
             </div>
           )}
         </div>
