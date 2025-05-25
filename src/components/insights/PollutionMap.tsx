@@ -31,6 +31,14 @@ const getPollutionColor = (value: number, maxValue: number): string => {
   return '#32CD32'; // Lime green
 };
 
+// Calculate circle radius based on pollution value
+const getCircleRadius = (value: number, maxValue: number): number => {
+  const minRadius = 1000; // meters
+  const maxRadius = 5000; // meters
+  const intensity = value / maxValue;
+  return minRadius + (intensity * (maxRadius - minRadius));
+};
+
 interface PollutionMapProps {
   data: Array<{ name: string; value: number }>;
   pollutant: Pollutant;
@@ -50,7 +58,7 @@ export const PollutionMap: React.FC<PollutionMapProps> = ({
 }) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
-  const markers = useRef<mapboxgl.Marker[]>([]);
+  const [mapLoaded, setMapLoaded] = useState(false);
 
   // Helper function to get pollutant display name
   const getPollutantDisplayName = (pollutant: Pollutant) => {
@@ -83,70 +91,139 @@ export const PollutionMap: React.FC<PollutionMapProps> = ({
     // Add navigation controls
     map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
+    // Set map loaded flag when style is loaded
+    map.current.on('load', () => {
+      setMapLoaded(true);
+    });
+
     return () => {
       map.current?.remove();
     };
   }, []);
 
-  // Update markers when data changes
+  // Update pollution areas when data changes
   useEffect(() => {
-    if (!map.current || !data.length) return;
+    if (!map.current || !mapLoaded || !data.length) return;
 
-    // Clear existing markers
-    markers.current.forEach(marker => marker.remove());
-    markers.current = [];
+    // Remove existing sources and layers
+    if (map.current.getSource('pollution-data')) {
+      if (map.current.getLayer('pollution-circles')) {
+        map.current.removeLayer('pollution-circles');
+      }
+      if (map.current.getLayer('pollution-labels')) {
+        map.current.removeLayer('pollution-labels');
+      }
+      map.current.removeSource('pollution-data');
+    }
 
     const maxValue = Math.max(...data.map(d => d.value));
 
-    // Add new markers
-    data.forEach(region => {
+    // Prepare GeoJSON data
+    const features = data.map(region => {
       const regionKey = region.name.toLowerCase().replace(/\s+/g, '-');
       const coordinates = REGION_COORDINATES[regionKey];
       
-      if (!coordinates) return;
+      if (!coordinates) return null;
 
-      const color = getPollutionColor(region.value, maxValue);
-      const size = 20 + (region.value / maxValue) * 30; // Scale marker size
+      return {
+        type: 'Feature',
+        properties: {
+          name: region.name,
+          value: region.value,
+          color: getPollutionColor(region.value, maxValue),
+          radius: getCircleRadius(region.value, maxValue)
+        },
+        geometry: {
+          type: 'Point',
+          coordinates: coordinates
+        }
+      };
+    }).filter(feature => feature !== null);
 
-      // Create marker element
-      const markerElement = document.createElement('div');
-      markerElement.className = 'pollution-marker';
-      markerElement.style.cssText = `
-        width: ${size}px;
-        height: ${size}px;
-        background-color: ${color};
-        border: 2px solid white;
-        border-radius: 50%;
-        cursor: pointer;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-size: 10px;
-        font-weight: bold;
-      `;
-      markerElement.textContent = region.value.toFixed(1);
+    const geojsonData = {
+      type: 'FeatureCollection',
+      features: features
+    };
+
+    // Add source
+    map.current.addSource('pollution-data', {
+      type: 'geojson',
+      data: geojsonData
+    });
+
+    // Add circle layer for pollution areas
+    map.current.addLayer({
+      id: 'pollution-circles',
+      type: 'circle',
+      source: 'pollution-data',
+      paint: {
+        'circle-radius': {
+          type: 'exponential',
+          property: 'radius',
+          stops: [
+            [1000, 10],
+            [5000, 50]
+          ]
+        },
+        'circle-color': ['get', 'color'],
+        'circle-opacity': 0.6,
+        'circle-stroke-width': 2,
+        'circle-stroke-color': '#ffffff',
+        'circle-stroke-opacity': 0.8
+      }
+    });
+
+    // Add label layer
+    map.current.addLayer({
+      id: 'pollution-labels',
+      type: 'symbol',
+      source: 'pollution-data',
+      layout: {
+        'text-field': ['concat', ['get', 'value'], ` ${unit}`],
+        'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+        'text-size': 12,
+        'text-anchor': 'center',
+        'text-offset': [0, 0]
+      },
+      paint: {
+        'text-color': '#ffffff',
+        'text-halo-color': '#000000',
+        'text-halo-width': 1
+      }
+    });
+
+    // Add click event for popups
+    map.current.on('click', 'pollution-circles', (e) => {
+      if (!e.features || e.features.length === 0) return;
+      
+      const feature = e.features[0];
+      const coordinates = feature.geometry.coordinates.slice();
+      const { name, value } = feature.properties;
 
       // Create popup
-      const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(`
-        <div class="p-2">
-          <h3 class="font-semibold text-sm">${region.name}</h3>
-          <p class="text-sm text-gray-600">${getPollutantDisplayName(pollutant)}</p>
-          <p class="text-lg font-bold" style="color: ${color}">${region.value.toFixed(2)} ${unit}</p>
-          <p class="text-xs text-gray-500">Year: ${year}</p>
-        </div>
-      `);
-
-      // Create and add marker
-      const marker = new mapboxgl.Marker(markerElement)
+      new mapboxgl.Popup()
         .setLngLat(coordinates)
-        .setPopup(popup)
+        .setHTML(`
+          <div class="p-3">
+            <h3 class="font-semibold text-sm mb-1">${name}</h3>
+            <p class="text-sm text-gray-600 mb-1">${getPollutantDisplayName(pollutant)}</p>
+            <p class="text-lg font-bold mb-1" style="color: ${getPollutionColor(value, maxValue)}">${value.toFixed(2)} ${unit}</p>
+            <p class="text-xs text-gray-500">Year: ${year}</p>
+          </div>
+        `)
         .addTo(map.current!);
-
-      markers.current.push(marker);
     });
-  }, [data, pollutant, year, unit]);
+
+    // Add hover effects
+    map.current.on('mouseenter', 'pollution-circles', () => {
+      map.current!.getCanvas().style.cursor = 'pointer';
+    });
+
+    map.current.on('mouseleave', 'pollution-circles', () => {
+      map.current!.getCanvas().style.cursor = '';
+    });
+
+  }, [data, pollutant, year, unit, mapLoaded]);
 
   if (error) {
     return (
@@ -175,17 +252,22 @@ export const PollutionMap: React.FC<PollutionMapProps> = ({
         <div className="space-y-4">
           <div ref={mapContainer} className="h-[400px] w-full rounded-lg" />
           
-          {/* Legend */}
-          <div className="flex items-center justify-center space-x-4 text-sm">
-            <span>Low</span>
-            <div className="flex space-x-1">
-              <div className="w-4 h-4 rounded" style={{ backgroundColor: '#32CD32' }}></div>
-              <div className="w-4 h-4 rounded" style={{ backgroundColor: '#FFD700' }}></div>
-              <div className="w-4 h-4 rounded" style={{ backgroundColor: '#FFA500' }}></div>
-              <div className="w-4 h-4 rounded" style={{ backgroundColor: '#FF4500' }}></div>
-              <div className="w-4 h-4 rounded" style={{ backgroundColor: '#8B0000' }}></div>
+          {/* Enhanced Legend */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-center space-x-4 text-sm">
+              <span>Low</span>
+              <div className="flex space-x-1">
+                <div className="w-4 h-4 rounded-full" style={{ backgroundColor: '#32CD32' }}></div>
+                <div className="w-4 h-4 rounded-full" style={{ backgroundColor: '#FFD700' }}></div>
+                <div className="w-4 h-4 rounded-full" style={{ backgroundColor: '#FFA500' }}></div>
+                <div className="w-4 h-4 rounded-full" style={{ backgroundColor: '#FF4500' }}></div>
+                <div className="w-4 h-4 rounded-full" style={{ backgroundColor: '#8B0000' }}></div>
+              </div>
+              <span>High</span>
             </div>
-            <span>High</span>
+            <div className="text-center text-xs text-muted-foreground">
+              Circle size represents pollution intensity. Click on areas for details.
+            </div>
           </div>
           
           {loading && (
