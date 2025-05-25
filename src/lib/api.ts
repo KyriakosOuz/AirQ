@@ -73,6 +73,49 @@ const MOCK_DATA = {
     labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
     values: [40, 42, 45, 48, 50, 52, 55, 53, 48, 45, 43, 41]
   },
+  availability_matrix: {
+    availability: [
+      {
+        region: 'thessaloniki',
+        availableYears: [2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024],
+        pollutants: ['no2_conc', 'o3_conc', 'co_conc'],
+        totalDatasets: 24
+      },
+      {
+        region: 'ampelokipoi-menemeni',
+        availableYears: [2018, 2019, 2020, 2021, 2022, 2023, 2024],
+        pollutants: ['no2_conc', 'o3_conc'],
+        totalDatasets: 14
+      },
+      {
+        region: 'neapoli-sykies',
+        availableYears: [2019, 2020, 2021, 2022, 2023, 2024],
+        pollutants: ['no2_conc', 'co_conc'],
+        totalDatasets: 12
+      },
+      {
+        region: 'kalamaria',
+        availableYears: [2017, 2019, 2020, 2021, 2022, 2023, 2024],
+        pollutants: ['no2_conc', 'o3_conc', 'so2_conc'],
+        totalDatasets: 21
+      },
+      {
+        region: 'pavlos-melas',
+        availableYears: [2020, 2021, 2022, 2023, 2024],
+        pollutants: ['no2_conc'],
+        totalDatasets: 5
+      },
+      {
+        region: 'pylaia-chortiatis',
+        availableYears: [2021, 2022, 2023, 2024],
+        pollutants: ['no2_conc', 'o3_conc'],
+        totalDatasets: 8
+      }
+    ],
+    totalRegions: 6,
+    yearRange: { min: 2017, max: 2024 },
+    lastUpdated: new Date().toISOString()
+  },
   model_comparison: {
     models: [
       {
@@ -215,6 +258,8 @@ export const fetchWithAuth = async <T>(
         return { success: true, data: { exists: Math.random() > 0.5 } as T };
       } else if (endpoint.includes('/datasets/check-availability')) {
         return { success: true, data: { available: MOCK_DATA.dataset_availability.available } as T };
+      } else if (endpoint.includes('/datasets/availability-matrix')) {
+        return { success: true, data: MOCK_DATA.availability_matrix as T };
       }
       return { success: false, error: "API is currently unavailable. Using offline mode." };
     }
@@ -268,6 +313,8 @@ export const fetchWithAuth = async <T>(
         return { success: true, data: { exists: Math.random() > 0.5 } as T };
       } else if (endpoint.includes('/datasets/check-availability')) {
         return { success: true, data: { available: MOCK_DATA.dataset_availability.available } as T };
+      } else if (endpoint.includes('/datasets/availability-matrix')) {
+        return { success: true, data: MOCK_DATA.availability_matrix as T };
       }
       return { success: false, error: "Invalid response format from server" };
     }
@@ -308,6 +355,8 @@ export const fetchWithAuth = async <T>(
         return { success: true, data: { exists: Math.random() > 0.5 } as T };
       } else if (endpoint.includes('/datasets/check-availability')) {
         return { success: true, data: { available: MOCK_DATA.dataset_availability.available } as T };
+      } else if (endpoint.includes('/datasets/availability-matrix')) {
+        return { success: true, data: MOCK_DATA.availability_matrix as T };
       }
       return { success: false, error: "Failed to parse server response" };
     }
@@ -352,6 +401,8 @@ export const fetchWithAuth = async <T>(
         return { success: true, data: { exists: Math.random() > 0.5 } as T };
       } else if (endpoint.includes('/datasets/check-availability')) {
         return { success: true, data: { available: MOCK_DATA.dataset_availability.available } as T };
+      } else if (endpoint.includes('/datasets/availability-matrix')) {
+        return { success: true, data: MOCK_DATA.availability_matrix as T };
       }
       return { success: false, error: data.detail || "API Error" };
     }
@@ -383,6 +434,8 @@ export const fetchWithAuth = async <T>(
         return { success: true, data: { exists: Math.random() > 0.5 } as T };
       } else if (endpoint.includes('/datasets/check-availability')) {
         return { success: true, data: { available: MOCK_DATA.dataset_availability.available } as T };
+      } else if (endpoint.includes('/datasets/availability-matrix')) {
+        return { success: true, data: MOCK_DATA.availability_matrix as T };
       }
       return { success: false, error: "Request timed out. Using offline data." };
     }
@@ -405,6 +458,8 @@ export const fetchWithAuth = async <T>(
       return { success: true, data: { exists: Math.random() > 0.5 } as T };
     } else if (endpoint.includes('/datasets/check-availability')) {
       return { success: true, data: { available: MOCK_DATA.dataset_availability.available } as T };
+    } else if (endpoint.includes('/datasets/availability-matrix')) {
+      return { success: true, data: MOCK_DATA.availability_matrix as T };
     }
     return { success: false, error: "Network error. Using offline data." };
   }
@@ -474,15 +529,11 @@ export const userApi = {
 // Dataset endpoints
 export const datasetApi = {
   upload: async (formData: FormData) => {
-    // Debug log to see what's being sent
     console.log("Uploading with FormData:", [...formData.entries()]);
     
-    // Important: Do not set Content-Type header - browser will set it correctly with boundary
     return fetchWithAuth<{ dataset_id: string, file_url: string }>("/datasets/upload/", {
       method: "POST",
       body: formData,
-      // Note: Don't set Content-Type header for multipart/form-data
-      // The browser will automatically set it with the proper boundary
     });
   },
   
@@ -491,25 +542,20 @@ export const datasetApi = {
   },
   
   preview: async (datasetId: string) => {
-    // Make the request to the API
     const response = await fetchWithAuth<{
       columns: string[],
       preview?: Record<string, any>[],
       rows?: Record<string, any>[]
     }>(`/datasets/preview/${datasetId}`);
 
-    // If response is successful, transform the data to match our expected format
     if (response.success && response.data) {
-      // Create a consistent DatasetPreviewResponse structure
       const transformedData: DatasetPreviewResponse = {
         columns: response.data.columns,
-        // Use preview if it exists, otherwise use rows
         preview: response.data.preview || response.data.rows || []
       };
       return { success: true, data: transformedData };
     }
     
-    // If there was an error, return it
     return { 
       success: response.success, 
       error: response.error,
@@ -523,10 +569,23 @@ export const datasetApi = {
     });
   },
   
-  // Add the check-availability endpoint
   checkAvailability: async (region: string) => {
     const queryParams = new URLSearchParams({ region }).toString();
     return fetchWithAuth<{ available: boolean }>(`/datasets/check-availability/?${queryParams}`);
+  },
+
+  getAvailabilityMatrix: async () => {
+    return fetchWithAuth<{
+      availability: Array<{
+        region: string;
+        availableYears: number[];
+        pollutants: string[];
+        totalDatasets: number;
+      }>;
+      totalRegions: number;
+      yearRange: { min: number; max: number };
+      lastUpdated: string;
+    }>('/datasets/availability-matrix');
   }
 };
 

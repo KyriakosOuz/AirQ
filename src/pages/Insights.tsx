@@ -3,11 +3,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { insightApi } from "@/lib/api";
 import { Pollutant } from "@/lib/types";
 import { toast } from "sonner";
-import { TrendingUp, Calendar, Trophy } from "lucide-react";
+import { TrendingUp, Calendar, Trophy, Database } from "lucide-react";
 import { InsightFilters } from "@/components/insights/InsightFilters";
 import { TrendTab } from "@/components/insights/TrendTab";
 import { SeasonalityTab } from "@/components/insights/SeasonalityTab";
 import { TopPollutedTab } from "@/components/insights/TopPollutedTab";
+import { DatasetAvailabilityTable } from "@/components/insights/DatasetAvailabilityTable";
+import { CurrentSelectionBreadcrumb } from "@/components/insights/CurrentSelectionBreadcrumb";
+import { useDatasetAvailabilityMatrix } from "@/hooks/useDatasetAvailabilityMatrix";
+import { Button } from "@/components/ui/button";
+import { ChevronDown, ChevronUp } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 const Insights: React.FC = () => {
   const [activeTab, setActiveTab] = useState("trend");
@@ -16,6 +22,8 @@ const Insights: React.FC = () => {
   const [year, setYear] = useState<number>(2023);
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
+  const [selectedYear, setSelectedYear] = useState<number | undefined>(undefined);
+  const [isAvailabilityOpen, setIsAvailabilityOpen] = useState(true);
   
   // Separate loading states for each tab
   const [trendLoading, setTrendLoading] = useState(false);
@@ -27,6 +35,9 @@ const Insights: React.FC = () => {
   const [topPollutedData, setTopPollutedData] = useState<any[]>([]);
   const [dataUnit, setDataUnit] = useState("μg/m³");
   const [errors, setErrors] = useState<{ trend?: string; seasonal?: string; topPolluted?: string }>({});
+
+  // Dataset availability hook
+  const { data: availabilityData, isLoading: availabilityLoading } = useDatasetAvailabilityMatrix();
 
   // Helper function to get region display name
   const getRegionDisplayName = (region: string) => {
@@ -166,6 +177,28 @@ const Insights: React.FC = () => {
     }
   };
 
+  // Handle region/year selection from availability table
+  const handleRegionYearSelect = (selectedRegion: string, selectedYear: number) => {
+    console.log("Selected region/year:", selectedRegion, selectedYear);
+    setRegion(selectedRegion);
+    setSelectedYear(selectedYear);
+    setYear(selectedYear);
+    
+    // Set smart date range defaults for the selected year
+    const startOfYear = new Date(selectedYear, 0, 1);
+    const endOfYear = new Date(selectedYear, 11, 31);
+    setStartDate(startOfYear);
+    setEndDate(endOfYear);
+    
+    // Switch to Annual Trend tab to show the data
+    setActiveTab("trend");
+    
+    // Close availability table to focus on data
+    setIsAvailabilityOpen(false);
+    
+    toast.success(`Selected ${getRegionDisplayName(selectedRegion)} data for ${selectedYear}`);
+  };
+
   // Fetch data based on active tab and filters
   useEffect(() => {
     if (activeTab === "trend") {
@@ -211,9 +244,48 @@ const Insights: React.FC = () => {
       <div className="flex flex-col space-y-2">
         <h1 className="text-3xl font-bold tracking-tight">Air Quality Insights</h1>
         <p className="text-muted-foreground">
-          Analyze historical trends and patterns in air quality data across different regions and time periods.
+          Explore historical air quality data across different regions and time periods. Start by selecting available datasets below.
         </p>
       </div>
+
+      {/* Dataset Availability Section */}
+      <Collapsible open={isAvailabilityOpen} onOpenChange={setIsAvailabilityOpen}>
+        <CollapsibleTrigger asChild>
+          <Button variant="outline" className="w-full justify-between">
+            <div className="flex items-center gap-2">
+              <Database className="h-4 w-4" />
+              Available Datasets
+            </div>
+            {isAvailabilityOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          {availabilityLoading ? (
+            <div className="h-32 flex items-center justify-center">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+                <p className="text-muted-foreground">Loading dataset availability...</p>
+              </div>
+            </div>
+          ) : availabilityData ? (
+            <DatasetAvailabilityTable
+              data={availabilityData}
+              onRegionYearSelect={handleRegionYearSelect}
+              selectedRegion={region}
+              selectedYear={selectedYear}
+            />
+          ) : null}
+        </CollapsibleContent>
+      </Collapsible>
+
+      {/* Current Selection Breadcrumb */}
+      <CurrentSelectionBreadcrumb
+        region={region}
+        year={selectedYear}
+        pollutant={pollutant}
+        startDate={startDate}
+        endDate={endDate}
+      />
       
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
         <TabsList className="grid grid-cols-3 mb-4">
