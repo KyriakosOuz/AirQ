@@ -94,9 +94,9 @@ const Insights: React.FC = () => {
     setErrors(prev => ({ ...prev, seasonal: undefined }));
     
     try {
-      console.log("Fetching seasonal data for:", { pollutant, region, year });
+      console.log("Fetching seasonal data for:", { pollutant, region });
       
-      const seasonalResponse = await insightApi.getSeasonality({ pollutant, region, year });
+      const seasonalResponse = await insightApi.getSeasonality({ pollutant, region });
       
       console.log("Seasonal API response:", seasonalResponse);
       
@@ -270,7 +270,7 @@ const Insights: React.FC = () => {
       {/* Current Selection Breadcrumb */}
       <CurrentSelectionBreadcrumb
         region={region}
-        year={activeTab === "seasonality" || activeTab === "top-polluted" ? year : selectedYear}
+        year={activeTab === "top-polluted" ? year : selectedYear}
         pollutant={pollutant}
       />
       
