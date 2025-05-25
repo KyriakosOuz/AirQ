@@ -18,6 +18,9 @@ const REGION_COORDINATES: Record<string, [number, number]> = {
   'panorama': [23.0400, 40.5900],
 };
 
+// Mapbox access token
+const MAPBOX_TOKEN = 'pk.eyJ1IjoibmlvbW9kZSIsImEiOiJjbWIzczhobzcxczF4MmlwN2syaDFzajVwIn0.DsYH7lEKULJ1x7WJl_WcrA';
+
 // Color scheme for pollution levels
 const getPollutionColor = (value: number, maxValue: number): string => {
   const intensity = value / maxValue;
@@ -48,7 +51,6 @@ export const PollutionMap: React.FC<PollutionMapProps> = ({
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const markers = useRef<mapboxgl.Marker[]>([]);
-  const [mapboxToken, setMapboxToken] = useState<string>('');
 
   // Helper function to get pollutant display name
   const getPollutantDisplayName = (pollutant: Pollutant) => {
@@ -65,10 +67,10 @@ export const PollutionMap: React.FC<PollutionMapProps> = ({
 
   // Initialize map
   useEffect(() => {
-    if (!mapContainer.current || !mapboxToken) return;
+    if (!mapContainer.current) return;
 
     // Set Mapbox access token
-    mapboxgl.accessToken = mapboxToken;
+    mapboxgl.accessToken = MAPBOX_TOKEN;
     
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
@@ -84,7 +86,7 @@ export const PollutionMap: React.FC<PollutionMapProps> = ({
     return () => {
       map.current?.remove();
     };
-  }, [mapboxToken]);
+  }, []);
 
   // Update markers when data changes
   useEffect(() => {
@@ -170,48 +172,28 @@ export const PollutionMap: React.FC<PollutionMapProps> = ({
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {!mapboxToken ? (
-          <div className="space-y-4">
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                Please enter your Mapbox access token to view the map. You can get one from{' '}
-                <a href="https://mapbox.com/" target="_blank" rel="noopener noreferrer" className="underline">
-                  mapbox.com
-                </a>
-              </AlertDescription>
-            </Alert>
-            <input
-              type="text"
-              placeholder="Enter Mapbox access token"
-              className="w-full p-2 border rounded"
-              onChange={(e) => setMapboxToken(e.target.value)}
-            />
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <div ref={mapContainer} className="h-[400px] w-full rounded-lg" />
-            
-            {/* Legend */}
-            <div className="flex items-center justify-center space-x-4 text-sm">
-              <span>Low</span>
-              <div className="flex space-x-1">
-                <div className="w-4 h-4 rounded" style={{ backgroundColor: '#32CD32' }}></div>
-                <div className="w-4 h-4 rounded" style={{ backgroundColor: '#FFD700' }}></div>
-                <div className="w-4 h-4 rounded" style={{ backgroundColor: '#FFA500' }}></div>
-                <div className="w-4 h-4 rounded" style={{ backgroundColor: '#FF4500' }}></div>
-                <div className="w-4 h-4 rounded" style={{ backgroundColor: '#8B0000' }}></div>
-              </div>
-              <span>High</span>
+        <div className="space-y-4">
+          <div ref={mapContainer} className="h-[400px] w-full rounded-lg" />
+          
+          {/* Legend */}
+          <div className="flex items-center justify-center space-x-4 text-sm">
+            <span>Low</span>
+            <div className="flex space-x-1">
+              <div className="w-4 h-4 rounded" style={{ backgroundColor: '#32CD32' }}></div>
+              <div className="w-4 h-4 rounded" style={{ backgroundColor: '#FFD700' }}></div>
+              <div className="w-4 h-4 rounded" style={{ backgroundColor: '#FFA500' }}></div>
+              <div className="w-4 h-4 rounded" style={{ backgroundColor: '#FF4500' }}></div>
+              <div className="w-4 h-4 rounded" style={{ backgroundColor: '#8B0000' }}></div>
             </div>
-            
-            {loading && (
-              <div className="text-center text-muted-foreground">
-                Loading map data...
-              </div>
-            )}
+            <span>High</span>
           </div>
-        )}
+          
+          {loading && (
+            <div className="text-center text-muted-foreground">
+              Loading map data...
+            </div>
+          )}
+        </div>
       </CardContent>
     </Card>
   );
