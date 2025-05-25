@@ -766,11 +766,7 @@ export const insightApi = {
   },
   getTopPolluted: async (params: { pollutant: string; year: number }) => {
     const queryParams = new URLSearchParams(params as any).toString();
-    return fetchWithAuth<{
-      year: number;
-      pollutant: string;
-      top_regions: Array<{ region: string; average: number }>;
-    }>(`/insights/top-polluted/?${queryParams}`);
+    return fetchWithAuth<Array<{ name: string; value: number }>>(`/insights/top-polluted/?${queryParams}`);
   },
   getSeasonality: async (params: { pollutant: string; region: string }) => {
     const queryParams = new URLSearchParams(params as any).toString();

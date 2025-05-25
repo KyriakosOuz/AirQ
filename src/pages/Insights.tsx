@@ -9,7 +9,7 @@ import { PollutantSelector } from "@/components/ui/pollutant-selector";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { insightApi } from "@/lib/api";
 import { Pollutant } from "@/lib/types";
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, PolarGrid, PolarAngleAxis, PolarRadiusAxis, RadialBarChart, RadialBar } from "recharts";
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts";
 import { toast } from "sonner";
 import { AlertCircle, TrendingUp, Calendar, Trophy } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -38,7 +38,11 @@ const Insights: React.FC = () => {
   const [region, setRegion] = useState("thessaloniki");
   const [pollutant, setPollutant] = useState<Pollutant>("no2_conc");
   const [year, setYear] = useState<number>(2023);
-  const [loading, setLoading] = useState(false);
+  
+  // Separate loading states for each tab
+  const [trendLoading, setTrendLoading] = useState(false);
+  const [seasonalLoading, setSeasonalLoading] = useState(false);
+  const [topPollutedLoading, setTopPollutedLoading] = useState(false);
   
   const [trendData, setTrendData] = useState<any[]>([]);
   const [seasonalData, setSeasonalData] = useState<any[]>([]);
@@ -74,12 +78,11 @@ const Insights: React.FC = () => {
     fetchInsights();
   }, [region, pollutant, year]);
 
-  const fetchInsights = async () => {
-    setLoading(true);
-    setErrors({});
+  const fetchTrendData = async () => {
+    setTrendLoading(true);
+    setErrors(prev => ({ ...prev, trend: undefined }));
     
     try {
-      // Fetch trend data
       console.log("Fetching trend data for:", { pollutant, region });
       const trendResponse = await insightApi.getTrend({ 
         pollutant, 
@@ -89,7 +92,7 @@ const Insights: React.FC = () => {
       console.log("Trend API response:", trendResponse);
       
       if (trendResponse.success && trendResponse.data) {
-        // Extract data from response.trend structure
+        // Extract data from nested trend structure
         const trendSection = trendResponse.data.trend;
         if (trendSection && trendSection.labels && trendSection.values) {
           const transformedTrendData = trendSection.labels.map((yearLabel, index) => ({
@@ -112,8 +115,20 @@ const Insights: React.FC = () => {
         setErrors(prev => ({ ...prev, trend: "Trend data unavailable" }));
         setTrendData([]);
       }
-      
-      // Fetch seasonal data
+    } catch (error) {
+      console.error("Error fetching trend data:", error);
+      setErrors(prev => ({ ...prev, trend: "Failed to load trend data" }));
+      setTrendData([]);
+    } finally {
+      setTrendLoading(false);
+    }
+  };
+
+  const fetchSeasonalData = async () => {
+    setSeasonalLoading(true);
+    setErrors(prev => ({ ...prev, seasonal: undefined }));
+    
+    try {
       console.log("Fetching seasonal data for:", { pollutant, region });
       const seasonalResponse = await insightApi.getSeasonality({ 
         pollutant, 
@@ -123,7 +138,7 @@ const Insights: React.FC = () => {
       console.log("Seasonal API response:", seasonalResponse);
       
       if (seasonalResponse.success && seasonalResponse.data) {
-        // Extract data from response.seasonal_avg structure
+        // Extract data from nested seasonal_avg structure
         const seasonalSection = seasonalResponse.data.seasonal_avg;
         if (seasonalSection && seasonalSection.labels && seasonalSection.values) {
           const transformedSeasonalData = seasonalSection.labels.map((month, index) => ({
@@ -142,8 +157,20 @@ const Insights: React.FC = () => {
         setErrors(prev => ({ ...prev, seasonal: "Seasonal data unavailable" }));
         setSeasonalData([]);
       }
-      
-      // Fetch top polluted data
+    } catch (error) {
+      console.error("Error fetching seasonal data:", error);
+      setErrors(prev => ({ ...prev, seasonal: "Failed to load seasonal data" }));
+      setSeasonalData([]);
+    } finally {
+      setSeasonalLoading(false);
+    }
+  };
+
+  const fetchTopPollutedData = async () => {
+    setTopPollutedLoading(true);
+    setErrors(prev => ({ ...prev, topPolluted: undefined }));
+    
+    try {
       console.log("Fetching top polluted data for:", { pollutant, year });
       const topPollutedResponse = await insightApi.getTopPolluted({
         pollutant,
@@ -153,12 +180,11 @@ const Insights: React.FC = () => {
       console.log("Top polluted API response:", topPollutedResponse);
       
       if (topPollutedResponse.success && topPollutedResponse.data) {
-        // Extract data from response.top_regions structure
-        const topRegions = topPollutedResponse.data.top_regions;
-        if (Array.isArray(topRegions)) {
-          const transformedTopPollutedData = topRegions.map(({ region, average }) => ({
-            name: region,
-            value: average
+        // Handle flat array response directly
+        if (Array.isArray(topPollutedResponse.data)) {
+          const transformedTopPollutedData = topPollutedResponse.data.map(({ name, value }) => ({
+            name: getRegionDisplayName(name),
+            value
           }));
           setTopPollutedData(transformedTopPollutedData);
           console.log("Transformed top polluted data:", transformedTopPollutedData);
@@ -172,16 +198,23 @@ const Insights: React.FC = () => {
         setErrors(prev => ({ ...prev, topPolluted: "Top polluted regions data unavailable" }));
         setTopPollutedData([]);
       }
-      
-      if (trendResponse.success || seasonalResponse.success || topPollutedResponse.success) {
-        toast.success(`Insights updated for ${getPollutantDisplayName(pollutant)}`);
-      }
     } catch (error) {
-      console.error("Error fetching insights:", error);
-      toast.error("Failed to load insights data");
+      console.error("Error fetching top polluted data:", error);
+      setErrors(prev => ({ ...prev, topPolluted: "Failed to load top polluted data" }));
+      setTopPollutedData([]);
     } finally {
-      setLoading(false);
+      setTopPollutedLoading(false);
     }
+  };
+
+  const fetchInsights = async () => {
+    await Promise.all([
+      fetchTrendData(),
+      fetchSeasonalData(), 
+      fetchTopPollutedData()
+    ]);
+    
+    toast.success(`Insights updated for ${getPollutantDisplayName(pollutant)}`);
   };
   
   const handleRegionChange = (value: string) => {
@@ -246,8 +279,8 @@ const Insights: React.FC = () => {
         </Card>
       </div>
       
-      <Button onClick={fetchInsights} disabled={loading} className="w-full sm:w-auto">
-        {loading ? "Loading..." : "Update Insights"}
+      <Button onClick={fetchInsights} disabled={trendLoading || seasonalLoading || topPollutedLoading} className="w-full sm:w-auto">
+        {(trendLoading || seasonalLoading || topPollutedLoading) ? "Loading..." : "Update Insights"}
       </Button>
       
       {/* Charts Section */}
@@ -278,7 +311,14 @@ const Insights: React.FC = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {errors.trend ? (
+              {trendLoading ? (
+                <div className="h-[400px] flex items-center justify-center">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+                    <p className="text-muted-foreground">Loading trend data...</p>
+                  </div>
+                </div>
+              ) : errors.trend ? (
                 <Alert>
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>{errors.trend}</AlertDescription>
@@ -321,7 +361,14 @@ const Insights: React.FC = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {errors.seasonal ? (
+              {seasonalLoading ? (
+                <div className="h-[400px] flex items-center justify-center">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+                    <p className="text-muted-foreground">Loading seasonal data...</p>
+                  </div>
+                </div>
+              ) : errors.seasonal ? (
                 <Alert>
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>{errors.seasonal}</AlertDescription>
@@ -358,7 +405,14 @@ const Insights: React.FC = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {errors.topPolluted ? (
+              {topPollutedLoading ? (
+                <div className="h-[400px] flex items-center justify-center">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+                    <p className="text-muted-foreground">Loading top polluted data...</p>
+                  </div>
+                </div>
+              ) : errors.topPolluted ? (
                 <Alert>
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>{errors.topPolluted}</AlertDescription>
