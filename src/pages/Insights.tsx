@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { insightApi } from "@/lib/api";
@@ -15,6 +14,8 @@ const Insights: React.FC = () => {
   const [region, setRegion] = useState("thessaloniki");
   const [pollutant, setPollutant] = useState<Pollutant>("no2_conc");
   const [year, setYear] = useState<number>(2023);
+  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
   
   // Separate loading states for each tab
   const [trendLoading, setTrendLoading] = useState(false);
@@ -39,19 +40,24 @@ const Insights: React.FC = () => {
     setErrors(prev => ({ ...prev, trend: undefined }));
     
     try {
-      console.log("Fetching trend data for:", { pollutant, region });
-      const trendResponse = await insightApi.getTrend({ 
-        pollutant, 
-        region 
-      });
+      console.log("Fetching trend data for:", { pollutant, region, startDate, endDate });
+      
+      // Prepare API parameters
+      const apiParams: any = { pollutant, region };
+      if (startDate && endDate) {
+        apiParams.startDate = startDate.toISOString().split('T')[0];
+        apiParams.endDate = endDate.toISOString().split('T')[0];
+      }
+      
+      const trendResponse = await insightApi.getTrend(apiParams);
       
       console.log("Trend API response:", trendResponse);
       
       if (trendResponse.success && trendResponse.data) {
         const trendSection = trendResponse.data.trend;
         if (trendSection && trendSection.labels && trendSection.values) {
-          const transformedTrendData = trendSection.labels.map((yearLabel, index) => ({
-            year: yearLabel,
+          const transformedTrendData = trendSection.labels.map((label, index) => ({
+            year: label,
             value: trendSection.values[index],
             delta: trendSection.deltas?.[index] || 0
           }));
@@ -169,7 +175,7 @@ const Insights: React.FC = () => {
     } else if (activeTab === "top-polluted") {
       fetchTopPollutedData();
     }
-  }, [activeTab, region, pollutant, year]);
+  }, [activeTab, region, pollutant, year, startDate, endDate]);
 
   const handleTabChange = (value: string) => {
     setActiveTab(value);
@@ -185,6 +191,17 @@ const Insights: React.FC = () => {
   
   const handleYearChange = (value: string) => {
     setYear(parseInt(value));
+  };
+
+  const handleStartDateChange = (date: Date | undefined) => {
+    setStartDate(date);
+    if (date && endDate && date > endDate) {
+      setEndDate(undefined);
+    }
+  };
+
+  const handleEndDateChange = (date: Date | undefined) => {
+    setEndDate(date);
   };
 
   const isLoading = trendLoading || seasonalLoading || topPollutedLoading;
@@ -220,9 +237,13 @@ const Insights: React.FC = () => {
           region={region}
           pollutant={pollutant}
           year={year}
+          startDate={startDate}
+          endDate={endDate}
           onRegionChange={handleRegionChange}
           onPollutantChange={handlePollutantChange}
           onYearChange={handleYearChange}
+          onStartDateChange={handleStartDateChange}
+          onEndDateChange={handleEndDateChange}
           loading={isLoading}
         />
         
