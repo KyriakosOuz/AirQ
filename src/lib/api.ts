@@ -842,7 +842,7 @@ export const insightApi = {
           years: number[];
         };
       };
-    }>('/available-models/');
+    }>('/insights/available-models/');
   },
   getPersonalized: async (params: { pollutant: string; region: string }) => {
     const queryParams = new URLSearchParams(params as any).toString();
