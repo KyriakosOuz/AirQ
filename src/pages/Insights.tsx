@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { insightApi } from "@/lib/api";
@@ -266,11 +267,12 @@ const Insights: React.FC = () => {
       <div className="flex flex-col space-y-2">
         <h1 className="text-3xl font-bold tracking-tight">Air Quality Insights</h1>
         <p className="text-muted-foreground">
-          Explore historical air quality data across different regions and time periods. Start by selecting available datasets below.
+          Explore historical air quality data across different regions and time periods.
         </p>
       </div>
 
-      {/* Dataset Availability Section */}
+      {/* Dataset Availability Section - COMMENTED OUT */}
+      {/*
       <Collapsible open={isAvailabilityOpen} onOpenChange={setIsAvailabilityOpen}>
         <CollapsibleTrigger asChild>
           <Button variant="outline" className="w-full justify-between">
@@ -300,6 +302,7 @@ const Insights: React.FC = () => {
           ) : null}
         </CollapsibleContent>
       </Collapsible>
+      */}
 
       {/* Current Selection Breadcrumb */}
       <CurrentSelectionBreadcrumb
