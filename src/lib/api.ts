@@ -27,8 +27,8 @@ export type DatasetPreviewResponse = {
 // Storage key for the auth token
 const TOKEN_KEY = "air_quality_token";
 
-// Default request timeout (in milliseconds)
-export const DEFAULT_TIMEOUT = 5000;
+// Default request timeout (in milliseconds) - Increased to 30 seconds for complex operations
+export const DEFAULT_TIMEOUT = 30000;
 
 // Circuit breaker configuration
 const CIRCUIT_BREAKER = {
