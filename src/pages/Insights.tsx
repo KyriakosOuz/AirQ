@@ -1,7 +1,6 @@
-import React, { useState, useCallback } from "react";
+
+import React, { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { insightApi } from "@/lib/api";
-import { Pollutant } from "@/lib/types";
 import { toast } from "sonner";
 import { TrendingUp, Calendar, Trophy } from "lucide-react";
 import { InsightFilters } from "@/components/insights/InsightFilters";
@@ -11,24 +10,30 @@ import { TopPollutedTab } from "@/components/insights/TopPollutedTab";
 import { CurrentSelectionBreadcrumb } from "@/components/insights/CurrentSelectionBreadcrumb";
 import { useInsightOptions } from "@/hooks/useInsightOptions";
 import { formatPollutantName } from "@/lib/utils";
+import { useTrendInsights } from "@/hooks/useTrendInsights";
+import { useSeasonalInsights } from "@/hooks/useSeasonalInsights";
+import { useTopPollutedInsights } from "@/hooks/useTopPollutedInsights";
+import { useInsightFiltersStore } from "@/stores/insightFiltersStore";
+import { Pollutant } from "@/lib/types";
 
 const Insights: React.FC = () => {
   const [activeTab, setActiveTab] = useState("trend");
-  const [region, setRegion] = useState("thessaloniki");
-  const [pollutant, setPollutant] = useState<Pollutant>("no2_conc");
-  const [year, setYear] = useState<number>(2023);
   const [hasSubmitted, setHasSubmitted] = useState(false);
   
-  // Separate loading states for each tab
-  const [trendLoading, setTrendLoading] = useState(false);
-  const [seasonalLoading, setSeasonalLoading] = useState(false);
-  const [topPollutedLoading, setTopPollutedLoading] = useState(false);
-  
-  const [trendData, setTrendData] = useState<any[]>([]);
-  const [seasonalData, setSeasonalData] = useState<any[]>([]);
-  const [topPollutedData, setTopPollutedData] = useState<any[]>([]);
-  const [dataUnit, setDataUnit] = useState("μg/m³");
-  const [errors, setErrors] = useState<{ trend?: string; seasonal?: string; topPolluted?: string }>({});
+  // Use Zustand store for filters
+  const { 
+    region, 
+    pollutant, 
+    year, 
+    setRegion, 
+    setPollutant, 
+    setYear 
+  } = useInsightFiltersStore();
+
+  // React Query hooks for data fetching
+  const trendQuery = useTrendInsights(hasSubmitted ? region : null, hasSubmitted ? pollutant : null, hasSubmitted ? year : null);
+  const seasonalQuery = useSeasonalInsights(hasSubmitted ? region : null, hasSubmitted ? pollutant : null, hasSubmitted ? year : null);
+  const topPollutedQuery = useTopPollutedInsights(hasSubmitted ? pollutant : null, hasSubmitted ? year : null);
 
   // Dynamic options hook
   const { isValidCombination } = useInsightOptions();
@@ -40,124 +45,46 @@ const Insights: React.FC = () => {
     ).join(' ');
   };
 
-  const fetchTrendData = useCallback(async () => {
-    setTrendLoading(true);
-    setErrors(prev => ({ ...prev, trend: undefined }));
-    
-    try {
-      console.log("Fetching trend data for:", { pollutant, region, year });
-      
-      const trendResponse = await insightApi.getTrend({ pollutant, region, year });
-      
-      if (trendResponse.success && trendResponse.data) {
-        const trendSection = trendResponse.data.trend;
-        if (trendSection && trendSection.labels && trendSection.values) {
-          const transformedTrendData = trendSection.labels.map((label, index) => ({
-            year: label,
-            value: trendSection.values[index],
-            delta: trendSection.deltas?.[index] || 0
-          }));
-          setTrendData(transformedTrendData);
-          if (trendSection.unit) {
-            setDataUnit(trendSection.unit);
-          }
-        } else {
-          setErrors(prev => ({ ...prev, trend: "Invalid trend data structure" }));
-          setTrendData([]);
-        }
-      } else {
-        setErrors(prev => ({ ...prev, trend: "Trend data unavailable" }));
-        setTrendData([]);
-      }
-    } catch (error) {
-      console.error("Error fetching trend data:", error);
-      setErrors(prev => ({ ...prev, trend: "Failed to load trend data" }));
-      setTrendData([]);
-    } finally {
-      setTrendLoading(false);
+  // Transform data for components
+  const transformTrendData = (data: any) => {
+    if (!data?.trend) return [];
+    const trendSection = data.trend;
+    if (trendSection?.labels && trendSection?.values) {
+      return trendSection.labels.map((label: string, index: number) => ({
+        year: label,
+        value: trendSection.values[index],
+        delta: trendSection.deltas?.[index] || 0
+      }));
     }
-  }, [region, pollutant, year]);
+    return [];
+  };
 
-  const fetchSeasonalData = useCallback(async () => {
-    setSeasonalLoading(true);
-    setErrors(prev => ({ ...prev, seasonal: undefined }));
-    
-    try {
-      console.log("Fetching seasonal data for:", { pollutant, region, year });
-      
-      const seasonalResponse = await insightApi.getSeasonality({ pollutant, region, year });
-      
-      if (seasonalResponse.success && seasonalResponse.data) {
-        const seasonalSection = seasonalResponse.data.seasonal_avg;
-        if (seasonalSection && seasonalSection.labels && seasonalSection.values) {
-          const transformedSeasonalData = seasonalSection.labels.map((month, index) => ({
-            month,
-            value: seasonalSection.values[index]
-          }));
-          setSeasonalData(transformedSeasonalData);
-        } else {
-          setErrors(prev => ({ ...prev, seasonal: "Invalid seasonal data structure" }));
-          setSeasonalData([]);
-        }
-      } else {
-        setErrors(prev => ({ ...prev, seasonal: "Seasonal data unavailable" }));
-        setSeasonalData([]);
-      }
-    } catch (error) {
-      console.error("Error fetching seasonal data:", error);
-      setErrors(prev => ({ ...prev, seasonal: "Failed to load seasonal data" }));
-      setSeasonalData([]);
-    } finally {
-      setSeasonalLoading(false);
+  const transformSeasonalData = (data: any) => {
+    if (!data?.seasonal_avg) return [];
+    const seasonalSection = data.seasonal_avg;
+    if (seasonalSection?.labels && seasonalSection?.values) {
+      return seasonalSection.labels.map((month: string, index: number) => ({
+        month,
+        value: seasonalSection.values[index]
+      }));
     }
-  }, [region, pollutant, year]);
+    return [];
+  };
 
-  const fetchTopPollutedData = useCallback(async () => {
-    setTopPollutedLoading(true);
-    setErrors(prev => ({ ...prev, topPolluted: undefined }));
-    
-    try {
-      console.log("Fetching top polluted data for:", { pollutant, year });
-      
-      const topPollutedResponse = await insightApi.getTopPolluted({ pollutant, year });
-      
-      if (topPollutedResponse.success && topPollutedResponse.data) {
-        if (Array.isArray(topPollutedResponse.data)) {
-          const transformedTopPollutedData = topPollutedResponse.data.map(({ name, value }) => ({
-            name: getRegionDisplayName(name),
-            value
-          }));
-          setTopPollutedData(transformedTopPollutedData);
-        } else {
-          setErrors(prev => ({ ...prev, topPolluted: "Invalid top polluted data structure" }));
-          setTopPollutedData([]);
-        }
-      } else {
-        setErrors(prev => ({ ...prev, topPolluted: "Top polluted regions data unavailable" }));
-        setTopPollutedData([]);
-      }
-    } catch (error) {
-      console.error("Error fetching top polluted data:", error);
-      setErrors(prev => ({ ...prev, topPolluted: "Failed to load top polluted data" }));
-      setTopPollutedData([]);
-    } finally {
-      setTopPollutedLoading(false);
-    }
-  }, [pollutant, year]);
+  const transformTopPollutedData = (data: any) => {
+    if (!Array.isArray(data)) return [];
+    return data.map(({ name, value }) => ({
+      name: getRegionDisplayName(name),
+      value
+    }));
+  };
 
   // Handle submit button click
-  const handleSubmit = useCallback(async () => {
+  const handleSubmit = () => {
     setHasSubmitted(true);
     const pollutantDisplayName = formatPollutantName(pollutant.replace('_conc', ''));
     toast.success(`Loading insights for ${pollutantDisplayName} in ${getRegionDisplayName(region)} (${year})`);
-    
-    // Fetch data for all tabs
-    await Promise.all([
-      fetchTrendData(),
-      fetchSeasonalData(),
-      fetchTopPollutedData()
-    ]);
-  }, [fetchTrendData, fetchSeasonalData, fetchTopPollutedData, pollutant, region, year]);
+  };
 
   const handleTabChange = (value: string) => {
     setActiveTab(value);
@@ -165,7 +92,7 @@ const Insights: React.FC = () => {
   
   const handleRegionChange = (value: string) => {
     setRegion(value);
-    setHasSubmitted(false); // Reset submission state when filters change
+    setHasSubmitted(false);
   };
   
   const handlePollutantChange = (value: Pollutant) => {
@@ -178,7 +105,7 @@ const Insights: React.FC = () => {
     setHasSubmitted(false);
   };
 
-  const isLoading = trendLoading || seasonalLoading || topPollutedLoading;
+  const isLoading = trendQuery.isLoading || seasonalQuery.isLoading || topPollutedQuery.isLoading;
 
   return (
     <div className="space-y-6">
@@ -233,10 +160,10 @@ const Insights: React.FC = () => {
             <TrendTab
               region={region}
               pollutant={pollutant}
-              data={trendData}
-              loading={trendLoading}
-              error={errors.trend}
-              dataUnit={dataUnit}
+              data={transformTrendData(trendQuery.data)}
+              loading={trendQuery.isLoading}
+              error={trendQuery.error?.message}
+              dataUnit={trendQuery.data?.trend?.unit || "μg/m³"}
             />
           </TabsContent>
           
@@ -244,10 +171,10 @@ const Insights: React.FC = () => {
             <SeasonalityTab
               region={region}
               pollutant={pollutant}
-              data={seasonalData}
-              loading={seasonalLoading}
-              error={errors.seasonal}
-              dataUnit={dataUnit}
+              data={transformSeasonalData(seasonalQuery.data)}
+              loading={seasonalQuery.isLoading}
+              error={seasonalQuery.error?.message}
+              dataUnit="μg/m³"
             />
           </TabsContent>
           
@@ -255,10 +182,10 @@ const Insights: React.FC = () => {
             <TopPollutedTab
               pollutant={pollutant}
               year={year}
-              data={topPollutedData}
-              loading={topPollutedLoading}
-              error={errors.topPolluted}
-              dataUnit={dataUnit}
+              data={transformTopPollutedData(topPollutedQuery.data)}
+              loading={topPollutedQuery.isLoading}
+              error={topPollutedQuery.error?.message}
+              dataUnit="μg/m³"
             />
           </TabsContent>
         </Tabs>
