@@ -1,4 +1,3 @@
-
 import { useQuery } from '@tanstack/react-query';
 import { dashboardApi } from '@/lib/api';
 import { getErrorMessage } from '@/lib/utils';
@@ -174,6 +173,9 @@ export const useCachedDashboardOverview = () => {
         throw new Error(response.error || "Failed to load dashboard data");
       }
     },
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    gcTime: 1000 * 60 * 10, // keep in memory for 10 minutes (gcTime replaces cacheTime)
+    refetchOnWindowFocus: false, // avoid unnecessary calls
     initialData: () => getCache<DashboardOverview>('dashboard-overview'),
   });
 
