@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { z } from "zod";
@@ -159,12 +158,13 @@ const Auth: React.FC = () => {
     <div className="flex items-center justify-center min-h-screen bg-muted/40">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
-          <div className="flex items-center justify-center mb-2">
-            <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center">
-              <span className="text-white font-bold text-lg">AQ</span>
-            </div>
+          <div className="flex items-center justify-center mb-4">
+            <img 
+              src="/lovable-uploads/5615974b-305c-4b33-ad2a-582644969b27.png" 
+              alt="AirQ Logo" 
+              className="w-16 h-16 object-contain"
+            />
           </div>
-          <CardTitle className="text-2xl font-bold text-center">AirQ</CardTitle>
           <CardDescription className="text-center">
             Air Quality Monitoring
           </CardDescription>
