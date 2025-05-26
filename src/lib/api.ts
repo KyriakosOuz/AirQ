@@ -41,6 +41,42 @@ const CIRCUIT_BREAKER = {
 
 // Mock data for offline mode - Updated with consistent types and values
 const MOCK_DATA = {
+  dashboard_overview: {
+    region: "thessaloniki",
+    current: {
+      pollutants: {
+        no2_conc: 42.1,
+        o3_conc: 18.3,
+        co_conc: 0.7
+      },
+      aqi_category: "Moderate"
+    },
+    forecast: [
+      { ds: "2025-05-27", yhat: 43.2, category: "Moderate" },
+      { ds: "2025-05-28", yhat: 49.1, category: "Unhealthy" },
+      { ds: "2025-05-29", yhat: 38.5, category: "Moderate" },
+      { ds: "2025-05-30", yhat: 52.3, category: "Unhealthy" },
+      { ds: "2025-05-31", yhat: 35.2, category: "Good" },
+      { ds: "2025-06-01", yhat: 41.8, category: "Moderate" },
+      { ds: "2025-06-02", yhat: 46.7, category: "Moderate" }
+    ],
+    personalized: {
+      labels: ["2021", "2022", "2023"],
+      values: [33.1, 38.4, 45.2],
+      deltas: [null, 5.3, 6.8],
+      unit: "μg/m³",
+      meta: {
+        type: "personalized_trend",
+        user_id: "user123",
+        region: "thessaloniki"
+      }
+    },
+    ai_tip: {
+      tip: "1. **Limit outdoor activity** on days with high pollution levels\n2. **Wear a mask** if you're asthmatic or have respiratory conditions\n3. **Keep windows closed** during peak pollution hours (7-9 AM, 6-8 PM)",
+      riskLevel: "Moderate",
+      personalized: true
+    }
+  },
   forecast: [
     { 
       ds: new Date().toISOString(), 
@@ -242,7 +278,9 @@ export const fetchWithAuth = async <T>(
     if (isCircuitBreakerTripped()) {
       console.log(`Circuit breaker active, using mock data for: ${endpoint}`);
       // Return appropriate mock data based on the endpoint
-      if (endpoint.includes('/models/predict')) {
+      if (endpoint.includes('/dashboard/overview')) {
+        return { success: true, data: MOCK_DATA.dashboard_overview as T };
+      } else if (endpoint.includes('/models/predict')) {
         return { success: true, data: MOCK_DATA.forecast as T };
       } else if (endpoint.includes('/insights/trend')) {
         return { success: true, data: MOCK_DATA.trend as T };
@@ -297,7 +335,9 @@ export const fetchWithAuth = async <T>(
       console.error("Non-JSON response received:", await response.text());
       tripCircuitBreaker();
       // Return mock data when API fails
-      if (endpoint.includes('/models/predict')) {
+      if (endpoint.includes('/dashboard/overview')) {
+        return { success: true, data: MOCK_DATA.dashboard_overview as T };
+      } else if (endpoint.includes('/models/predict')) {
         return { success: true, data: MOCK_DATA.forecast as T };
       } else if (endpoint.includes('/insights/trend')) {
         return { success: true, data: MOCK_DATA.trend as T };
@@ -339,7 +379,9 @@ export const fetchWithAuth = async <T>(
       console.error("Error parsing JSON response:", e);
       tripCircuitBreaker();
       // Return mock data when JSON parsing fails
-      if (endpoint.includes('/models/predict')) {
+      if (endpoint.includes('/dashboard/overview')) {
+        return { success: true, data: MOCK_DATA.dashboard_overview as T };
+      } else if (endpoint.includes('/models/predict')) {
         return { success: true, data: MOCK_DATA.forecast as T };
       } else if (endpoint.includes('/insights/trend')) {
         return { success: true, data: MOCK_DATA.trend as T };
@@ -385,7 +427,9 @@ export const fetchWithAuth = async <T>(
       console.error("API Error Response:", data);
       tripCircuitBreaker();
       // Return mock data for specific endpoints
-      if (endpoint.includes('/models/predict')) {
+      if (endpoint.includes('/dashboard/overview')) {
+        return { success: true, data: MOCK_DATA.dashboard_overview as T };
+      } else if (endpoint.includes('/models/predict')) {
         return { success: true, data: MOCK_DATA.forecast as T };
       } else if (endpoint.includes('/insights/trend')) {
         return { success: true, data: MOCK_DATA.trend as T };
@@ -418,7 +462,9 @@ export const fetchWithAuth = async <T>(
     if (error instanceof Error && error.name === "AbortError") {
       console.error("API Request timeout:", endpoint);
       // Return mock data for timeout
-      if (endpoint.includes('/models/predict')) {
+      if (endpoint.includes('/dashboard/overview')) {
+        return { success: true, data: MOCK_DATA.dashboard_overview as T };
+      } else if (endpoint.includes('/models/predict')) {
         return { success: true, data: MOCK_DATA.forecast as T };
       } else if (endpoint.includes('/insights/trend')) {
         return { success: true, data: MOCK_DATA.trend as T };
@@ -442,7 +488,9 @@ export const fetchWithAuth = async <T>(
     
     console.error("API Error:", error);
     // Return mock data for network errors
-    if (endpoint.includes('/models/predict')) {
+    if (endpoint.includes('/dashboard/overview')) {
+      return { success: true, data: MOCK_DATA.dashboard_overview as T };
+    } else if (endpoint.includes('/models/predict')) {
       return { success: true, data: MOCK_DATA.forecast as T };
     } else if (endpoint.includes('/insights/trend')) {
       return { success: true, data: MOCK_DATA.trend as T };
@@ -523,6 +571,44 @@ export const userApi = {
   },
   getRiskTimeline: async () => {
     return fetchWithAuth("/users/risk-timeline/");
+  }
+};
+
+// Dashboard endpoints
+export const dashboardApi = {
+  getOverview: async () => {
+    return fetchWithAuth<{
+      region: string;
+      current: {
+        pollutants: {
+          no2_conc: number;
+          o3_conc: number;
+          co_conc: number;
+        };
+        aqi_category: string;
+      };
+      forecast: Array<{
+        ds: string;
+        yhat: number;
+        category: string;
+      }>;
+      personalized: {
+        labels: string[];
+        values: number[];
+        deltas: (number | null)[];
+        unit: string;
+        meta: {
+          type: string;
+          user_id: string;
+          region: string;
+        };
+      };
+      ai_tip: {
+        tip: string;
+        riskLevel: string;
+        personalized: boolean;
+      };
+    }>("/dashboard/overview/");
   }
 };
 
@@ -872,7 +958,7 @@ export const alertApi = {
   },
   delete: async (alertId: string) => {
     return fetchWithAuth(`/alerts/unsubscribe/${alertId}`, {
-      method: "DELETE",
+      method: "DELETE"
     });
   },
   checkAlerts: async (sendEmail: boolean = false) => {
