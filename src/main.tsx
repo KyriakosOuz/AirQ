@@ -1,19 +1,15 @@
 
-import React from 'react'
-import { createRoot } from 'react-dom/client'
-import App from './App.tsx'
-import './index.css'
-import { supabase } from './integrations/supabase/client.ts'
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import { QueryClientProvider } from '@tanstack/react-query';
+import { queryClient } from './lib/react-query-config';
+import App from "./App.tsx";
+import "./index.css";
 
-// Log Supabase initialization for debugging
-console.log("Initializing app with Supabase");
-
-// Create root with React import properly referenced
-const rootElement = document.getElementById("root");
-if (rootElement) {
-  createRoot(rootElement).render(
-    <React.StrictMode>
+createRoot(document.getElementById("root")!).render(
+  <StrictMode>
+    <QueryClientProvider client={queryClient}>
       <App />
-    </React.StrictMode>
-  );
-}
+    </QueryClientProvider>
+  </StrictMode>
+);
