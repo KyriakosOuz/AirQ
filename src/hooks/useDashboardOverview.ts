@@ -34,6 +34,72 @@ export interface DashboardOverview {
   };
 }
 
+// Helper function to transform pandas DataFrame-style JSON to array
+const transformPandasToArray = (pandasData: any): any[] => {
+  try {
+    console.log("Transforming pandas-style data:", pandasData);
+    
+    if (!pandasData || typeof pandasData !== 'object') {
+      console.warn("Invalid pandas data structure:", pandasData);
+      return [];
+    }
+
+    // Get all the column keys
+    const columns = Object.keys(pandasData);
+    if (columns.length === 0) {
+      console.warn("No columns found in pandas data");
+      return [];
+    }
+
+    // Get the row indices from the first column
+    const firstColumn = pandasData[columns[0]];
+    if (!firstColumn || typeof firstColumn !== 'object') {
+      console.warn("Invalid first column structure:", firstColumn);
+      return [];
+    }
+
+    const rowIndices = Object.keys(firstColumn);
+    console.log("Found row indices:", rowIndices);
+
+    // Transform each row
+    const transformedArray = rowIndices.map(rowIndex => {
+      const row: any = {};
+      
+      columns.forEach(column => {
+        if (pandasData[column] && pandasData[column][rowIndex] !== undefined) {
+          row[column] = pandasData[column][rowIndex];
+        }
+      });
+      
+      return row;
+    });
+
+    console.log("Transformed array:", transformedArray);
+    return transformedArray;
+  } catch (error) {
+    console.error("Error transforming pandas data:", error);
+    return [];
+  }
+};
+
+// Helper function to detect if data is in pandas DataFrame format
+const isPandasFormat = (data: any): boolean => {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    return false;
+  }
+
+  // Check if it has column-like structure with row indices
+  const keys = Object.keys(data);
+  if (keys.length === 0) return false;
+
+  // Check if the first key contains an object with numeric string keys
+  const firstValue = data[keys[0]];
+  if (!firstValue || typeof firstValue !== 'object') return false;
+
+  const subKeys = Object.keys(firstValue);
+  return subKeys.length > 0 && subKeys.every(key => !isNaN(parseInt(key)));
+};
+
 // Validation helper to ensure arrays exist and are valid
 const validateDashboardData = (data: any): DashboardOverview | null => {
   try {
@@ -44,9 +110,17 @@ const validateDashboardData = (data: any): DashboardOverview | null => {
       return null;
     }
 
-    // Ensure forecast is an array
-    if (!Array.isArray(data.forecast)) {
-      console.warn("Forecast is not an array, setting to empty array:", data.forecast);
+    // Handle forecast data transformation
+    if (data.forecast) {
+      if (isPandasFormat(data.forecast)) {
+        console.log("Detected pandas format forecast, transforming...");
+        data.forecast = transformPandasToArray(data.forecast);
+      } else if (!Array.isArray(data.forecast)) {
+        console.warn("Forecast is not an array and not pandas format, setting to empty array:", data.forecast);
+        data.forecast = [];
+      }
+    } else {
+      console.warn("No forecast data found, setting to empty array");
       data.forecast = [];
     }
 
