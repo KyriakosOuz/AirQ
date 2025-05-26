@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -76,17 +75,15 @@ const RecentTrainingsCard: React.FC<RecentTrainingsCardProps> = ({
 
   const getStatusBadge = (status: ModelStatus) => {
     const variants: Record<ModelStatus, "default" | "secondary" | "destructive" | "outline"> = {
-      "complete": "default",
-      "training": "secondary", 
-      "failed": "destructive",
-      "pending": "outline"
+      "ready": "default",
+      "in-progress": "secondary", 
+      "failed": "destructive"
     };
     
     const labels: Record<ModelStatus, string> = {
-      "complete": "Complete",
-      "training": "Training",
-      "failed": "Failed", 
-      "pending": "Pending"
+      "ready": "Complete",
+      "in-progress": "Training",
+      "failed": "Failed"
     };
 
     return <Badge variant={variants[status]}>{labels[status]}</Badge>;
