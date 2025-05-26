@@ -4,9 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RegionSelector } from "@/components/ui/region-selector";
 import { PollutantSelector } from "@/components/ui/pollutant-selector";
+import { Button } from "@/components/ui/button";
 import { Pollutant } from "@/lib/types";
 import { useInsightOptions } from "@/hooks/useInsightOptions";
-import { Loader2 } from "lucide-react";
+import { Loader2, Search, Database } from "lucide-react";
 
 interface InsightFiltersProps {
   activeTab: string;
@@ -16,6 +17,7 @@ interface InsightFiltersProps {
   onRegionChange: (value: string) => void;
   onPollutantChange: (value: Pollutant) => void;
   onYearChange: (value: string) => void;
+  onSubmit: () => void;
   loading?: boolean;
 }
 
@@ -27,16 +29,13 @@ export const InsightFilters: React.FC<InsightFiltersProps> = ({
   onRegionChange,
   onPollutantChange,
   onYearChange,
+  onSubmit,
   loading = false
 }) => {
   const { 
     modelData,
     loading: modelsLoading, 
     error: modelsError,
-    getAvailableRegions,
-    getAvailablePollutants, 
-    getAvailableYears,
-    isValidCombination 
   } = useInsightOptions();
 
   // Get dynamic options based on trained model data
@@ -55,23 +54,14 @@ export const InsightFilters: React.FC<InsightFiltersProps> = ({
     return modelData[region][pollutant].years || [];
   }, [modelData, region, pollutant]);
 
-  // Auto-correct selections when model data changes or when selections become invalid
+  // Auto-correct selections when model data changes
   useEffect(() => {
     if (!modelData || modelsLoading) return;
-
-    console.log("Model data updated:", modelData);
-    console.log("Current selections:", { region, pollutant, year });
-    console.log("Available options:", { 
-      regions: availableRegions, 
-      pollutants: availablePollutants, 
-      years: availableYears 
-    });
 
     // Check if current region is valid
     if (region && !availableRegions.includes(region)) {
       const firstAvailableRegion = availableRegions[0];
       if (firstAvailableRegion) {
-        console.log(`Auto-correcting region from ${region} to ${firstAvailableRegion}`);
         onRegionChange(firstAvailableRegion);
       }
       return;
@@ -81,7 +71,6 @@ export const InsightFilters: React.FC<InsightFiltersProps> = ({
     if (region && pollutant && !availablePollutants.includes(pollutant)) {
       const firstAvailablePollutant = availablePollutants[0];
       if (firstAvailablePollutant) {
-        console.log(`Auto-correcting pollutant from ${pollutant} to ${firstAvailablePollutant}`);
         onPollutantChange(firstAvailablePollutant);
       }
       return;
@@ -91,7 +80,6 @@ export const InsightFilters: React.FC<InsightFiltersProps> = ({
     if (region && pollutant && year && !availableYears.includes(year)) {
       const firstAvailableYear = availableYears[0];
       if (firstAvailableYear) {
-        console.log(`Auto-correcting year from ${year} to ${firstAvailableYear}`);
         onYearChange(firstAvailableYear.toString());
       }
     }
@@ -99,7 +87,6 @@ export const InsightFilters: React.FC<InsightFiltersProps> = ({
 
   // Handle region change - reset pollutant and year
   const handleRegionChange = (newRegion: string) => {
-    console.log("Region changed to:", newRegion);
     onRegionChange(newRegion);
     
     // Reset pollutant and year when region changes
@@ -120,7 +107,6 @@ export const InsightFilters: React.FC<InsightFiltersProps> = ({
 
   // Handle pollutant change - reset year
   const handlePollutantChange = (newPollutant: Pollutant) => {
-    console.log("Pollutant changed to:", newPollutant);
     onPollutantChange(newPollutant);
     
     // Reset year when pollutant changes
@@ -132,63 +118,71 @@ export const InsightFilters: React.FC<InsightFiltersProps> = ({
     }
   };
 
+  // Check if all filters are selected
+  const isReadyToSubmit = region && pollutant && year && !loading && !modelsLoading;
+  
   // Determine which filters to show based on active tab
   const showRegion = activeTab === "trend" || activeTab === "seasonality";
-  const showPollutant = true; // All tabs use pollutant
-  const showYear = true; // All tabs now require year parameter
+  const showPollutant = true;
+  const showYear = true;
+
+  // Calculate total available combinations
+  const totalCombinations = useMemo(() => {
+    if (!modelData) return 0;
+    let total = 0;
+    Object.values(modelData).forEach(regionData => {
+      Object.values(regionData).forEach(pollutantData => {
+        total += pollutantData.years?.length || 0;
+      });
+    });
+    return total;
+  }, [modelData]);
 
   return (
-    <div className="space-y-4">
-      {/* Loading indicator for model data */}
-      {modelsLoading && (
-        <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          <span className="text-sm text-blue-800">Loading available models...</span>
+    <Card className="border-2 border-primary/20">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-lg">
+          <Database className="h-5 w-5" />
+          Filter Selection Panel
+        </CardTitle>
+        <div className="text-sm text-muted-foreground">
+          {totalCombinations > 0 && (
+            <span>{totalCombinations} trained model combinations available</span>
+          )}
         </div>
-      )}
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Loading indicator for model data */}
+        {modelsLoading && (
+          <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span className="text-sm text-blue-800">Loading available models...</span>
+          </div>
+        )}
 
-      {/* Error indicator for failed model data load */}
-      {modelsError && (
-        <div className="p-3 bg-amber-50 rounded-lg">
-          <p className="text-sm text-amber-800">
-            <strong>Note:</strong> {modelsError}. Using fallback data.
-          </p>
-        </div>
-      )}
+        {/* Error indicator for failed model data load */}
+        {modelsError && (
+          <div className="p-3 bg-amber-50 rounded-lg">
+            <p className="text-sm text-amber-800">
+              <strong>Note:</strong> {modelsError}. Using fallback data.
+            </p>
+          </div>
+        )}
 
-      {/* Tab-specific filter descriptions */}
-      {activeTab === "trend" && (
+        {/* Filter Instructions */}
         <div className="p-3 bg-blue-50 rounded-lg">
           <p className="text-sm text-blue-800">
-            <strong>Annual Trend:</strong> Shows historical data for the selected region, pollutant, and year.
+            <strong>Step-by-step:</strong> Select a region first, then choose a pollutant, then pick a year, and finally click Submit to load insights.
           </p>
         </div>
-      )}
-      
-      {activeTab === "seasonality" && (
-        <div className="p-3 bg-green-50 rounded-lg">
-          <p className="text-sm text-green-800">
-            <strong>Seasonality:</strong> Shows seasonal patterns for a specific region, pollutant, and year.
-          </p>
-        </div>
-      )}
-      
-      {activeTab === "top-polluted" && (
-        <div className="p-3 bg-purple-50 rounded-lg">
-          <p className="text-sm text-purple-800">
-            <strong>Top Polluted Areas:</strong> Compares all regions for a specific pollutant and year.
-          </p>
-        </div>
-      )}
 
-      {/* Main filters */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {showRegion && (
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">Region</CardTitle>
-            </CardHeader>
-            <CardContent>
+        {/* Main filters */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {showRegion && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium">
+                1. Region {!region && <span className="text-red-500">*</span>}
+              </label>
               <RegionSelector 
                 value={region} 
                 onValueChange={handleRegionChange}
@@ -196,20 +190,16 @@ export const InsightFilters: React.FC<InsightFiltersProps> = ({
                 regions={availableRegions}
               />
               {availableRegions.length === 0 && !modelsLoading && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  No trained models available
-                </p>
+                <p className="text-xs text-red-500">No trained models available</p>
               )}
-            </CardContent>
-          </Card>
-        )}
-        
-        {showPollutant && (
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">Pollutant</CardTitle>
-            </CardHeader>
-            <CardContent>
+            </div>
+          )}
+          
+          {showPollutant && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium">
+                2. Pollutant {!pollutant && <span className="text-red-500">*</span>}
+              </label>
               <PollutantSelector 
                 value={pollutant} 
                 onValueChange={handlePollutantChange}
@@ -217,20 +207,16 @@ export const InsightFilters: React.FC<InsightFiltersProps> = ({
                 pollutants={availablePollutants}
               />
               {availablePollutants.length === 0 && region && !modelsLoading && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  No trained models available for {region}
-                </p>
+                <p className="text-xs text-red-500">No trained models available for {region}</p>
               )}
-            </CardContent>
-          </Card>
-        )}
-        
-        {showYear && (
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">Year</CardTitle>
-            </CardHeader>
-            <CardContent>
+            </div>
+          )}
+          
+          {showYear && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium">
+                3. Year {!year && <span className="text-red-500">*</span>}
+              </label>
               <Select 
                 value={year.toString()} 
                 onValueChange={onYearChange}
@@ -248,14 +234,40 @@ export const InsightFilters: React.FC<InsightFiltersProps> = ({
                 </SelectContent>
               </Select>
               {availableYears.length === 0 && region && pollutant && !modelsLoading && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  No trained models available for {pollutant} in {region}
-                </p>
+                <p className="text-xs text-red-500">No trained models available for {pollutant} in {region}</p>
               )}
-            </CardContent>
-          </Card>
-        )}
-      </div>
-    </div>
+            </div>
+          )}
+        </div>
+
+        {/* Submit Button */}
+        <div className="pt-4 border-t">
+          <Button 
+            onClick={onSubmit}
+            disabled={!isReadyToSubmit}
+            className="w-full"
+            size="lg"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                Loading Insights...
+              </>
+            ) : (
+              <>
+                <Search className="h-4 w-4 mr-2" />
+                Generate Insights
+              </>
+            )}
+          </Button>
+          
+          {!isReadyToSubmit && !loading && (
+            <p className="text-xs text-muted-foreground text-center mt-2">
+              Please select all filters to continue
+            </p>
+          )}
+        </div>
+      </CardContent>
+    </Card>
   );
 };

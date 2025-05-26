@@ -1,29 +1,23 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useCallback } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { insightApi } from "@/lib/api";
 import { Pollutant } from "@/lib/types";
 import { toast } from "sonner";
-import { TrendingUp, Calendar, Trophy, Database } from "lucide-react";
+import { TrendingUp, Calendar, Trophy } from "lucide-react";
 import { InsightFilters } from "@/components/insights/InsightFilters";
 import { TrendTab } from "@/components/insights/TrendTab";
 import { SeasonalityTab } from "@/components/insights/SeasonalityTab";
 import { TopPollutedTab } from "@/components/insights/TopPollutedTab";
-import { ImprovedDatasetAvailability } from "@/components/insights/ImprovedDatasetAvailability";
 import { CurrentSelectionBreadcrumb } from "@/components/insights/CurrentSelectionBreadcrumb";
-import { useDatasetAvailabilityMatrix } from "@/hooks/useDatasetAvailabilityMatrix";
 import { useInsightOptions } from "@/hooks/useInsightOptions";
-import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronUp } from "lucide-react";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 const Insights: React.FC = () => {
   const [activeTab, setActiveTab] = useState("trend");
   const [region, setRegion] = useState("thessaloniki");
   const [pollutant, setPollutant] = useState<Pollutant>("no2_conc");
   const [year, setYear] = useState<number>(2023);
-  const [selectedYear, setSelectedYear] = useState<number | undefined>(undefined);
-  const [isAvailabilityOpen, setIsAvailabilityOpen] = useState(true);
+  const [hasSubmitted, setHasSubmitted] = useState(false);
   
   // Separate loading states for each tab
   const [trendLoading, setTrendLoading] = useState(false);
@@ -36,9 +30,6 @@ const Insights: React.FC = () => {
   const [dataUnit, setDataUnit] = useState("μg/m³");
   const [errors, setErrors] = useState<{ trend?: string; seasonal?: string; topPolluted?: string }>({});
 
-  // Dataset availability hook
-  const { data: availabilityData, isLoading: availabilityLoading } = useDatasetAvailabilityMatrix();
-  
   // Dynamic options hook
   const { isValidCombination } = useInsightOptions();
 
@@ -49,7 +40,7 @@ const Insights: React.FC = () => {
     ).join(' ');
   };
 
-  const fetchTrendData = async () => {
+  const fetchTrendData = useCallback(async () => {
     if (!isValidCombination(region, pollutant, year)) {
       console.warn("Invalid combination for trend data:", { region, pollutant, year });
       setTrendData([]);
@@ -65,8 +56,6 @@ const Insights: React.FC = () => {
       
       const trendResponse = await insightApi.getTrend({ pollutant, region, year });
       
-      console.log("Trend API response:", trendResponse);
-      
       if (trendResponse.success && trendResponse.data) {
         const trendSection = trendResponse.data.trend;
         if (trendSection && trendSection.labels && trendSection.values) {
@@ -79,14 +68,11 @@ const Insights: React.FC = () => {
           if (trendSection.unit) {
             setDataUnit(trendSection.unit);
           }
-          console.log("Transformed trend data:", transformedTrendData);
         } else {
-          console.error("Invalid trend data structure:", trendResponse.data);
           setErrors(prev => ({ ...prev, trend: "Invalid trend data structure" }));
           setTrendData([]);
         }
       } else {
-        console.error("Failed to fetch trend data:", trendResponse.error);
         setErrors(prev => ({ ...prev, trend: "Trend data unavailable" }));
         setTrendData([]);
       }
@@ -97,9 +83,9 @@ const Insights: React.FC = () => {
     } finally {
       setTrendLoading(false);
     }
-  };
+  }, [region, pollutant, year, isValidCombination]);
 
-  const fetchSeasonalData = async () => {
+  const fetchSeasonalData = useCallback(async () => {
     if (!isValidCombination(region, pollutant, year)) {
       console.warn("Invalid combination for seasonal data:", { region, pollutant, year });
       setSeasonalData([]);
@@ -115,8 +101,6 @@ const Insights: React.FC = () => {
       
       const seasonalResponse = await insightApi.getSeasonality({ pollutant, region, year });
       
-      console.log("Seasonal API response:", seasonalResponse);
-      
       if (seasonalResponse.success && seasonalResponse.data) {
         const seasonalSection = seasonalResponse.data.seasonal_avg;
         if (seasonalSection && seasonalSection.labels && seasonalSection.values) {
@@ -125,14 +109,11 @@ const Insights: React.FC = () => {
             value: seasonalSection.values[index]
           }));
           setSeasonalData(transformedSeasonalData);
-          console.log("Transformed seasonal data:", transformedSeasonalData);
         } else {
-          console.error("Invalid seasonal data structure:", seasonalResponse.data);
           setErrors(prev => ({ ...prev, seasonal: "Invalid seasonal data structure" }));
           setSeasonalData([]);
         }
       } else {
-        console.error("Failed to fetch seasonality data:", seasonalResponse.error);
         setErrors(prev => ({ ...prev, seasonal: "Seasonal data unavailable" }));
         setSeasonalData([]);
       }
@@ -143,9 +124,9 @@ const Insights: React.FC = () => {
     } finally {
       setSeasonalLoading(false);
     }
-  };
+  }, [region, pollutant, year, isValidCombination]);
 
-  const fetchTopPollutedData = async () => {
+  const fetchTopPollutedData = useCallback(async () => {
     if (!isValidCombination("", pollutant, year)) {
       console.warn("Invalid combination for top polluted data:", { pollutant, year });
       setTopPollutedData([]);
@@ -161,8 +142,6 @@ const Insights: React.FC = () => {
       
       const topPollutedResponse = await insightApi.getTopPolluted({ pollutant, year });
       
-      console.log("Top polluted API response:", topPollutedResponse);
-      
       if (topPollutedResponse.success && topPollutedResponse.data) {
         if (Array.isArray(topPollutedResponse.data)) {
           const transformedTopPollutedData = topPollutedResponse.data.map(({ name, value }) => ({
@@ -170,14 +149,11 @@ const Insights: React.FC = () => {
             value
           }));
           setTopPollutedData(transformedTopPollutedData);
-          console.log("Transformed top polluted data:", transformedTopPollutedData);
         } else {
-          console.error("Invalid top polluted data structure:", topPollutedResponse.data);
           setErrors(prev => ({ ...prev, topPolluted: "Invalid top polluted data structure" }));
           setTopPollutedData([]);
         }
       } else {
-        console.error("Failed to fetch top polluted data:", topPollutedResponse.error);
         setErrors(prev => ({ ...prev, topPolluted: "Top polluted regions data unavailable" }));
         setTopPollutedData([]);
       }
@@ -188,61 +164,20 @@ const Insights: React.FC = () => {
     } finally {
       setTopPollutedLoading(false);
     }
-  };
+  }, [pollutant, year, isValidCombination]);
 
-  // Handle region selection from improved dataset availability
-  const handleRegionSelect = (selectedRegion: string) => {
-    console.log("Selected region:", selectedRegion);
-    setRegion(selectedRegion);
+  // Handle submit button click
+  const handleSubmit = useCallback(async () => {
+    setHasSubmitted(true);
+    toast.success(`Loading insights for ${pollutant.replace('_conc', '').toUpperCase()} in ${getRegionDisplayName(region)} (${year})`);
     
-    // Switch to Annual Trend tab to show data for this region
-    setActiveTab("trend");
-    
-    // Close availability section to focus on data
-    setIsAvailabilityOpen(false);
-    
-    toast.success(`Selected ${getRegionDisplayName(selectedRegion)} for analysis`);
-  };
-
-  // Handle pollutant selection from improved dataset availability
-  const handlePollutantSelect = (selectedRegion: string, selectedPollutant: Pollutant) => {
-    console.log("Selected region/pollutant:", selectedRegion, selectedPollutant);
-    setRegion(selectedRegion);
-    setPollutant(selectedPollutant);
-    
-    // Switch to Annual Trend tab to show trend for this pollutant
-    setActiveTab("trend");
-    
-    // Close availability section to focus on data
-    setIsAvailabilityOpen(false);
-    
-    toast.success(`Selected ${selectedPollutant.replace('_conc', '').toUpperCase()} analysis for ${getRegionDisplayName(selectedRegion)}`);
-  };
-
-  // Handle quick start from improved dataset availability
-  const handleQuickStart = (selectedRegion: string, selectedPollutant: Pollutant, selectedYear: number, tab: string) => {
-    console.log("Quick start:", { selectedRegion, selectedPollutant, selectedYear, tab });
-    setRegion(selectedRegion);
-    setPollutant(selectedPollutant);
-    setYear(selectedYear);
-    setActiveTab(tab);
-    
-    // Close availability section to focus on data
-    setIsAvailabilityOpen(false);
-    
-    toast.success(`Loading ${selectedPollutant.replace('_conc', '').toUpperCase()} data for ${getRegionDisplayName(selectedRegion)} (${selectedYear})`);
-  };
-
-  // Fetch data based on active tab and filters
-  useEffect(() => {
-    if (activeTab === "trend") {
-      fetchTrendData();
-    } else if (activeTab === "seasonality") {
-      fetchSeasonalData();
-    } else if (activeTab === "top-polluted") {
-      fetchTopPollutedData();
-    }
-  }, [activeTab, region, pollutant, year]);
+    // Fetch data for all tabs
+    await Promise.all([
+      fetchTrendData(),
+      fetchSeasonalData(),
+      fetchTopPollutedData()
+    ]);
+  }, [fetchTrendData, fetchSeasonalData, fetchTopPollutedData, pollutant, region, year]);
 
   const handleTabChange = (value: string) => {
     setActiveTab(value);
@@ -250,14 +185,17 @@ const Insights: React.FC = () => {
   
   const handleRegionChange = (value: string) => {
     setRegion(value);
+    setHasSubmitted(false); // Reset submission state when filters change
   };
   
   const handlePollutantChange = (value: Pollutant) => {
     setPollutant(value);
+    setHasSubmitted(false);
   };
   
   const handleYearChange = (value: string) => {
     setYear(parseInt(value));
+    setHasSubmitted(false);
   };
 
   const isLoading = trendLoading || seasonalLoading || topPollutedLoading;
@@ -271,108 +209,90 @@ const Insights: React.FC = () => {
         </p>
       </div>
 
-      {/* Dataset Availability Section - COMMENTED OUT */}
-      {/*
-      <Collapsible open={isAvailabilityOpen} onOpenChange={setIsAvailabilityOpen}>
-        <CollapsibleTrigger asChild>
-          <Button variant="outline" className="w-full justify-between">
-            <div className="flex items-center gap-2">
-              <Database className="h-4 w-4" />
-              Available Datasets
-            </div>
-            {isAvailabilityOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-          </Button>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          {availabilityLoading ? (
-            <div className="h-32 flex items-center justify-center">
-              <div className="text-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
-                <p className="text-muted-foreground">Loading dataset availability...</p>
-              </div>
-            </div>
-          ) : availabilityData ? (
-            <ImprovedDatasetAvailability
-              data={availabilityData}
-              onRegionSelect={handleRegionSelect}
-              onPollutantSelect={handlePollutantSelect}
-              onQuickStart={handleQuickStart}
-              selectedRegion={region}
-            />
-          ) : null}
-        </CollapsibleContent>
-      </Collapsible>
-      */}
+      {/* Filter Selection Panel */}
+      <InsightFilters
+        activeTab={activeTab}
+        region={region}
+        pollutant={pollutant}
+        year={year}
+        onRegionChange={handleRegionChange}
+        onPollutantChange={handlePollutantChange}
+        onYearChange={handleYearChange}
+        onSubmit={handleSubmit}
+        loading={isLoading}
+      />
 
       {/* Current Selection Breadcrumb */}
-      <CurrentSelectionBreadcrumb
-        region={region}
-        year={activeTab === "top-polluted" ? year : selectedYear}
-        pollutant={pollutant}
-      />
-      
-      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-        <TabsList className="grid grid-cols-3 mb-4">
-          <TabsTrigger value="trend" className="flex items-center gap-2">
-            <TrendingUp className="h-4 w-4" />
-            Annual Trend
-          </TabsTrigger>
-          <TabsTrigger value="seasonality" className="flex items-center gap-2">
-            <Calendar className="h-4 w-4" />
-            Seasonality
-          </TabsTrigger>
-          <TabsTrigger value="top-polluted" className="flex items-center gap-2">
-            <Trophy className="h-4 w-4" />
-            Top Polluted Areas
-          </TabsTrigger>
-        </TabsList>
-
-        {/* Tab-specific Filter Controls */}
-        <InsightFilters
-          activeTab={activeTab}
+      {hasSubmitted && (
+        <CurrentSelectionBreadcrumb
           region={region}
-          pollutant={pollutant}
           year={year}
-          onRegionChange={handleRegionChange}
-          onPollutantChange={handlePollutantChange}
-          onYearChange={handleYearChange}
-          loading={isLoading}
+          pollutant={pollutant}
         />
-        
-        {/* Charts Section */}
-        <TabsContent value="trend">
-          <TrendTab
-            region={region}
-            pollutant={pollutant}
-            data={trendData}
-            loading={trendLoading}
-            error={errors.trend}
-            dataUnit={dataUnit}
-          />
-        </TabsContent>
-        
-        <TabsContent value="seasonality">
-          <SeasonalityTab
-            region={region}
-            pollutant={pollutant}
-            data={seasonalData}
-            loading={seasonalLoading}
-            error={errors.seasonal}
-            dataUnit={dataUnit}
-          />
-        </TabsContent>
-        
-        <TabsContent value="top-polluted">
-          <TopPollutedTab
-            pollutant={pollutant}
-            year={year}
-            data={topPollutedData}
-            loading={topPollutedLoading}
-            error={errors.topPolluted}
-            dataUnit={dataUnit}
-          />
-        </TabsContent>
-      </Tabs>
+      )}
+      
+      {/* Charts Section - Only show after submission */}
+      {hasSubmitted && (
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+          <TabsList className="grid grid-cols-3 mb-4">
+            <TabsTrigger value="trend" className="flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" />
+              Annual Trend
+            </TabsTrigger>
+            <TabsTrigger value="seasonality" className="flex items-center gap-2">
+              <Calendar className="h-4 w-4" />
+              Seasonality
+            </TabsTrigger>
+            <TabsTrigger value="top-polluted" className="flex items-center gap-2">
+              <Trophy className="h-4 w-4" />
+              Top Polluted Areas
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="trend">
+            <TrendTab
+              region={region}
+              pollutant={pollutant}
+              data={trendData}
+              loading={trendLoading}
+              error={errors.trend}
+              dataUnit={dataUnit}
+            />
+          </TabsContent>
+          
+          <TabsContent value="seasonality">
+            <SeasonalityTab
+              region={region}
+              pollutant={pollutant}
+              data={seasonalData}
+              loading={seasonalLoading}
+              error={errors.seasonal}
+              dataUnit={dataUnit}
+            />
+          </TabsContent>
+          
+          <TabsContent value="top-polluted">
+            <TopPollutedTab
+              pollutant={pollutant}
+              year={year}
+              data={topPollutedData}
+              loading={topPollutedLoading}
+              error={errors.topPolluted}
+              dataUnit={dataUnit}
+            />
+          </TabsContent>
+        </Tabs>
+      )}
+
+      {/* Instructions for first-time users */}
+      {!hasSubmitted && (
+        <div className="text-center py-12 bg-muted/20 rounded-lg">
+          <h3 className="text-lg font-medium mb-2">Ready to Explore Air Quality Insights?</h3>
+          <p className="text-muted-foreground">
+            Select your filters above and click "Generate Insights" to view detailed air quality analysis.
+          </p>
+        </div>
+      )}
     </div>
   );
 };
