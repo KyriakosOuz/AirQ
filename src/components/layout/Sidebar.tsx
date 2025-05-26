@@ -63,7 +63,7 @@ export const Sidebar: React.FC = () => {
             <span className="sr-only">Toggle Menu</span>
           </Button>
         </SheetTrigger>
-        <SheetContent side="left" className="p-0 w-64">
+        <SheetContent side="left" className="p-0 w-80">
           <MobileSidebarContent />
         </SheetContent>
       </Sheet>
@@ -82,33 +82,35 @@ const MobileSidebarContent: React.FC = () => {
   return (
     <div className="h-full flex flex-col bg-sidebar">
       {/* Logo */}
-      <div className="p-4 flex items-center">
+      <div className="p-6 flex items-center justify-center bg-sidebar border-b border-sidebar-border">
         <img 
           src="/lovable-uploads/a95d6ea6-5b37-4d78-aa50-114b5e7537d2.png" 
           alt="AirQ Logo" 
-          className="h-8 object-contain"
+          className="h-10 object-contain"
         />
       </div>
       
-      <Separator className="bg-sidebar-border" />
-      
       {/* Navigation Items */}
-      <div className="flex-1 overflow-auto py-2">
-        <div className="px-3 py-2">
-          <p className="text-xs font-medium text-sidebar-foreground/70 mb-2">Main Navigation</p>
-          <NavigationLinks location={location} isAdmin={isAdmin} />
+      <div className="flex-1 overflow-auto py-4">
+        <div className="px-4 py-2">
+          <p className="text-sm font-semibold text-sidebar-foreground/80 mb-4 uppercase tracking-wide">
+            Navigation
+          </p>
+          <NavigationLinks location={location} isAdmin={isAdmin} mobile />
         </div>
       </div>
       
       {/* User Profile */}
       {user && (
-        <div className="p-4 border-t border-sidebar-border">
-          <div className="flex items-center gap-2">
-            <Avatar className="h-8 w-8">
-              <AvatarFallback>{getUserInitials(user)}</AvatarFallback>
+        <div className="p-6 border-t border-sidebar-border bg-sidebar/50">
+          <div className="flex items-center gap-3">
+            <Avatar className="h-10 w-10 ring-2 ring-sidebar-border">
+              <AvatarFallback className="bg-sidebar-accent text-sidebar-accent-foreground font-semibold">
+                {getUserInitials(user)}
+              </AvatarFallback>
             </Avatar>
             <div className="flex flex-col flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{user.email}</p>
+              <p className="text-sm font-medium truncate text-sidebar-foreground">{user.email}</p>
               <p className="text-xs text-sidebar-foreground/70 truncate">
                 {isAdmin ? "Administrator" : "User"}
               </p>
@@ -117,9 +119,9 @@ const MobileSidebarContent: React.FC = () => {
               variant="ghost"
               size="sm"
               onClick={logout}
-              className="h-8 w-8 p-0"
+              className="h-9 w-9 p-0 hover:bg-destructive hover:text-destructive-foreground transition-colors"
             >
-              <LogOut size={16} />
+              <LogOut size={18} />
               <span className="sr-only">Logout</span>
             </Button>
           </div>
@@ -203,7 +205,8 @@ const NavigationLinks: React.FC<{
   location: ReturnType<typeof useLocation>;
   isAdmin: boolean;
   collapsed?: boolean;
-}> = ({ location, isAdmin, collapsed = false }) => {
+  mobile?: boolean;
+}> = ({ location, isAdmin, collapsed = false, mobile = false }) => {
   const navItems = [
     {
       name: "Dashboard",
@@ -244,6 +247,27 @@ const NavigationLinks: React.FC<{
   const renderNavLink = (item: typeof navItems[0]) => {
     const isActive = location.pathname === item.path;
     
+    if (mobile) {
+      return (
+        <Link 
+          key={item.path}
+          to={item.path}
+          className={cn(
+            "flex items-center gap-4 px-4 py-3 rounded-lg transition-all duration-200 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+            isActive && "bg-sidebar-accent text-sidebar-accent-foreground font-medium shadow-sm"
+          )}
+        >
+          <div className={cn(
+            "flex items-center justify-center",
+            isActive ? "text-sidebar-accent-foreground" : "text-sidebar-foreground/70"
+          )}>
+            {item.icon}
+          </div>
+          <span className="text-base font-medium">{item.name}</span>
+        </Link>
+      );
+    }
+    
     if (collapsed) {
       return (
         <Tooltip key={item.path}>
@@ -275,6 +299,28 @@ const NavigationLinks: React.FC<{
       </SidebarMenuItem>
     );
   };
+
+  if (mobile) {
+    return (
+      <div className="space-y-2">
+        {navItems.map(renderNavLink)}
+        
+        {isAdmin && (
+          <>
+            <div className="my-4">
+              <Separator className="bg-sidebar-border" />
+            </div>
+            <div className="space-y-2">
+              <p className="text-sm font-semibold text-sidebar-foreground/80 mb-3 uppercase tracking-wide px-4">
+                Admin
+              </p>
+              {adminItems.map(renderNavLink)}
+            </div>
+          </>
+        )}
+      </div>
+    );
+  }
 
   return (
     <>
