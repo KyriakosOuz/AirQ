@@ -73,10 +73,10 @@ const ForecastPreview: React.FC<ForecastPreviewProps> = ({
     const csvContent = [
       headers.join(','),
       ...data.map(row => [
-        row.date,
-        row.forecast?.toFixed(2) || '',
-        row.lower_bound?.toFixed(2) || '',
-        row.upper_bound?.toFixed(2) || ''
+        row.ds,
+        row.yhat?.toFixed(2) || '',
+        row.yhat_lower?.toFixed(2) || '',
+        row.yhat_upper?.toFixed(2) || ''
       ].join(','))
     ].join('\n');
 
@@ -137,7 +137,7 @@ const ForecastPreview: React.FC<ForecastPreviewProps> = ({
             <LineChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
               <XAxis 
-                dataKey="date" 
+                dataKey="ds" 
                 tick={{ fontSize: 12 }}
                 tickFormatter={(value) => {
                   const date = new Date(value);
@@ -164,7 +164,7 @@ const ForecastPreview: React.FC<ForecastPreviewProps> = ({
               {/* Forecast bounds */}
               <Line 
                 type="monotone" 
-                dataKey="upper_bound" 
+                dataKey="yhat_upper" 
                 stroke="#8b5cf6" 
                 strokeWidth={1}
                 dot={false}
@@ -173,7 +173,7 @@ const ForecastPreview: React.FC<ForecastPreviewProps> = ({
               />
               <Line 
                 type="monotone" 
-                dataKey="lower_bound" 
+                dataKey="yhat_lower" 
                 stroke="#8b5cf6" 
                 strokeWidth={1}
                 dot={false}
@@ -184,7 +184,7 @@ const ForecastPreview: React.FC<ForecastPreviewProps> = ({
               {/* Main forecast line */}
               <Line 
                 type="monotone" 
-                dataKey="forecast" 
+                dataKey="yhat" 
                 stroke="#2563eb" 
                 strokeWidth={3}
                 dot={{ fill: '#2563eb', strokeWidth: 0, r: 3 }}
