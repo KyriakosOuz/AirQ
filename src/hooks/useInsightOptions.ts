@@ -5,9 +5,7 @@ import { Pollutant } from '@/lib/types';
 
 export interface DatasetMetadata {
   [region: string]: {
-    [pollutant: string]: {
-      years: number[];
-    };
+    [pollutant: string]: number[];
   };
 }
 
@@ -30,38 +28,38 @@ export const useInsightOptions = () => {
       } else {
         console.error("Failed to fetch dataset metadata:", response.error);
         setError("Failed to load available datasets");
-        // Fallback to mock data structure
+        // Fallback to mock data structure - simplified to direct arrays
         setDatasetData({
           thessaloniki: { 
-            no2_conc: { years: [2020, 2021, 2022, 2023] },
-            o3_conc: { years: [2021, 2022, 2023] },
-            co_conc: { years: [2022, 2023] }
+            no2_conc: [2020, 2021, 2022, 2023],
+            o3_conc: [2021, 2022, 2023],
+            co_conc: [2022, 2023]
           },
           kalamaria: { 
-            no2_conc: { years: [2021, 2022, 2023] },
-            o3_conc: { years: [2022, 2023] }
+            no2_conc: [2021, 2022, 2023],
+            o3_conc: [2022, 2023]
           },
           'ampelokipoi-menemeni': { 
-            no2_conc: { years: [2022, 2023] }
+            no2_conc: [2022, 2023]
           }
         });
       }
     } catch (err) {
       console.error("Error fetching dataset metadata:", err);
       setError("Network error while loading datasets");
-      // Fallback to mock data
+      // Fallback to mock data - simplified to direct arrays
       setDatasetData({
         thessaloniki: { 
-          no2_conc: { years: [2020, 2021, 2022, 2023] },
-          o3_conc: { years: [2021, 2022, 2023] },
-          co_conc: { years: [2022, 2023] }
+          no2_conc: [2020, 2021, 2022, 2023],
+          o3_conc: [2021, 2022, 2023],
+          co_conc: [2022, 2023]
         },
         kalamaria: { 
-          no2_conc: { years: [2021, 2022, 2023] },
-          o3_conc: { years: [2022, 2023] }
+          no2_conc: [2021, 2022, 2023],
+          o3_conc: [2022, 2023]
         },
         'ampelokipoi-menemeni': { 
-          no2_conc: { years: [2022, 2023] }
+          no2_conc: [2022, 2023]
         }
       });
     } finally {
@@ -86,14 +84,14 @@ export const useInsightOptions = () => {
 
   const getAvailableYears = useCallback((region: string, pollutant: Pollutant): number[] => {
     if (!datasetData || !datasetData[region] || !datasetData[region][pollutant]) return [];
-    return datasetData[region][pollutant].years || [];
+    return datasetData[region][pollutant] || [];
   }, [datasetData]);
 
   const isValidCombination = useCallback((region: string, pollutant?: Pollutant, year?: number): boolean => {
     if (!datasetData || !datasetData[region]) return false;
     
     if (pollutant && !datasetData[region][pollutant]) return false;
-    if (pollutant && year && !datasetData[region][pollutant].years.includes(year)) return false;
+    if (pollutant && year && !datasetData[region][pollutant].includes(year)) return false;
     
     return true;
   }, [datasetData]);
