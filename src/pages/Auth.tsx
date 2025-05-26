@@ -165,6 +165,7 @@ const Auth: React.FC = () => {
               className="w-16 h-16 object-contain"
             />
           </div>
+          <CardTitle className="text-2xl font-bold text-center">AirQ</CardTitle>
           <CardDescription className="text-center">
             Air Quality Monitoring
           </CardDescription>
