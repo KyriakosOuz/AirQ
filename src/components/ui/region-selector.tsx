@@ -1,4 +1,3 @@
-
 import * as React from "react";
 import { Check, ChevronDown } from "lucide-react";
 
@@ -15,11 +14,11 @@ import {
 const DEFAULT_REGIONS = [
   { value: "thessaloniki", label: "Thessaloniki" },
   { value: "ampelokipoi-menemeni", label: "Ampelokipoi - Menemeni" },
-  { value: "neapoli-sykies", label: "Neapoli - Sykies" },
-  { value: "kalamaria", label: "Kalamaria" },
-  { value: "pavlos-melas", label: "Pavlos Melas" },
-  { value: "pylaia-chortiatis", label: "Pylaia - Chortiatis" },
-  { value: "panorama", label: "Panorama" },
+  // { value: "neapoli-sykies", label: "Neapoli - Sykies" },
+  // { value: "kalamaria", label: "Kalamaria" },
+  // { value: "pavlos-melas", label: "Pavlos Melas" },
+  // { value: "pylaia-chortiatis", label: "Pylaia - Chortiatis" },
+  // { value: "panorama", label: "Panorama" },
 ];
 
 interface RegionSelectorProps {
