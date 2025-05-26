@@ -39,14 +39,33 @@ export const InsightFilters: React.FC<InsightFiltersProps> = ({
     isValidCombination 
   } = useInsightOptions();
 
-  // Get dynamic options based on selected region and pollutant
-  const availableRegions = useMemo(() => getAvailableRegions(), [getAvailableRegions]);
-  const availablePollutants = useMemo(() => getAvailablePollutants(region), [getAvailablePollutants, region]);
-  const availableYears = useMemo(() => getAvailableYears(region, pollutant), [getAvailableYears, region, pollutant]);
+  // Get dynamic options based on trained model data
+  const availableRegions = useMemo(() => {
+    if (!modelData) return [];
+    return Object.keys(modelData);
+  }, [modelData]);
 
-  // Validate and auto-correct selections when model data changes
+  const availablePollutants = useMemo(() => {
+    if (!modelData || !region || !modelData[region]) return [];
+    return Object.keys(modelData[region]) as Pollutant[];
+  }, [modelData, region]);
+
+  const availableYears = useMemo(() => {
+    if (!modelData || !region || !pollutant || !modelData[region] || !modelData[region][pollutant]) return [];
+    return modelData[region][pollutant].years || [];
+  }, [modelData, region, pollutant]);
+
+  // Auto-correct selections when model data changes or when selections become invalid
   useEffect(() => {
     if (!modelData || modelsLoading) return;
+
+    console.log("Model data updated:", modelData);
+    console.log("Current selections:", { region, pollutant, year });
+    console.log("Available options:", { 
+      regions: availableRegions, 
+      pollutants: availablePollutants, 
+      years: availableYears 
+    });
 
     // Check if current region is valid
     if (region && !availableRegions.includes(region)) {
@@ -59,7 +78,7 @@ export const InsightFilters: React.FC<InsightFiltersProps> = ({
     }
 
     // Check if current pollutant is valid for selected region
-    if (pollutant && !availablePollutants.includes(pollutant)) {
+    if (region && pollutant && !availablePollutants.includes(pollutant)) {
       const firstAvailablePollutant = availablePollutants[0];
       if (firstAvailablePollutant) {
         console.log(`Auto-correcting pollutant from ${pollutant} to ${firstAvailablePollutant}`);
@@ -69,14 +88,49 @@ export const InsightFilters: React.FC<InsightFiltersProps> = ({
     }
 
     // Check if current year is valid for selected region and pollutant
-    if (year && !availableYears.includes(year)) {
+    if (region && pollutant && year && !availableYears.includes(year)) {
       const firstAvailableYear = availableYears[0];
       if (firstAvailableYear) {
         console.log(`Auto-correcting year from ${year} to ${firstAvailableYear}`);
         onYearChange(firstAvailableYear.toString());
       }
     }
-  }, [modelData, modelsLoading, region, pollutant, year, activeTab, availableRegions, availablePollutants, availableYears, onRegionChange, onPollutantChange, onYearChange]);
+  }, [modelData, modelsLoading, region, pollutant, year, availableRegions, availablePollutants, availableYears, onRegionChange, onPollutantChange, onYearChange]);
+
+  // Handle region change - reset pollutant and year
+  const handleRegionChange = (newRegion: string) => {
+    console.log("Region changed to:", newRegion);
+    onRegionChange(newRegion);
+    
+    // Reset pollutant and year when region changes
+    const newAvailablePollutants = modelData && modelData[newRegion] ? Object.keys(modelData[newRegion]) as Pollutant[] : [];
+    if (newAvailablePollutants.length > 0) {
+      const firstPollutant = newAvailablePollutants[0];
+      onPollutantChange(firstPollutant);
+      
+      // Reset year when pollutant changes
+      const newAvailableYears = modelData && modelData[newRegion] && modelData[newRegion][firstPollutant] 
+        ? modelData[newRegion][firstPollutant].years 
+        : [];
+      if (newAvailableYears.length > 0) {
+        onYearChange(newAvailableYears[0].toString());
+      }
+    }
+  };
+
+  // Handle pollutant change - reset year
+  const handlePollutantChange = (newPollutant: Pollutant) => {
+    console.log("Pollutant changed to:", newPollutant);
+    onPollutantChange(newPollutant);
+    
+    // Reset year when pollutant changes
+    const newAvailableYears = modelData && modelData[region] && modelData[region][newPollutant] 
+      ? modelData[region][newPollutant].years 
+      : [];
+    if (newAvailableYears.length > 0) {
+      onYearChange(newAvailableYears[0].toString());
+    }
+  };
 
   // Determine which filters to show based on active tab
   const showRegion = activeTab === "trend" || activeTab === "seasonality";
@@ -137,10 +191,15 @@ export const InsightFilters: React.FC<InsightFiltersProps> = ({
             <CardContent>
               <RegionSelector 
                 value={region} 
-                onValueChange={onRegionChange}
+                onValueChange={handleRegionChange}
                 disabled={loading || modelsLoading}
                 regions={availableRegions}
               />
+              {availableRegions.length === 0 && !modelsLoading && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  No trained models available
+                </p>
+              )}
             </CardContent>
           </Card>
         )}
@@ -153,8 +212,8 @@ export const InsightFilters: React.FC<InsightFiltersProps> = ({
             <CardContent>
               <PollutantSelector 
                 value={pollutant} 
-                onValueChange={onPollutantChange}
-                disabled={loading || modelsLoading}
+                onValueChange={handlePollutantChange}
+                disabled={loading || modelsLoading || !region || availablePollutants.length === 0}
                 pollutants={availablePollutants}
               />
               {availablePollutants.length === 0 && region && !modelsLoading && (
@@ -175,7 +234,7 @@ export const InsightFilters: React.FC<InsightFiltersProps> = ({
               <Select 
                 value={year.toString()} 
                 onValueChange={onYearChange}
-                disabled={loading || modelsLoading || availableYears.length === 0}
+                disabled={loading || modelsLoading || !region || !pollutant || availableYears.length === 0}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select year" />
