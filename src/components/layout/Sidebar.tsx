@@ -62,7 +62,7 @@ export const Sidebar: React.FC = () => {
           <Button 
             variant="outline" 
             size="icon" 
-            className="md:hidden fixed top-4 left-4 z-50 h-12 w-12 bg-white/95 backdrop-blur-sm border-2 border-gray-300 shadow-lg hover:bg-gray-50 hover:border-gray-400 transition-all duration-200"
+            className="md:hidden fixed top-6 left-6 z-50 h-12 w-12 bg-white/95 backdrop-blur-sm border-2 border-gray-300 shadow-lg hover:bg-gray-50 hover:border-gray-400 transition-all duration-200"
           >
             <Menu size={24} className="text-gray-700" />
             <span className="sr-only">Toggle Menu</span>
