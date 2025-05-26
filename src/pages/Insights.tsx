@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { insightApi } from "@/lib/api";
@@ -190,23 +189,21 @@ const Insights: React.FC = () => {
     }
   };
 
-  // Handle region/year selection from availability table
-  const handleRegionYearSelect = (selectedRegion: string, selectedYear: number) => {
-    console.log("Selected region/year:", selectedRegion, selectedYear);
+  // Handle region selection from improved dataset availability
+  const handleRegionSelect = (selectedRegion: string) => {
+    console.log("Selected region:", selectedRegion);
     setRegion(selectedRegion);
-    setSelectedYear(selectedYear);
-    setYear(selectedYear);
     
-    // Switch to Annual Trend tab to show all years for this region
+    // Switch to Annual Trend tab to show data for this region
     setActiveTab("trend");
     
-    // Close availability table to focus on data
+    // Close availability section to focus on data
     setIsAvailabilityOpen(false);
     
-    toast.success(`Selected ${getRegionDisplayName(selectedRegion)} data for ${selectedYear}`);
+    toast.success(`Selected ${getRegionDisplayName(selectedRegion)} for analysis`);
   };
 
-  // Handle pollutant selection from availability table
+  // Handle pollutant selection from improved dataset availability
   const handlePollutantSelect = (selectedRegion: string, selectedPollutant: Pollutant) => {
     console.log("Selected region/pollutant:", selectedRegion, selectedPollutant);
     setRegion(selectedRegion);
@@ -215,10 +212,24 @@ const Insights: React.FC = () => {
     // Switch to Annual Trend tab to show trend for this pollutant
     setActiveTab("trend");
     
-    // Close availability table to focus on data
+    // Close availability section to focus on data
     setIsAvailabilityOpen(false);
     
     toast.success(`Selected ${selectedPollutant.replace('_conc', '').toUpperCase()} analysis for ${getRegionDisplayName(selectedRegion)}`);
+  };
+
+  // Handle quick start from improved dataset availability
+  const handleQuickStart = (selectedRegion: string, selectedPollutant: Pollutant, selectedYear: number, tab: string) => {
+    console.log("Quick start:", { selectedRegion, selectedPollutant, selectedYear, tab });
+    setRegion(selectedRegion);
+    setPollutant(selectedPollutant);
+    setYear(selectedYear);
+    setActiveTab(tab);
+    
+    // Close availability section to focus on data
+    setIsAvailabilityOpen(false);
+    
+    toast.success(`Loading ${selectedPollutant.replace('_conc', '').toUpperCase()} data for ${getRegionDisplayName(selectedRegion)} (${selectedYear})`);
   };
 
   // Fetch data based on active tab and filters
@@ -279,13 +290,12 @@ const Insights: React.FC = () => {
               </div>
             </div>
           ) : availabilityData ? (
-            <DatasetAvailabilityTable
+            <ImprovedDatasetAvailability
               data={availabilityData}
-              onRegionYearSelect={handleRegionYearSelect}
+              onRegionSelect={handleRegionSelect}
               onPollutantSelect={handlePollutantSelect}
+              onQuickStart={handleQuickStart}
               selectedRegion={region}
-              selectedYear={selectedYear}
-              selectedPollutant={pollutant}
             />
           ) : null}
         </CollapsibleContent>
