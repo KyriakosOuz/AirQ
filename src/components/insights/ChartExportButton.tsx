@@ -1,7 +1,6 @@
-
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Download, FileText, Image } from 'lucide-react';
+import { Download, FileText, Image as ImageIcon } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 
@@ -81,12 +80,12 @@ export const ChartExportButton: React.FC<ChartExportButtonProps> = ({
     const img = new Image();
     
     // Convert SVG to data URL - use global XMLSerializer
-    if (typeof XMLSerializer === 'undefined') {
+    if (typeof window.XMLSerializer === 'undefined') {
       toast.error('XMLSerializer not available');
       return;
     }
     
-    const serializer = new XMLSerializer();
+    const serializer = new window.XMLSerializer();
     const svgData = serializer.serializeToString(svgElement);
     const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
     const url = URL.createObjectURL(svgBlob);
@@ -129,7 +128,7 @@ export const ChartExportButton: React.FC<ChartExportButtonProps> = ({
           Export as CSV
         </DropdownMenuItem>
         <DropdownMenuItem onClick={exportToPNG}>
-          <Image className="h-4 w-4 mr-2" />
+          <ImageIcon className="h-4 w-4 mr-2" />
           Export as PNG
         </DropdownMenuItem>
       </DropdownMenuContent>
