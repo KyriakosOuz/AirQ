@@ -28,7 +28,7 @@ export const useInsightOptions = () => {
       } else {
         console.error("Failed to fetch dataset metadata:", response.error);
         setError("Failed to load available datasets");
-        // Fallback to mock data structure - simplified to direct arrays
+        // Fallback to mock data structure - direct arrays as expected by DatasetMetadata
         setDatasetData({
           thessaloniki: { 
             no2_conc: [2020, 2021, 2022, 2023],
@@ -47,7 +47,7 @@ export const useInsightOptions = () => {
     } catch (err) {
       console.error("Error fetching dataset metadata:", err);
       setError("Network error while loading datasets");
-      // Fallback to mock data - simplified to direct arrays
+      // Fallback to mock data - direct arrays as expected by DatasetMetadata
       setDatasetData({
         thessaloniki: { 
           no2_conc: [2020, 2021, 2022, 2023],
