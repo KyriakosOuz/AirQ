@@ -1,10 +1,12 @@
 
-import React from "react";
+import React, { useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RegionSelector } from "@/components/ui/region-selector";
 import { PollutantSelector } from "@/components/ui/pollutant-selector";
 import { Pollutant } from "@/lib/types";
+import { useInsightOptions } from "@/hooks/useInsightOptions";
+import { Loader2 } from "lucide-react";
 
 interface InsightFiltersProps {
   activeTab: string;
@@ -27,7 +29,55 @@ export const InsightFilters: React.FC<InsightFiltersProps> = ({
   onYearChange,
   loading = false
 }) => {
-  const years = Array.from({ length: 8 }, (_, i) => 2017 + i); // 2017-2024
+  const { 
+    options, 
+    loading: optionsLoading, 
+    error: optionsError,
+    getAvailableYears, 
+    getAvailablePollutants, 
+    getAvailableRegions,
+    isValidCombination 
+  } = useInsightOptions();
+
+  // Get dynamic options based on selected region
+  const availableRegions = useMemo(() => getAvailableRegions(), [getAvailableRegions]);
+  const availableYears = useMemo(() => getAvailableYears(region), [getAvailableYears, region]);
+  const availablePollutants = useMemo(() => getAvailablePollutants(region), [getAvailablePollutants, region]);
+
+  // Validate and auto-correct selections when dynamic options change
+  useEffect(() => {
+    if (!options || optionsLoading) return;
+
+    // Check if current region is valid
+    if (region && !availableRegions.includes(region)) {
+      const firstAvailableRegion = availableRegions[0];
+      if (firstAvailableRegion) {
+        console.log(`Auto-correcting region from ${region} to ${firstAvailableRegion}`);
+        onRegionChange(firstAvailableRegion);
+      }
+      return;
+    }
+
+    // Check if current pollutant is valid for selected region
+    if (pollutant && !availablePollutants.includes(pollutant)) {
+      const firstAvailablePollutant = availablePollutants[0];
+      if (firstAvailablePollutant) {
+        console.log(`Auto-correcting pollutant from ${pollutant} to ${firstAvailablePollutant}`);
+        onPollutantChange(firstAvailablePollutant);
+      }
+      return;
+    }
+
+    // Check if current year is valid for selected region (only for tabs that use year)
+    if ((activeTab === "seasonality" || activeTab === "top-polluted") && 
+        year && !availableYears.includes(year)) {
+      const firstAvailableYear = availableYears[0];
+      if (firstAvailableYear) {
+        console.log(`Auto-correcting year from ${year} to ${firstAvailableYear}`);
+        onYearChange(firstAvailableYear.toString());
+      }
+    }
+  }, [options, optionsLoading, region, pollutant, year, activeTab, availableRegions, availablePollutants, availableYears, onRegionChange, onPollutantChange, onYearChange]);
 
   // Determine which filters to show based on active tab
   const showRegion = activeTab === "trend" || activeTab === "seasonality";
@@ -36,6 +86,23 @@ export const InsightFilters: React.FC<InsightFiltersProps> = ({
 
   return (
     <div className="space-y-4">
+      {/* Loading indicator for dynamic options */}
+      {optionsLoading && (
+        <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <span className="text-sm text-blue-800">Loading available options...</span>
+        </div>
+      )}
+
+      {/* Error indicator for failed options load */}
+      {optionsError && (
+        <div className="p-3 bg-amber-50 rounded-lg">
+          <p className="text-sm text-amber-800">
+            <strong>Note:</strong> {optionsError}. Using fallback options.
+          </p>
+        </div>
+      )}
+
       {/* Tab-specific filter descriptions */}
       {activeTab === "trend" && (
         <div className="p-3 bg-blue-50 rounded-lg">
@@ -72,7 +139,8 @@ export const InsightFilters: React.FC<InsightFiltersProps> = ({
               <RegionSelector 
                 value={region} 
                 onValueChange={onRegionChange}
-                disabled={loading}
+                disabled={loading || optionsLoading}
+                regions={availableRegions}
               />
             </CardContent>
           </Card>
@@ -87,8 +155,14 @@ export const InsightFilters: React.FC<InsightFiltersProps> = ({
               <PollutantSelector 
                 value={pollutant} 
                 onValueChange={onPollutantChange}
-                disabled={loading}
+                disabled={loading || optionsLoading}
+                pollutants={availablePollutants}
               />
+              {availablePollutants.length === 0 && region && !optionsLoading && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  No pollutants available for {region}
+                </p>
+              )}
             </CardContent>
           </Card>
         )}
@@ -102,19 +176,24 @@ export const InsightFilters: React.FC<InsightFiltersProps> = ({
               <Select 
                 value={year.toString()} 
                 onValueChange={onYearChange}
-                disabled={loading}
+                disabled={loading || optionsLoading || availableYears.length === 0}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select year" />
                 </SelectTrigger>
                 <SelectContent>
-                  {years.map((yearOption) => (
+                  {availableYears.map((yearOption) => (
                     <SelectItem key={yearOption} value={yearOption.toString()}>
                       {yearOption}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              {availableYears.length === 0 && region && !optionsLoading && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  No years available for {region}
+                </p>
+              )}
             </CardContent>
           </Card>
         )}

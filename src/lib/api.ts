@@ -835,6 +835,14 @@ export const insightApi = {
       seasonal_avg: SeasonalityChart;
     }>(`/insights/seasonality/?${queryParams}`);
   },
+  getAvailableOptions: async () => {
+    return fetchWithAuth<{
+      [region: string]: {
+        years: number[];
+        pollutants: string[];
+      };
+    }>('/insights/available-options/');
+  },
   getPersonalized: async (params: { pollutant: string; region: string }) => {
     const queryParams = new URLSearchParams(params as any).toString();
     return fetchWithAuth(`/insights/personalized/?${queryParams}`);

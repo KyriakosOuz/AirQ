@@ -12,6 +12,7 @@ import { TopPollutedTab } from "@/components/insights/TopPollutedTab";
 import { DatasetAvailabilityTable } from "@/components/insights/DatasetAvailabilityTable";
 import { CurrentSelectionBreadcrumb } from "@/components/insights/CurrentSelectionBreadcrumb";
 import { useDatasetAvailabilityMatrix } from "@/hooks/useDatasetAvailabilityMatrix";
+import { useInsightOptions } from "@/hooks/useInsightOptions";
 import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -37,6 +38,9 @@ const Insights: React.FC = () => {
 
   // Dataset availability hook
   const { data: availabilityData, isLoading: availabilityLoading } = useDatasetAvailabilityMatrix();
+  
+  // Dynamic options hook
+  const { isValidCombination } = useInsightOptions();
 
   // Helper function to get region display name
   const getRegionDisplayName = (region: string) => {
@@ -46,6 +50,13 @@ const Insights: React.FC = () => {
   };
 
   const fetchTrendData = async () => {
+    if (!isValidCombination(region, undefined, pollutant)) {
+      console.warn("Invalid combination for trend data:", { region, pollutant });
+      setTrendData([]);
+      setErrors(prev => ({ ...prev, trend: "No data available for this combination" }));
+      return;
+    }
+
     setTrendLoading(true);
     setErrors(prev => ({ ...prev, trend: undefined }));
     
@@ -90,6 +101,13 @@ const Insights: React.FC = () => {
   };
 
   const fetchSeasonalData = async () => {
+    if (!isValidCombination(region, undefined, pollutant)) {
+      console.warn("Invalid combination for seasonal data:", { region, pollutant });
+      setSeasonalData([]);
+      setErrors(prev => ({ ...prev, seasonal: "No data available for this combination" }));
+      return;
+    }
+
     setSeasonalLoading(true);
     setErrors(prev => ({ ...prev, seasonal: undefined }));
     
@@ -129,6 +147,13 @@ const Insights: React.FC = () => {
   };
 
   const fetchTopPollutedData = async () => {
+    if (!isValidCombination("", year, pollutant)) {
+      console.warn("Invalid combination for top polluted data:", { pollutant, year });
+      setTopPollutedData([]);
+      setErrors(prev => ({ ...prev, topPolluted: "No data available for this combination" }));
+      return;
+    }
+
     setTopPollutedLoading(true);
     setErrors(prev => ({ ...prev, topPolluted: undefined }));
     
