@@ -80,8 +80,13 @@ export const ChartExportButton: React.FC<ChartExportButtonProps> = ({
     const ctx = canvas.getContext('2d');
     const img = new Image();
     
-    // Convert SVG to data URL - access XMLSerializer through window
-    const serializer = new (window as any).XMLSerializer();
+    // Convert SVG to data URL - use XMLSerializer directly
+    const serializer = XMLSerializer ? new XMLSerializer() : null;
+    if (!serializer) {
+      toast.error('XMLSerializer not available');
+      return;
+    }
+    
     const svgData = serializer.serializeToString(svgElement);
     const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
     const url = URL.createObjectURL(svgBlob);
