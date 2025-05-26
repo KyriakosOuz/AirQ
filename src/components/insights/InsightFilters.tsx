@@ -51,7 +51,7 @@ export const InsightFilters: React.FC<InsightFiltersProps> = ({
 
   const availableYears = useMemo(() => {
     if (!datasetData || !region || !pollutant || !datasetData[region] || !datasetData[region][pollutant]) return [];
-    return datasetData[region][pollutant].years || [];
+    return datasetData[region][pollutant] || [];
   }, [datasetData, region, pollutant]);
 
   // Auto-correct selections when dataset data changes
@@ -96,9 +96,7 @@ export const InsightFilters: React.FC<InsightFiltersProps> = ({
       onPollutantChange(firstPollutant);
       
       // Reset year when pollutant changes
-      const newAvailableYears = datasetData && datasetData[newRegion] && datasetData[newRegion][firstPollutant] 
-        ? datasetData[newRegion][firstPollutant].years 
-        : [];
+      const newAvailableYears = datasetData?.[newRegion]?.[firstPollutant] ?? [];
       if (newAvailableYears.length > 0) {
         onYearChange(newAvailableYears[0].toString());
       }
@@ -110,9 +108,7 @@ export const InsightFilters: React.FC<InsightFiltersProps> = ({
     onPollutantChange(newPollutant);
     
     // Reset year when pollutant changes
-    const newAvailableYears = datasetData && datasetData[region] && datasetData[region][newPollutant] 
-      ? datasetData[region][newPollutant].years 
-      : [];
+    const newAvailableYears = datasetData?.[region]?.[newPollutant] ?? [];
     if (newAvailableYears.length > 0) {
       onYearChange(newAvailableYears[0].toString());
     }
@@ -132,7 +128,7 @@ export const InsightFilters: React.FC<InsightFiltersProps> = ({
     let total = 0;
     Object.values(datasetData).forEach(regionData => {
       Object.values(regionData).forEach(pollutantData => {
-        total += pollutantData.years?.length || 0;
+        total += pollutantData?.length || 0;
       });
     });
     return total;
