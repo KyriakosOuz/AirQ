@@ -1,5 +1,6 @@
+
 import React from "react";
-import { useCachedDashboardOverview } from "@/hooks/useCachedDashboardOverview";
+import { useDashboardOverview } from "@/hooks/useDashboardOverview";
 import { TodaysAirQuality } from "@/components/dashboard/TodaysAirQuality";
 import { ForecastPreview } from "@/components/dashboard/ForecastPreview";
 import { PersonalizedTrend } from "@/components/dashboard/PersonalizedTrend";
@@ -11,7 +12,7 @@ import { getErrorMessage } from "@/lib/utils";
 import ErrorBoundary from "@/components/ErrorBoundary";
 
 const Dashboard: React.FC = () => {
-  const { data, loading, error, refetch } = useCachedDashboardOverview();
+  const { data, loading, error, refetch } = useDashboardOverview();
 
   const handleRefresh = async () => {
     try {
