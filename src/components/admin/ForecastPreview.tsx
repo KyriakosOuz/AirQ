@@ -1,7 +1,6 @@
-
 import React, { useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { format, parseISO } from "date-fns";
 import { Pollutant, AqiLevel } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -31,6 +30,13 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import {
+  standardizeAqiDataPoint,
+  getColorByRiskScore,
+  getCategoryByRiskScore,
+  AQI_CATEGORIES,
+  getPollutantDisplayName
+} from "@/lib/aqi-standardization";
 
 // Interface for forecast data point
 export interface ForecastDataPoint {
@@ -83,15 +89,63 @@ const ForecastPreview: React.FC<ForecastPreviewProps> = ({
     }
   };
   
-  // Format data for chart
-  const chartData = data.map(point => ({
-    ...point,
-    date: formatXAxisLabel(point.ds),
-    value: Number(point.yhat.toFixed(2)),
-    lower: Number(point.yhat_lower.toFixed(2)),
-    upper: Number(point.yhat_upper.toFixed(2)),
-    category: point.category || "Unknown",
-  }));
+  // Format data for chart with AQI standardization
+  const chartData = data.map(point => {
+    const standardized = standardizeAqiDataPoint(point);
+    return {
+      ...point,
+      date: formatXAxisLabel(point.ds),
+      value: Number(point.yhat.toFixed(2)),
+      lower: Number(point.yhat_lower.toFixed(2)),
+      upper: Number(point.yhat_upper.toFixed(2)),
+      category: standardized.category,
+      riskScore: standardized.riskScore,
+      color: standardized.color,
+    };
+  });
+
+  // Enhanced tooltip showing both risk score and AQI category
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      
+      return (
+        <div className="bg-background border rounded-md p-3 shadow-md min-w-[200px]">
+          <p className="font-medium mb-2">{data.date}</p>
+          <div className="space-y-1">
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-muted-foreground">Pollutant:</span>
+              <span className="text-sm font-medium">{getPollutantDisplayName(pollutant)}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-muted-foreground">Level:</span>
+              <span className="text-sm">{data.value} μg/m³</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-muted-foreground">Range:</span>
+              <span className="text-sm">{data.lower} - {data.upper} μg/m³</span>
+            </div>
+            <hr className="my-2" />
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-muted-foreground">🎯 Risk Score:</span>
+              <div className="flex items-center gap-1">
+                <div 
+                  className="w-3 h-3 rounded-full" 
+                  style={{ backgroundColor: data.color }}
+                ></div>
+                <span className="text-sm font-medium">{data.riskScore}</span>
+              </div>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-muted-foreground">🏷 AQI Category:</span>
+              <span className="text-sm font-medium">{data.category}</span>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    return null;
+  };
   
   // Get pollutant unit for display
   const getPollutantUnit = (pollutantCode: string): string => {
@@ -293,36 +347,7 @@ const ForecastPreview: React.FC<ForecastPreviewProps> = ({
                   style: { textAnchor: 'middle' }
                 }}
               />
-              <Tooltip 
-                content={(props) => {
-                  const { active, payload } = props;
-                  if (active && payload && payload.length) {
-                    const data = payload[0].payload;
-                    const category = data.category?.toLowerCase() || "moderate";
-                    
-                    return (
-                      <div className="rounded-lg border bg-background p-2 shadow-md">
-                        <div className="grid grid-cols-2 gap-2">
-                          <span className="text-xs font-medium">Date:</span>
-                          <span className="text-xs">{data.date}</span>
-                          
-                          <span className="text-xs font-medium">Value:</span>
-                          <span className="text-xs">{data.value} µg/m³</span>
-                          
-                          <span className="text-xs font-medium">Range:</span>
-                          <span className="text-xs">{data.lower} - {data.upper} µg/m³</span>
-                          
-                          <span className="text-xs font-medium">Category:</span>
-                          <span className="text-xs">
-                            <AqiBadge level={category as AqiLevel} showLabel={true} className="px-1 py-0" />
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  }
-                  return null;
-                }}
-              />
+              <Tooltip content={<CustomTooltip />} />
               <defs>
                 <linearGradient id="colorUpper" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#82ca9d" stopOpacity={0.1} />
@@ -378,6 +403,19 @@ const ForecastPreview: React.FC<ForecastPreviewProps> = ({
               <div className="h-3 w-3 bg-[#8884d8] rounded-full mr-1"></div>
               <span className="text-xs">Lower Bound</span>
             </div>
+          </div>
+
+          {/* AQI Categories Legend */}
+          <div className="mt-4 flex flex-wrap gap-2 justify-center">
+            {[1, 2, 3, 4, 5, 6].map((score) => (
+              <div key={score} className="flex items-center space-x-1">
+                <div 
+                  className="h-3 w-3 rounded-full" 
+                  style={{ backgroundColor: getColorByRiskScore(score) }}
+                ></div>
+                <span className="text-xs">{getCategoryByRiskScore(score)}</span>
+              </div>
+            ))}
           </div>
           
           {dominantCategory && (

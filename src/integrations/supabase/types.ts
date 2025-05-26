@@ -46,6 +46,7 @@ export type Database = {
       }
       datasets: {
         Row: {
+          available_pollutants: string[] | null
           created_at: string | null
           file_path: string
           filename: string | null
@@ -56,6 +57,7 @@ export type Database = {
           year: number | null
         }
         Insert: {
+          available_pollutants?: string[] | null
           created_at?: string | null
           file_path: string
           filename?: string | null
@@ -66,6 +68,7 @@ export type Database = {
           year?: number | null
         }
         Update: {
+          available_pollutants?: string[] | null
           created_at?: string | null
           file_path?: string
           filename?: string | null
