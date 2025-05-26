@@ -835,14 +835,14 @@ export const insightApi = {
       seasonal_avg: SeasonalityChart;
     }>(`/insights/seasonality/?${queryParams}`);
   },
-  getAvailableModels: async () => {
+  getAvailableDatasets: async () => {
     return fetchWithAuth<{
       [region: string]: {
         [pollutant: string]: {
           years: number[];
         };
       };
-    }>('/insights/available-models/');
+    }>('/insights/available-datasets/');
   },
   getPersonalized: async (params: { pollutant: string; region: string }) => {
     const queryParams = new URLSearchParams(params as any).toString();

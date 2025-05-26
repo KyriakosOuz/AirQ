@@ -41,13 +41,6 @@ const Insights: React.FC = () => {
   };
 
   const fetchTrendData = useCallback(async () => {
-    if (!isValidCombination(region, pollutant, year)) {
-      console.warn("Invalid combination for trend data:", { region, pollutant, year });
-      setTrendData([]);
-      setErrors(prev => ({ ...prev, trend: "No trained model available for this combination" }));
-      return;
-    }
-
     setTrendLoading(true);
     setErrors(prev => ({ ...prev, trend: undefined }));
     
@@ -83,16 +76,9 @@ const Insights: React.FC = () => {
     } finally {
       setTrendLoading(false);
     }
-  }, [region, pollutant, year, isValidCombination]);
+  }, [region, pollutant, year]);
 
   const fetchSeasonalData = useCallback(async () => {
-    if (!isValidCombination(region, pollutant, year)) {
-      console.warn("Invalid combination for seasonal data:", { region, pollutant, year });
-      setSeasonalData([]);
-      setErrors(prev => ({ ...prev, seasonal: "No trained model available for this combination" }));
-      return;
-    }
-
     setSeasonalLoading(true);
     setErrors(prev => ({ ...prev, seasonal: undefined }));
     
@@ -124,16 +110,9 @@ const Insights: React.FC = () => {
     } finally {
       setSeasonalLoading(false);
     }
-  }, [region, pollutant, year, isValidCombination]);
+  }, [region, pollutant, year]);
 
   const fetchTopPollutedData = useCallback(async () => {
-    if (!isValidCombination("", pollutant, year)) {
-      console.warn("Invalid combination for top polluted data:", { pollutant, year });
-      setTopPollutedData([]);
-      setErrors(prev => ({ ...prev, topPolluted: "No trained models available for this combination" }));
-      return;
-    }
-
     setTopPollutedLoading(true);
     setErrors(prev => ({ ...prev, topPolluted: undefined }));
     
@@ -164,7 +143,7 @@ const Insights: React.FC = () => {
     } finally {
       setTopPollutedLoading(false);
     }
-  }, [pollutant, year, isValidCombination]);
+  }, [pollutant, year]);
 
   // Handle submit button click
   const handleSubmit = useCallback(async () => {

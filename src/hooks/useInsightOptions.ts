@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { insightApi } from '@/lib/api';
 import { Pollutant } from '@/lib/types';
 
-export interface ModelMetadata {
+export interface DatasetMetadata {
   [region: string]: {
     [pollutant: string]: {
       years: number[];
@@ -12,26 +12,26 @@ export interface ModelMetadata {
 }
 
 export const useInsightOptions = () => {
-  const [modelData, setModelData] = useState<ModelMetadata | null>(null);
+  const [datasetData, setDatasetData] = useState<DatasetMetadata | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchModelData = useCallback(async () => {
+  const fetchDatasetData = useCallback(async () => {
     setLoading(true);
     setError(null);
     
     try {
-      console.log("Fetching available model metadata...");
-      const response = await insightApi.getAvailableModels();
+      console.log("Fetching available dataset metadata...");
+      const response = await insightApi.getAvailableDatasets();
       
       if (response.success && response.data) {
-        setModelData(response.data);
-        console.log("Available models:", response.data);
+        setDatasetData(response.data);
+        console.log("Available datasets:", response.data);
       } else {
-        console.error("Failed to fetch model metadata:", response.error);
-        setError("Failed to load available models");
+        console.error("Failed to fetch dataset metadata:", response.error);
+        setError("Failed to load available datasets");
         // Fallback to mock data structure
-        setModelData({
+        setDatasetData({
           thessaloniki: { 
             no2_conc: { years: [2020, 2021, 2022, 2023] },
             o3_conc: { years: [2021, 2022, 2023] },
@@ -47,10 +47,10 @@ export const useInsightOptions = () => {
         });
       }
     } catch (err) {
-      console.error("Error fetching model metadata:", err);
-      setError("Network error while loading models");
+      console.error("Error fetching dataset metadata:", err);
+      setError("Network error while loading datasets");
       // Fallback to mock data
-      setModelData({
+      setDatasetData({
         thessaloniki: { 
           no2_conc: { years: [2020, 2021, 2022, 2023] },
           o3_conc: { years: [2021, 2022, 2023] },
@@ -70,39 +70,39 @@ export const useInsightOptions = () => {
   }, []);
 
   useEffect(() => {
-    fetchModelData();
-  }, [fetchModelData]);
+    fetchDatasetData();
+  }, [fetchDatasetData]);
 
   // Helper functions
   const getAvailableRegions = useCallback((): string[] => {
-    if (!modelData) return [];
-    return Object.keys(modelData);
-  }, [modelData]);
+    if (!datasetData) return [];
+    return Object.keys(datasetData);
+  }, [datasetData]);
 
   const getAvailablePollutants = useCallback((region: string): Pollutant[] => {
-    if (!modelData || !modelData[region]) return [];
-    return Object.keys(modelData[region]) as Pollutant[];
-  }, [modelData]);
+    if (!datasetData || !datasetData[region]) return [];
+    return Object.keys(datasetData[region]) as Pollutant[];
+  }, [datasetData]);
 
   const getAvailableYears = useCallback((region: string, pollutant: Pollutant): number[] => {
-    if (!modelData || !modelData[region] || !modelData[region][pollutant]) return [];
-    return modelData[region][pollutant].years || [];
-  }, [modelData]);
+    if (!datasetData || !datasetData[region] || !datasetData[region][pollutant]) return [];
+    return datasetData[region][pollutant].years || [];
+  }, [datasetData]);
 
   const isValidCombination = useCallback((region: string, pollutant?: Pollutant, year?: number): boolean => {
-    if (!modelData || !modelData[region]) return false;
+    if (!datasetData || !datasetData[region]) return false;
     
-    if (pollutant && !modelData[region][pollutant]) return false;
-    if (pollutant && year && !modelData[region][pollutant].years.includes(year)) return false;
+    if (pollutant && !datasetData[region][pollutant]) return false;
+    if (pollutant && year && !datasetData[region][pollutant].years.includes(year)) return false;
     
     return true;
-  }, [modelData]);
+  }, [datasetData]);
 
   return {
-    modelData,
+    modelData: datasetData, // Keep the same property name for backward compatibility
     loading,
     error,
-    refetch: fetchModelData,
+    refetch: fetchDatasetData,
     getAvailableRegions,
     getAvailablePollutants,
     getAvailableYears,

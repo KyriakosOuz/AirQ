@@ -33,30 +33,30 @@ export const InsightFilters: React.FC<InsightFiltersProps> = ({
   loading = false
 }) => {
   const { 
-    modelData,
-    loading: modelsLoading, 
-    error: modelsError,
+    modelData: datasetData,
+    loading: datasetsLoading, 
+    error: datasetsError,
   } = useInsightOptions();
 
-  // Get dynamic options based on trained model data
+  // Get dynamic options based on available dataset data
   const availableRegions = useMemo(() => {
-    if (!modelData) return [];
-    return Object.keys(modelData);
-  }, [modelData]);
+    if (!datasetData) return [];
+    return Object.keys(datasetData);
+  }, [datasetData]);
 
   const availablePollutants = useMemo(() => {
-    if (!modelData || !region || !modelData[region]) return [];
-    return Object.keys(modelData[region]) as Pollutant[];
-  }, [modelData, region]);
+    if (!datasetData || !region || !datasetData[region]) return [];
+    return Object.keys(datasetData[region]) as Pollutant[];
+  }, [datasetData, region]);
 
   const availableYears = useMemo(() => {
-    if (!modelData || !region || !pollutant || !modelData[region] || !modelData[region][pollutant]) return [];
-    return modelData[region][pollutant].years || [];
-  }, [modelData, region, pollutant]);
+    if (!datasetData || !region || !pollutant || !datasetData[region] || !datasetData[region][pollutant]) return [];
+    return datasetData[region][pollutant].years || [];
+  }, [datasetData, region, pollutant]);
 
-  // Auto-correct selections when model data changes
+  // Auto-correct selections when dataset data changes
   useEffect(() => {
-    if (!modelData || modelsLoading) return;
+    if (!datasetData || datasetsLoading) return;
 
     // Check if current region is valid
     if (region && !availableRegions.includes(region)) {
@@ -83,21 +83,21 @@ export const InsightFilters: React.FC<InsightFiltersProps> = ({
         onYearChange(firstAvailableYear.toString());
       }
     }
-  }, [modelData, modelsLoading, region, pollutant, year, availableRegions, availablePollutants, availableYears, onRegionChange, onPollutantChange, onYearChange]);
+  }, [datasetData, datasetsLoading, region, pollutant, year, availableRegions, availablePollutants, availableYears, onRegionChange, onPollutantChange, onYearChange]);
 
   // Handle region change - reset pollutant and year
   const handleRegionChange = (newRegion: string) => {
     onRegionChange(newRegion);
     
     // Reset pollutant and year when region changes
-    const newAvailablePollutants = modelData && modelData[newRegion] ? Object.keys(modelData[newRegion]) as Pollutant[] : [];
+    const newAvailablePollutants = datasetData && datasetData[newRegion] ? Object.keys(datasetData[newRegion]) as Pollutant[] : [];
     if (newAvailablePollutants.length > 0) {
       const firstPollutant = newAvailablePollutants[0];
       onPollutantChange(firstPollutant);
       
       // Reset year when pollutant changes
-      const newAvailableYears = modelData && modelData[newRegion] && modelData[newRegion][firstPollutant] 
-        ? modelData[newRegion][firstPollutant].years 
+      const newAvailableYears = datasetData && datasetData[newRegion] && datasetData[newRegion][firstPollutant] 
+        ? datasetData[newRegion][firstPollutant].years 
         : [];
       if (newAvailableYears.length > 0) {
         onYearChange(newAvailableYears[0].toString());
@@ -110,8 +110,8 @@ export const InsightFilters: React.FC<InsightFiltersProps> = ({
     onPollutantChange(newPollutant);
     
     // Reset year when pollutant changes
-    const newAvailableYears = modelData && modelData[region] && modelData[region][newPollutant] 
-      ? modelData[region][newPollutant].years 
+    const newAvailableYears = datasetData && datasetData[region] && datasetData[region][newPollutant] 
+      ? datasetData[region][newPollutant].years 
       : [];
     if (newAvailableYears.length > 0) {
       onYearChange(newAvailableYears[0].toString());
@@ -119,7 +119,7 @@ export const InsightFilters: React.FC<InsightFiltersProps> = ({
   };
 
   // Check if all filters are selected
-  const isReadyToSubmit = region && pollutant && year && !loading && !modelsLoading;
+  const isReadyToSubmit = region && pollutant && year && !loading && !datasetsLoading;
   
   // Determine which filters to show based on active tab
   const showRegion = activeTab === "trend" || activeTab === "seasonality";
@@ -128,15 +128,15 @@ export const InsightFilters: React.FC<InsightFiltersProps> = ({
 
   // Calculate total available combinations
   const totalCombinations = useMemo(() => {
-    if (!modelData) return 0;
+    if (!datasetData) return 0;
     let total = 0;
-    Object.values(modelData).forEach(regionData => {
+    Object.values(datasetData).forEach(regionData => {
       Object.values(regionData).forEach(pollutantData => {
         total += pollutantData.years?.length || 0;
       });
     });
     return total;
-  }, [modelData]);
+  }, [datasetData]);
 
   return (
     <Card className="border-2 border-primary/20">
@@ -147,24 +147,24 @@ export const InsightFilters: React.FC<InsightFiltersProps> = ({
         </CardTitle>
         <div className="text-sm text-muted-foreground">
           {totalCombinations > 0 && (
-            <span>{totalCombinations} trained model combinations available</span>
+            <span>{totalCombinations} dataset combinations available</span>
           )}
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Loading indicator for model data */}
-        {modelsLoading && (
+        {/* Loading indicator for dataset data */}
+        {datasetsLoading && (
           <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg">
             <Loader2 className="h-4 w-4 animate-spin" />
-            <span className="text-sm text-blue-800">Loading available models...</span>
+            <span className="text-sm text-blue-800">Loading available datasets...</span>
           </div>
         )}
 
-        {/* Error indicator for failed model data load */}
-        {modelsError && (
+        {/* Error indicator for failed dataset data load */}
+        {datasetsError && (
           <div className="p-3 bg-amber-50 rounded-lg">
             <p className="text-sm text-amber-800">
-              <strong>Note:</strong> {modelsError}. Using fallback data.
+              <strong>Note:</strong> {datasetsError}. Using fallback data.
             </p>
           </div>
         )}
@@ -186,11 +186,11 @@ export const InsightFilters: React.FC<InsightFiltersProps> = ({
               <RegionSelector 
                 value={region} 
                 onValueChange={handleRegionChange}
-                disabled={loading || modelsLoading}
+                disabled={loading || datasetsLoading}
                 regions={availableRegions}
               />
-              {availableRegions.length === 0 && !modelsLoading && (
-                <p className="text-xs text-red-500">No trained models available</p>
+              {availableRegions.length === 0 && !datasetsLoading && (
+                <p className="text-xs text-red-500">No datasets available</p>
               )}
             </div>
           )}
@@ -203,11 +203,11 @@ export const InsightFilters: React.FC<InsightFiltersProps> = ({
               <PollutantSelector 
                 value={pollutant} 
                 onValueChange={handlePollutantChange}
-                disabled={loading || modelsLoading || !region || availablePollutants.length === 0}
+                disabled={loading || datasetsLoading || !region || availablePollutants.length === 0}
                 pollutants={availablePollutants}
               />
-              {availablePollutants.length === 0 && region && !modelsLoading && (
-                <p className="text-xs text-red-500">No trained models available for {region}</p>
+              {availablePollutants.length === 0 && region && !datasetsLoading && (
+                <p className="text-xs text-red-500">No datasets available for {region}</p>
               )}
             </div>
           )}
@@ -220,7 +220,7 @@ export const InsightFilters: React.FC<InsightFiltersProps> = ({
               <Select 
                 value={year.toString()} 
                 onValueChange={onYearChange}
-                disabled={loading || modelsLoading || !region || !pollutant || availableYears.length === 0}
+                disabled={loading || datasetsLoading || !region || !pollutant || availableYears.length === 0}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select year" />
@@ -233,8 +233,8 @@ export const InsightFilters: React.FC<InsightFiltersProps> = ({
                   ))}
                 </SelectContent>
               </Select>
-              {availableYears.length === 0 && region && pollutant && !modelsLoading && (
-                <p className="text-xs text-red-500">No trained models available for {pollutant} in {region}</p>
+              {availableYears.length === 0 && region && pollutant && !datasetsLoading && (
+                <p className="text-xs text-red-500">No datasets available for {pollutant} in {region}</p>
               )}
             </div>
           )}
