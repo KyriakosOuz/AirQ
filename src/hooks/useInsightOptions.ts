@@ -23,8 +23,25 @@ export const useInsightOptions = () => {
       const response = await insightApi.getAvailableDatasets();
       
       if (response.success && response.data) {
-        setDatasetData(response.data);
-        console.log("Available datasets:", response.data);
+        // Transform the API response to match our DatasetMetadata interface
+        const transformedData: DatasetMetadata = {};
+        
+        for (const [region, pollutants] of Object.entries(response.data)) {
+          transformedData[region] = {};
+          for (const [pollutant, data] of Object.entries(pollutants as any)) {
+            // Handle both formats: direct array or object with years property
+            if (Array.isArray(data)) {
+              transformedData[region][pollutant] = data;
+            } else if (data && typeof data === 'object' && 'years' in data) {
+              transformedData[region][pollutant] = data.years;
+            } else {
+              transformedData[region][pollutant] = [];
+            }
+          }
+        }
+        
+        setDatasetData(transformedData);
+        console.log("Available datasets:", transformedData);
       } else {
         console.error("Failed to fetch dataset metadata:", response.error);
         setError("Failed to load available datasets");
