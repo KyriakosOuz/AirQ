@@ -3,9 +3,11 @@ import React from 'react';
 import { DashboardCard } from './DashboardCard';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, Dot } from 'recharts';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, TrendingUp, TrendingDown } from 'lucide-react';
+import { getColorByCategory, normalizeCategory, AQI_CATEGORIES } from '@/lib/aqi-standardization';
+import { format, parseISO } from 'date-fns';
 
 interface ForecastData {
   ds: string;
@@ -20,10 +22,8 @@ interface ForecastPreviewProps {
 export const ForecastPreview: React.FC<ForecastPreviewProps> = ({ forecast }) => {
   const navigate = useNavigate();
 
-  // Add defensive validation to ensure forecast is an array
   console.log("ForecastPreview received forecast data:", forecast, "Type:", typeof forecast, "Is Array:", Array.isArray(forecast));
   
-  // Validate that forecast is an array, provide fallback
   const validForecast = Array.isArray(forecast) ? forecast : [];
   
   if (validForecast.length === 0) {
@@ -50,19 +50,69 @@ export const ForecastPreview: React.FC<ForecastPreviewProps> = ({ forecast }) =>
     );
   }
 
-  const chartData = validForecast.map(item => ({
-    date: new Date(item.ds).toLocaleDateString('en-US', { weekday: 'short' }),
-    value: item.yhat,
-    category: item.category
-  }));
+  // Prepare chart data with standardized categories
+  const chartData = validForecast.map((item, index) => {
+    const normalizedCategory = normalizeCategory(item.category);
+    return {
+      date: format(parseISO(item.ds), 'EEE'),
+      fullDate: format(parseISO(item.ds), 'MMM dd'),
+      value: Number(item.yhat.toFixed(1)),
+      category: normalizedCategory,
+      color: getColorByCategory(normalizedCategory),
+      dayIndex: index
+    };
+  });
 
-  const getCategoryColor = (category: string) => {
-    switch (category.toLowerCase()) {
-      case 'good': return 'bg-green-100 text-green-800';
-      case 'moderate': return 'bg-yellow-100 text-yellow-800';
-      case 'unhealthy': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+  // Calculate trend
+  const firstValue = validForecast[0]?.yhat || 0;
+  const lastValue = validForecast[validForecast.length - 1]?.yhat || 0;
+  const trend = lastValue - firstValue;
+  const isImproving = trend < 0; // Lower pollution is better
+
+  // Get most common category
+  const categoryCounts = validForecast.reduce((acc, item) => {
+    const normalized = normalizeCategory(item.category);
+    acc[normalized] = (acc[normalized] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+  
+  const dominantCategory = Object.entries(categoryCounts)
+    .sort(([,a], [,b]) => b - a)[0]?.[0] || AQI_CATEGORIES.MODERATE;
+
+  // Custom dot component for the line chart
+  const CustomDot = (props: any) => {
+    const { cx, cy, payload } = props;
+    return (
+      <Dot 
+        cx={cx} 
+        cy={cy} 
+        r={4} 
+        fill={payload.color}
+        stroke="#fff"
+        strokeWidth={1}
+      />
+    );
+  };
+
+  // Enhanced tooltip
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      return (
+        <div className="bg-background border rounded-lg p-3 shadow-md">
+          <p className="font-medium">{data.fullDate}</p>
+          <div className="flex items-center gap-2 mt-1">
+            <div 
+              className="w-3 h-3 rounded-full" 
+              style={{ backgroundColor: data.color }}
+            />
+            <span className="text-sm">{data.value} μg/m³</span>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">{data.category}</p>
+        </div>
+      );
     }
+    return null;
   };
 
   return (
@@ -82,36 +132,73 @@ export const ForecastPreview: React.FC<ForecastPreviewProps> = ({ forecast }) =>
       }
     >
       <div className="space-y-4">
+        {/* Chart */}
         <div className="h-32">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData}>
               <XAxis dataKey="date" tick={{ fontSize: 10 }} />
               <YAxis tick={{ fontSize: 10 }} />
-              <Tooltip 
-                formatter={(value) => [`${value} μg/m³`, 'Pollution Level']}
-                labelFormatter={(label) => `Date: ${label}`}
-              />
+              <Tooltip content={<CustomTooltip />} />
               <Line 
                 type="monotone" 
                 dataKey="value" 
                 stroke="#0ea5e9" 
                 strokeWidth={2}
-                dot={{ r: 3 }}
+                dot={<CustomDot />}
               />
             </LineChart>
           </ResponsiveContainer>
         </div>
         
-        <div className="flex flex-wrap gap-1">
-          {validForecast.slice(0, 7).map((item, index) => (
-            <Badge 
+        {/* Daily Cards */}
+        <div className="grid grid-cols-7 gap-1">
+          {chartData.map((item, index) => (
+            <div 
               key={index}
-              variant="outline"
-              className={getCategoryColor(item.category)}
+              className="text-center p-2 rounded-md border bg-card"
             >
-              {item.category}
-            </Badge>
+              <div className="text-xs font-medium text-muted-foreground mb-1">
+                {item.date}
+              </div>
+              <div 
+                className="w-3 h-3 rounded-full mx-auto mb-1"
+                style={{ backgroundColor: item.color }}
+              />
+              <div className="text-xs font-medium">
+                {item.value}
+              </div>
+            </div>
           ))}
+        </div>
+
+        {/* Summary Row */}
+        <div className="flex items-center justify-between pt-2 border-t">
+          <div className="flex items-center gap-2">
+            <Badge 
+              variant="outline"
+              style={{ 
+                backgroundColor: `${getColorByCategory(dominantCategory)}20`,
+                borderColor: getColorByCategory(dominantCategory),
+                color: getColorByCategory(dominantCategory)
+              }}
+            >
+              Mostly {dominantCategory}
+            </Badge>
+          </div>
+          
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            {isImproving ? (
+              <>
+                <TrendingDown className="h-3 w-3 text-green-600" />
+                <span className="text-green-600">Improving</span>
+              </>
+            ) : (
+              <>
+                <TrendingUp className="h-3 w-3 text-orange-600" />
+                <span className="text-orange-600">Worsening</span>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </DashboardCard>
