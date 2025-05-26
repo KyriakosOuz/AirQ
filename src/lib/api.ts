@@ -815,7 +815,7 @@ export const healthApi = {
 
 // Insights endpoints
 export const insightApi = {
-  getTrend: async (params: { pollutant: string; region: string }) => {
+  getTrend: async (params: { pollutant: string; region: string; year?: number }) => {
     const queryParams = new URLSearchParams(params as any).toString();
     return fetchWithAuth<{
       region: string;
@@ -827,7 +827,7 @@ export const insightApi = {
     const queryParams = new URLSearchParams(params as any).toString();
     return fetchWithAuth<Array<{ name: string; value: number }>>(`/insights/top-polluted/?${queryParams}`);
   },
-  getSeasonality: async (params: { pollutant: string; region: string }) => {
+  getSeasonality: async (params: { pollutant: string; region: string; year?: number }) => {
     const queryParams = new URLSearchParams(params as any).toString();
     return fetchWithAuth<{
       region: string;
@@ -835,13 +835,14 @@ export const insightApi = {
       seasonal_avg: SeasonalityChart;
     }>(`/insights/seasonality/?${queryParams}`);
   },
-  getAvailableOptions: async () => {
+  getAvailableModels: async () => {
     return fetchWithAuth<{
       [region: string]: {
-        years: number[];
-        pollutants: string[];
+        [pollutant: string]: {
+          years: number[];
+        };
       };
-    }>('/insights/available-options/');
+    }>('/available-models/');
   },
   getPersonalized: async (params: { pollutant: string; region: string }) => {
     const queryParams = new URLSearchParams(params as any).toString();

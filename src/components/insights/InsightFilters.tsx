@@ -30,23 +30,23 @@ export const InsightFilters: React.FC<InsightFiltersProps> = ({
   loading = false
 }) => {
   const { 
-    options, 
-    loading: optionsLoading, 
-    error: optionsError,
-    getAvailableYears, 
-    getAvailablePollutants, 
+    modelData,
+    loading: modelsLoading, 
+    error: modelsError,
     getAvailableRegions,
+    getAvailablePollutants, 
+    getAvailableYears,
     isValidCombination 
   } = useInsightOptions();
 
-  // Get dynamic options based on selected region
+  // Get dynamic options based on selected region and pollutant
   const availableRegions = useMemo(() => getAvailableRegions(), [getAvailableRegions]);
-  const availableYears = useMemo(() => getAvailableYears(region), [getAvailableYears, region]);
   const availablePollutants = useMemo(() => getAvailablePollutants(region), [getAvailablePollutants, region]);
+  const availableYears = useMemo(() => getAvailableYears(region, pollutant), [getAvailableYears, region, pollutant]);
 
-  // Validate and auto-correct selections when dynamic options change
+  // Validate and auto-correct selections when model data changes
   useEffect(() => {
-    if (!options || optionsLoading) return;
+    if (!modelData || modelsLoading) return;
 
     // Check if current region is valid
     if (region && !availableRegions.includes(region)) {
@@ -68,37 +68,36 @@ export const InsightFilters: React.FC<InsightFiltersProps> = ({
       return;
     }
 
-    // Check if current year is valid for selected region (only for tabs that use year)
-    if ((activeTab === "seasonality" || activeTab === "top-polluted") && 
-        year && !availableYears.includes(year)) {
+    // Check if current year is valid for selected region and pollutant
+    if (year && !availableYears.includes(year)) {
       const firstAvailableYear = availableYears[0];
       if (firstAvailableYear) {
         console.log(`Auto-correcting year from ${year} to ${firstAvailableYear}`);
         onYearChange(firstAvailableYear.toString());
       }
     }
-  }, [options, optionsLoading, region, pollutant, year, activeTab, availableRegions, availablePollutants, availableYears, onRegionChange, onPollutantChange, onYearChange]);
+  }, [modelData, modelsLoading, region, pollutant, year, activeTab, availableRegions, availablePollutants, availableYears, onRegionChange, onPollutantChange, onYearChange]);
 
   // Determine which filters to show based on active tab
   const showRegion = activeTab === "trend" || activeTab === "seasonality";
   const showPollutant = true; // All tabs use pollutant
-  const showYear = activeTab === "seasonality" || activeTab === "top-polluted";
+  const showYear = true; // All tabs now require year parameter
 
   return (
     <div className="space-y-4">
-      {/* Loading indicator for dynamic options */}
-      {optionsLoading && (
+      {/* Loading indicator for model data */}
+      {modelsLoading && (
         <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg">
           <Loader2 className="h-4 w-4 animate-spin" />
-          <span className="text-sm text-blue-800">Loading available options...</span>
+          <span className="text-sm text-blue-800">Loading available models...</span>
         </div>
       )}
 
-      {/* Error indicator for failed options load */}
-      {optionsError && (
+      {/* Error indicator for failed model data load */}
+      {modelsError && (
         <div className="p-3 bg-amber-50 rounded-lg">
           <p className="text-sm text-amber-800">
-            <strong>Note:</strong> {optionsError}. Using fallback options.
+            <strong>Note:</strong> {modelsError}. Using fallback data.
           </p>
         </div>
       )}
@@ -107,7 +106,7 @@ export const InsightFilters: React.FC<InsightFiltersProps> = ({
       {activeTab === "trend" && (
         <div className="p-3 bg-blue-50 rounded-lg">
           <p className="text-sm text-blue-800">
-            <strong>Annual Trend:</strong> Shows historical data across all available years for the selected region and pollutant.
+            <strong>Annual Trend:</strong> Shows historical data for the selected region, pollutant, and year.
           </p>
         </div>
       )}
@@ -115,7 +114,7 @@ export const InsightFilters: React.FC<InsightFiltersProps> = ({
       {activeTab === "seasonality" && (
         <div className="p-3 bg-green-50 rounded-lg">
           <p className="text-sm text-green-800">
-            <strong>Seasonality:</strong> Shows seasonal patterns for a specific year and region.
+            <strong>Seasonality:</strong> Shows seasonal patterns for a specific region, pollutant, and year.
           </p>
         </div>
       )}
@@ -139,7 +138,7 @@ export const InsightFilters: React.FC<InsightFiltersProps> = ({
               <RegionSelector 
                 value={region} 
                 onValueChange={onRegionChange}
-                disabled={loading || optionsLoading}
+                disabled={loading || modelsLoading}
                 regions={availableRegions}
               />
             </CardContent>
@@ -155,12 +154,12 @@ export const InsightFilters: React.FC<InsightFiltersProps> = ({
               <PollutantSelector 
                 value={pollutant} 
                 onValueChange={onPollutantChange}
-                disabled={loading || optionsLoading}
+                disabled={loading || modelsLoading}
                 pollutants={availablePollutants}
               />
-              {availablePollutants.length === 0 && region && !optionsLoading && (
+              {availablePollutants.length === 0 && region && !modelsLoading && (
                 <p className="text-xs text-muted-foreground mt-1">
-                  No pollutants available for {region}
+                  No trained models available for {region}
                 </p>
               )}
             </CardContent>
@@ -176,7 +175,7 @@ export const InsightFilters: React.FC<InsightFiltersProps> = ({
               <Select 
                 value={year.toString()} 
                 onValueChange={onYearChange}
-                disabled={loading || optionsLoading || availableYears.length === 0}
+                disabled={loading || modelsLoading || availableYears.length === 0}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select year" />
@@ -189,9 +188,9 @@ export const InsightFilters: React.FC<InsightFiltersProps> = ({
                   ))}
                 </SelectContent>
               </Select>
-              {availableYears.length === 0 && region && !optionsLoading && (
+              {availableYears.length === 0 && region && pollutant && !modelsLoading && (
                 <p className="text-xs text-muted-foreground mt-1">
-                  No years available for {region}
+                  No trained models available for {pollutant} in {region}
                 </p>
               )}
             </CardContent>

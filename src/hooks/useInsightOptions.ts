@@ -3,47 +3,66 @@ import { useState, useEffect, useCallback } from 'react';
 import { insightApi } from '@/lib/api';
 import { Pollutant } from '@/lib/types';
 
-export interface InsightOptions {
+export interface ModelMetadata {
   [region: string]: {
-    years: number[];
-    pollutants: string[];
+    [pollutant: string]: {
+      years: number[];
+    };
   };
 }
 
 export const useInsightOptions = () => {
-  const [options, setOptions] = useState<InsightOptions | null>(null);
+  const [modelData, setModelData] = useState<ModelMetadata | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchOptions = useCallback(async () => {
+  const fetchModelData = useCallback(async () => {
     setLoading(true);
     setError(null);
     
     try {
-      console.log("Fetching available insight options...");
-      const response = await insightApi.getAvailableOptions();
+      console.log("Fetching available model metadata...");
+      const response = await insightApi.getAvailableModels();
       
       if (response.success && response.data) {
-        setOptions(response.data);
-        console.log("Available options:", response.data);
+        setModelData(response.data);
+        console.log("Available models:", response.data);
       } else {
-        console.error("Failed to fetch insight options:", response.error);
-        setError("Failed to load available options");
+        console.error("Failed to fetch model metadata:", response.error);
+        setError("Failed to load available models");
         // Fallback to mock data structure
-        setOptions({
-          thessaloniki: { years: [2020, 2021, 2022, 2023], pollutants: ['no2_conc', 'o3_conc', 'co_conc'] },
-          kalamaria: { years: [2021, 2022, 2023], pollutants: ['no2_conc', 'o3_conc'] },
-          'ampelokipoi-menemeni': { years: [2022, 2023], pollutants: ['no2_conc'] }
+        setModelData({
+          thessaloniki: { 
+            no2_conc: { years: [2020, 2021, 2022, 2023] },
+            o3_conc: { years: [2021, 2022, 2023] },
+            co_conc: { years: [2022, 2023] }
+          },
+          kalamaria: { 
+            no2_conc: { years: [2021, 2022, 2023] },
+            o3_conc: { years: [2022, 2023] }
+          },
+          'ampelokipoi-menemeni': { 
+            no2_conc: { years: [2022, 2023] }
+          }
         });
       }
     } catch (err) {
-      console.error("Error fetching insight options:", err);
-      setError("Network error while loading options");
+      console.error("Error fetching model metadata:", err);
+      setError("Network error while loading models");
       // Fallback to mock data
-      setOptions({
-        thessaloniki: { years: [2020, 2021, 2022, 2023], pollutants: ['no2_conc', 'o3_conc', 'co_conc'] },
-        kalamaria: { years: [2021, 2022, 2023], pollutants: ['no2_conc', 'o3_conc'] },
-        'ampelokipoi-menemeni': { years: [2022, 2023], pollutants: ['no2_conc'] }
+      setModelData({
+        thessaloniki: { 
+          no2_conc: { years: [2020, 2021, 2022, 2023] },
+          o3_conc: { years: [2021, 2022, 2023] },
+          co_conc: { years: [2022, 2023] }
+        },
+        kalamaria: { 
+          no2_conc: { years: [2021, 2022, 2023] },
+          o3_conc: { years: [2022, 2023] }
+        },
+        'ampelokipoi-menemeni': { 
+          no2_conc: { years: [2022, 2023] }
+        }
       });
     } finally {
       setLoading(false);
@@ -51,44 +70,42 @@ export const useInsightOptions = () => {
   }, []);
 
   useEffect(() => {
-    fetchOptions();
-  }, [fetchOptions]);
+    fetchModelData();
+  }, [fetchModelData]);
 
   // Helper functions
-  const getAvailableYears = useCallback((region: string): number[] => {
-    if (!options || !options[region]) return [];
-    return options[region].years || [];
-  }, [options]);
+  const getAvailableRegions = useCallback((): string[] => {
+    if (!modelData) return [];
+    return Object.keys(modelData);
+  }, [modelData]);
 
   const getAvailablePollutants = useCallback((region: string): Pollutant[] => {
-    if (!options || !options[region]) return [];
-    return (options[region].pollutants || []) as Pollutant[];
-  }, [options]);
+    if (!modelData || !modelData[region]) return [];
+    return Object.keys(modelData[region]) as Pollutant[];
+  }, [modelData]);
 
-  const getAvailableRegions = useCallback((): string[] => {
-    if (!options) return [];
-    return Object.keys(options);
-  }, [options]);
+  const getAvailableYears = useCallback((region: string, pollutant: Pollutant): number[] => {
+    if (!modelData || !modelData[region] || !modelData[region][pollutant]) return [];
+    return modelData[region][pollutant].years || [];
+  }, [modelData]);
 
-  const isValidCombination = useCallback((region: string, year?: number, pollutant?: Pollutant): boolean => {
-    if (!options || !options[region]) return false;
+  const isValidCombination = useCallback((region: string, pollutant?: Pollutant, year?: number): boolean => {
+    if (!modelData || !modelData[region]) return false;
     
-    const regionData = options[region];
-    
-    if (year && !regionData.years.includes(year)) return false;
-    if (pollutant && !regionData.pollutants.includes(pollutant)) return false;
+    if (pollutant && !modelData[region][pollutant]) return false;
+    if (pollutant && year && !modelData[region][pollutant].years.includes(year)) return false;
     
     return true;
-  }, [options]);
+  }, [modelData]);
 
   return {
-    options,
+    modelData,
     loading,
     error,
-    refetch: fetchOptions,
-    getAvailableYears,
-    getAvailablePollutants,
+    refetch: fetchModelData,
     getAvailableRegions,
+    getAvailablePollutants,
+    getAvailableYears,
     isValidCombination
   };
 };

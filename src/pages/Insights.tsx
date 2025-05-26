@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { insightApi } from "@/lib/api";
@@ -50,10 +49,10 @@ const Insights: React.FC = () => {
   };
 
   const fetchTrendData = async () => {
-    if (!isValidCombination(region, undefined, pollutant)) {
-      console.warn("Invalid combination for trend data:", { region, pollutant });
+    if (!isValidCombination(region, pollutant, year)) {
+      console.warn("Invalid combination for trend data:", { region, pollutant, year });
       setTrendData([]);
-      setErrors(prev => ({ ...prev, trend: "No data available for this combination" }));
+      setErrors(prev => ({ ...prev, trend: "No trained model available for this combination" }));
       return;
     }
 
@@ -61,10 +60,9 @@ const Insights: React.FC = () => {
     setErrors(prev => ({ ...prev, trend: undefined }));
     
     try {
-      console.log("Fetching trend data for:", { pollutant, region });
+      console.log("Fetching trend data for:", { pollutant, region, year });
       
-      // For trend tab, we want all available years for the region/pollutant
-      const trendResponse = await insightApi.getTrend({ pollutant, region });
+      const trendResponse = await insightApi.getTrend({ pollutant, region, year });
       
       console.log("Trend API response:", trendResponse);
       
@@ -101,10 +99,10 @@ const Insights: React.FC = () => {
   };
 
   const fetchSeasonalData = async () => {
-    if (!isValidCombination(region, undefined, pollutant)) {
-      console.warn("Invalid combination for seasonal data:", { region, pollutant });
+    if (!isValidCombination(region, pollutant, year)) {
+      console.warn("Invalid combination for seasonal data:", { region, pollutant, year });
       setSeasonalData([]);
-      setErrors(prev => ({ ...prev, seasonal: "No data available for this combination" }));
+      setErrors(prev => ({ ...prev, seasonal: "No trained model available for this combination" }));
       return;
     }
 
@@ -112,9 +110,9 @@ const Insights: React.FC = () => {
     setErrors(prev => ({ ...prev, seasonal: undefined }));
     
     try {
-      console.log("Fetching seasonal data for:", { pollutant, region });
+      console.log("Fetching seasonal data for:", { pollutant, region, year });
       
-      const seasonalResponse = await insightApi.getSeasonality({ pollutant, region });
+      const seasonalResponse = await insightApi.getSeasonality({ pollutant, region, year });
       
       console.log("Seasonal API response:", seasonalResponse);
       
@@ -147,10 +145,10 @@ const Insights: React.FC = () => {
   };
 
   const fetchTopPollutedData = async () => {
-    if (!isValidCombination("", year, pollutant)) {
+    if (!isValidCombination("", pollutant, year)) {
       console.warn("Invalid combination for top polluted data:", { pollutant, year });
       setTopPollutedData([]);
-      setErrors(prev => ({ ...prev, topPolluted: "No data available for this combination" }));
+      setErrors(prev => ({ ...prev, topPolluted: "No trained models available for this combination" }));
       return;
     }
 
