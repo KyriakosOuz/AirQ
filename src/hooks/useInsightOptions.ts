@@ -33,7 +33,7 @@ export const useInsightOptions = () => {
             if (Array.isArray(data)) {
               transformedData[region][pollutant] = data;
             } else if (data && typeof data === 'object' && 'years' in data) {
-              transformedData[region][pollutant] = data.years;
+              transformedData[region][pollutant] = (data as any).years;
             } else {
               transformedData[region][pollutant] = [];
             }
