@@ -5,6 +5,7 @@ import { TodaysAirQuality } from "@/components/dashboard/TodaysAirQuality";
 import { ForecastPreview } from "@/components/dashboard/ForecastPreview";
 import { PersonalizedTrend } from "@/components/dashboard/PersonalizedTrend";
 import { AIHealthTip } from "@/components/dashboard/AIHealthTip";
+import { DashboardLoadingSpinner } from "@/components/dashboard/DashboardLoadingSpinner";
 import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react";
 import { toast } from "sonner";
@@ -24,21 +25,7 @@ const Dashboard: React.FC = () => {
   };
 
   if (loading) {
-    return (
-      <div className="space-y-6">
-        <div className="flex flex-col space-y-2">
-          <h1 className="text-3xl font-bold tracking-tight">Air Quality Dashboard</h1>
-          <p className="text-muted-foreground">Loading your personalized air quality overview...</p>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* Loading skeletons */}
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-64 bg-muted animate-pulse rounded-lg" />
-          ))}
-        </div>
-      </div>
-    );
+    return <DashboardLoadingSpinner />;
   }
 
   if (error) {
