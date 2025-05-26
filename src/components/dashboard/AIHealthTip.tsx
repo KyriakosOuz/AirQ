@@ -3,6 +3,7 @@ import React from 'react';
 import { DashboardCard } from './DashboardCard';
 import { Badge } from '@/components/ui/badge';
 import { Brain, Sparkles } from 'lucide-react';
+import { parseBoldText } from '@/lib/ai-tip-formatter';
 
 interface AITipData {
   tip: string;
@@ -24,6 +25,21 @@ export const AIHealthTip: React.FC<AIHealthTipProps> = ({ data }) => {
     }
   };
 
+  const renderFormattedText = (text: string) => {
+    const parts = parseBoldText(text);
+    return (
+      <span className="text-sm leading-relaxed">
+        {parts.map((part, index) => (
+          part.bold ? (
+            <strong key={index}>{part.text}</strong>
+          ) : (
+            <span key={index}>{part.text}</span>
+          )
+        ))}
+      </span>
+    );
+  };
+
   const formatTipContent = (tip: string) => {
     // Split by numbered items and render as list
     const items = tip.split(/\d+\.\s*/).filter(item => item.trim());
@@ -35,7 +51,7 @@ export const AIHealthTip: React.FC<AIHealthTipProps> = ({ data }) => {
             <span className="bg-blue-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0 mt-0.5">
               {index + 1}
             </span>
-            <span className="text-sm leading-relaxed">{item.trim()}</span>
+            {renderFormattedText(item.trim())}
           </li>
         ))}
       </ol>
