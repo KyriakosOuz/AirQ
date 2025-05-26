@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { insightApi } from "@/lib/api";
@@ -11,6 +10,7 @@ import { SeasonalityTab } from "@/components/insights/SeasonalityTab";
 import { TopPollutedTab } from "@/components/insights/TopPollutedTab";
 import { CurrentSelectionBreadcrumb } from "@/components/insights/CurrentSelectionBreadcrumb";
 import { useInsightOptions } from "@/hooks/useInsightOptions";
+import { formatPollutantName } from "@/lib/utils";
 
 const Insights: React.FC = () => {
   const [activeTab, setActiveTab] = useState("trend");
@@ -148,7 +148,8 @@ const Insights: React.FC = () => {
   // Handle submit button click
   const handleSubmit = useCallback(async () => {
     setHasSubmitted(true);
-    toast.success(`Loading insights for ${pollutant.replace('_conc', '').toUpperCase()} in ${getRegionDisplayName(region)} (${year})`);
+    const pollutantDisplayName = formatPollutantName(pollutant.replace('_conc', ''));
+    toast.success(`Loading insights for ${pollutantDisplayName} in ${getRegionDisplayName(region)} (${year})`);
     
     // Fetch data for all tabs
     await Promise.all([

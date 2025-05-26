@@ -5,6 +5,7 @@ import EnhancedTopPollutedChart from "./EnhancedTopPollutedChart";
 import { ChartExportButton } from "./ChartExportButton";
 import { InsightSummary } from "./InsightSummary";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatPollutantName } from "@/lib/utils";
 
 interface TopPollutedTabProps {
   pollutant: Pollutant;
@@ -23,7 +24,7 @@ export const TopPollutedTab: React.FC<TopPollutedTabProps> = ({
   error,
   dataUnit
 }) => {
-  const pollutantDisplayName = pollutant.replace('_conc', '').toUpperCase();
+  const pollutantDisplayName = formatPollutantName(pollutant.replace('_conc', ''));
 
   return (
     <div className="space-y-4">

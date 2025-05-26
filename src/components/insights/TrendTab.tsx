@@ -5,6 +5,7 @@ import EnhancedTrendChart from "./EnhancedTrendChart";
 import { ChartExportButton } from "./ChartExportButton";
 import { InsightSummary } from "./InsightSummary";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatPollutantName } from "@/lib/utils";
 
 interface TrendTabProps {
   region: string;
@@ -27,7 +28,7 @@ export const TrendTab: React.FC<TrendTabProps> = ({
     word.charAt(0).toUpperCase() + word.slice(1)
   ).join(' ');
   
-  const pollutantDisplayName = pollutant.replace('_conc', '').toUpperCase();
+  const pollutantDisplayName = formatPollutantName(pollutant.replace('_conc', ''));
   const currentYear = new Date().getFullYear();
 
   return (
