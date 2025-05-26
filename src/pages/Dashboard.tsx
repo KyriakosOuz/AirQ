@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/utils";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 const Dashboard: React.FC = () => {
   const { data, loading, error, refetch } = useDashboardOverview();
@@ -88,31 +89,41 @@ const Dashboard: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Today's Air Quality - spans 1 column */}
         <div className="lg:col-span-1">
-          <TodaysAirQuality
-            pollutants={data.current.pollutants}
-            aqiCategory={data.current.aqi_category}
-            region={data.region}
-          />
+          <ErrorBoundary>
+            <TodaysAirQuality
+              pollutants={data.current.pollutants}
+              aqiCategory={data.current.aqi_category}
+              region={data.region}
+            />
+          </ErrorBoundary>
         </div>
 
         {/* 7-Day Forecast - spans 2 columns on large screens */}
         <div className="lg:col-span-2">
-          <ForecastPreview forecast={data.forecast} />
+          <ErrorBoundary>
+            <ForecastPreview forecast={data.forecast} />
+          </ErrorBoundary>
         </div>
 
         {/* Personalized Trend - spans 1 column */}
         <div className="lg:col-span-1">
-          <PersonalizedTrend data={data.personalized} />
+          <ErrorBoundary>
+            <PersonalizedTrend data={data.personalized} />
+          </ErrorBoundary>
         </div>
 
         {/* AI Health Tip - spans 2 columns on large screens */}
         <div className="lg:col-span-2">
-          <AIHealthTip data={data.ai_tip} />
+          <ErrorBoundary>
+            <AIHealthTip data={data.ai_tip} />
+          </ErrorBoundary>
         </div>
 
         {/* Quick Access Panel - spans full width */}
         <div className="lg:col-span-3">
-          <QuickAccessPanel />
+          <ErrorBoundary>
+            <QuickAccessPanel />
+          </ErrorBoundary>
         </div>
       </div>
     </div>

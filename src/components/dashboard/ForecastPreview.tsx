@@ -20,7 +20,37 @@ interface ForecastPreviewProps {
 export const ForecastPreview: React.FC<ForecastPreviewProps> = ({ forecast }) => {
   const navigate = useNavigate();
 
-  const chartData = forecast.map(item => ({
+  // Add defensive validation to ensure forecast is an array
+  console.log("ForecastPreview received forecast data:", forecast, "Type:", typeof forecast, "Is Array:", Array.isArray(forecast));
+  
+  // Validate that forecast is an array, provide fallback
+  const validForecast = Array.isArray(forecast) ? forecast : [];
+  
+  if (validForecast.length === 0) {
+    return (
+      <DashboardCard
+        title="7-Day Forecast"
+        description="Upcoming air quality predictions"
+        headerAction={
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate('/forecasts')}
+            className="text-xs"
+          >
+            View Full Forecast
+            <ArrowRight className="h-3 w-3 ml-1" />
+          </Button>
+        }
+      >
+        <div className="h-32 flex items-center justify-center text-muted-foreground">
+          <p>No forecast data available at the moment.</p>
+        </div>
+      </DashboardCard>
+    );
+  }
+
+  const chartData = validForecast.map(item => ({
     date: new Date(item.ds).toLocaleDateString('en-US', { weekday: 'short' }),
     value: item.yhat,
     category: item.category
@@ -73,7 +103,7 @@ export const ForecastPreview: React.FC<ForecastPreviewProps> = ({ forecast }) =>
         </div>
         
         <div className="flex flex-wrap gap-1">
-          {forecast.slice(0, 7).map((item, index) => (
+          {validForecast.slice(0, 7).map((item, index) => (
             <Badge 
               key={index}
               variant="outline"
