@@ -1,11 +1,7 @@
 
 import React from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
 import { Pollutant } from "@/lib/types";
+import EnhancedSeasonalChart from "./EnhancedSeasonalChart";
 
 interface SeasonalityTabProps {
   region: string;
@@ -16,13 +12,6 @@ interface SeasonalityTabProps {
   dataUnit: string;
 }
 
-const chartConfig = {
-  seasonal: {
-    label: "Seasonal",
-    color: "hsl(var(--chart-2))",
-  },
-};
-
 export const SeasonalityTab: React.FC<SeasonalityTabProps> = ({
   region,
   pollutant,
@@ -31,66 +20,14 @@ export const SeasonalityTab: React.FC<SeasonalityTabProps> = ({
   error,
   dataUnit
 }) => {
-  const getPollutantDisplayName = (pollutant: Pollutant) => {
-    if (pollutant === "pollution") return "Combined Pollution Index";
-    const pollutantNames: Record<Pollutant, string> = {
-      pollution: "Combined Pollution Index",
-      no2_conc: "NO₂",
-      o3_conc: "O₃",
-      co_conc: "CO",
-      no_conc: "NO",
-      so2_conc: "SO₂"
-    };
-    return pollutantNames[pollutant] || pollutant;
-  };
-
-  const getRegionDisplayName = (region: string) => {
-    return region.split('-').map(word => 
-      word.charAt(0).toUpperCase() + word.slice(1)
-    ).join(' ');
-  };
-
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>
-          {getPollutantDisplayName(pollutant)} Seasonality in {getRegionDisplayName(region)}
-        </CardTitle>
-        <CardDescription>
-          Monthly average concentrations showing seasonal patterns
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        {loading ? (
-          <div className="h-[600px] flex items-center justify-center">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
-              <p className="text-muted-foreground">Loading seasonal data...</p>
-            </div>
-          </div>
-        ) : error ? (
-          <Alert>
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        ) : data.length > 0 ? (
-          <ChartContainer config={chartConfig} className="h-[600px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data} margin={{ top: 10, right: 15, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis label={{ value: dataUnit, angle: -90, position: 'insideLeft' }} />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar dataKey="value" fill="var(--color-seasonal)" radius={4} />
-              </BarChart>
-            </ResponsiveContainer>
-          </ChartContainer>
-        ) : (
-          <div className="h-[600px] flex items-center justify-center text-muted-foreground">
-            No seasonal data available
-          </div>
-        )}
-      </CardContent>
-    </Card>
+    <EnhancedSeasonalChart
+      region={region}
+      pollutant={pollutant}
+      data={data}
+      loading={loading}
+      error={error}
+      dataUnit={dataUnit}
+    />
   );
 };
