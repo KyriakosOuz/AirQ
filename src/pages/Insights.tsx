@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { insightApi } from "@/lib/api";
@@ -8,7 +9,7 @@ import { InsightFilters } from "@/components/insights/InsightFilters";
 import { TrendTab } from "@/components/insights/TrendTab";
 import { SeasonalityTab } from "@/components/insights/SeasonalityTab";
 import { TopPollutedTab } from "@/components/insights/TopPollutedTab";
-import { DatasetAvailabilityTable } from "@/components/insights/DatasetAvailabilityTable";
+import { ImprovedDatasetAvailability } from "@/components/insights/ImprovedDatasetAvailability";
 import { CurrentSelectionBreadcrumb } from "@/components/insights/CurrentSelectionBreadcrumb";
 import { useDatasetAvailabilityMatrix } from "@/hooks/useDatasetAvailabilityMatrix";
 import { useInsightOptions } from "@/hooks/useInsightOptions";
