@@ -5,7 +5,6 @@ import { TodaysAirQuality } from "@/components/dashboard/TodaysAirQuality";
 import { ForecastPreview } from "@/components/dashboard/ForecastPreview";
 import { PersonalizedTrend } from "@/components/dashboard/PersonalizedTrend";
 import { AIHealthTip } from "@/components/dashboard/AIHealthTip";
-import { QuickAccessPanel } from "@/components/dashboard/QuickAccessPanel";
 import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react";
 import { toast } from "sonner";
@@ -34,7 +33,7 @@ const Dashboard: React.FC = () => {
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {/* Loading skeletons */}
-          {Array.from({ length: 6 }).map((_, i) => (
+          {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="h-64 bg-muted animate-pulse rounded-lg" />
           ))}
         </div>
@@ -116,13 +115,6 @@ const Dashboard: React.FC = () => {
         <div className="lg:col-span-2">
           <ErrorBoundary>
             <AIHealthTip data={data.ai_tip} />
-          </ErrorBoundary>
-        </div>
-
-        {/* Quick Access Panel - spans full width */}
-        <div className="lg:col-span-3">
-          <ErrorBoundary>
-            <QuickAccessPanel />
           </ErrorBoundary>
         </div>
       </div>
