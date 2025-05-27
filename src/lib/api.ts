@@ -735,7 +735,8 @@ export const modelApi = {
             "Content-Type": "application/json",
             Authorization: `Bearer ${getToken()}`,
           },
-        }
+        },
+        DEFAULT_TIMEOUT // Added missing timeout parameter
       );
 
       if (!response.ok) {
