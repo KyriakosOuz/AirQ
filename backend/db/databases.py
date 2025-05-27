@@ -9,7 +9,7 @@ load_dotenv()
 USER = os.getenv("DB_USER")
 PASSWORD = os.getenv("PASSWORD")
 HOST = os.getenv("HOST")
-PORT = os.getenv("PORT")
+PORT = os.getenv("DB_PORT", "6543")  # default για ασφάλεια
 DBNAME = os.getenv("DBNAME")
 print("🧪 DEBUG ENV VALUES")
 print("USER:", USER)
