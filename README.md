@@ -36,7 +36,7 @@ ThessAir is a web application that predicts air pollution trends across Thessalo
 
 Below is the core data schema that powers the backend logic.
 
-![ER Diagram](supabase-schema-yhmwwpqvxhaljsqfxuqk%20(4).png)
+![supabase-schema-yhmwwpqvxhaljsqfxuqk (4)](https://github.com/user-attachments/assets/e56a3c7d-78ad-4b80-9be8-639001edc739)
 
 Key tables:
 - `users`: Authenticated users
