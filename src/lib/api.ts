@@ -303,7 +303,7 @@ export const fetchWithAuth = async <T>(
       return { success: false, error: "API is currently unavailable. Using offline mode." };
     }
     
-    console.log(`API Request to: ${API_URL}${endpoint}`);
+    console.log(`API Request to: ${BASE_URL}${endpoint}`);
     const token = getToken();
 
     const headers: HeadersInit = {
@@ -325,7 +325,7 @@ export const fetchWithAuth = async <T>(
     }
 
     // Use fetchWithTimeout to prevent hanging requests
-    const response = await fetchWithTimeout(`${API_URL}${endpoint}`, {
+    const response = await fetchWithTimeout(`${BASE_URL}${endpoint}`, {
       ...options,
       headers,
     }, timeout);
