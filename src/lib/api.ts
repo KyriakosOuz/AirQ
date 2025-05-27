@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 // Define the base URL for API requests - fallback to mock data if API fails
 export const API_URL = "http://localhost:8000"; 
+const BASE_URL = "https://airq-backend.onrender.com";
 
 // Define types for API responses
 export type ApiResponse<T> = {
@@ -255,7 +256,7 @@ const fetchWithTimeout = async (url: string, options: RequestInit, timeout: numb
   const id = setTimeout(() => controller.abort(), timeout);
   
   try {
-    const response = await fetch(url, {
+    const response = await fetch(`${BASE_URL}${url}`, {
       ...options,
       signal: controller.signal
     });
@@ -726,8 +727,8 @@ export const modelApi = {
     limit: number;
   }) => {
     try {
-      const response = await fetch(
-        `${API_URL}/models/forecast-range/?region=${region}&pollutant=${pollutant}&frequency=${frequency}&limit=${limit}`,
+      const response = await fetchWithTimeout(
+        `/models/forecast-range/?region=${region}&pollutant=${pollutant}&frequency=${frequency}&limit=${limit}`,
         {
           method: "GET",
           headers: {
