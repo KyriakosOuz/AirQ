@@ -59,11 +59,13 @@ Key tables:
    - Frequency (daily/monthly/yearly)
    - Forecast length
 3. View model metrics (MAE, RMSE) and status.
+4. Compare models of different regions based on the pollutant.
 
 ### For Users
 1. Login & complete your health profile.
 2. Navigate the following features:
-   - **Forecasts**: View model-based pollutant predictions.
+   - **Forecasts**: View model-based pollutant predictions. 
+     Receive personalized suggestions based on health profile, aqi categories and forecasted exposure.
    - **AQI Alerts**: Get notified if thresholds are exceeded.
    - **Insights**:
      - Yearly trends
