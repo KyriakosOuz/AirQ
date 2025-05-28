@@ -1,0 +1,26 @@
+# Common
+**/__pycache__/
+**/*.pyc
+*.log
+.env.local
+.env.development
+.env.test
+node_modules/
+dist/
+.cache/
+.vscode/
+.idea/
+.DS_Store
+
+# Python-specific
+backend/.pytest_cache/
+backend/.venv/
+backend/venv/
+
+# Node-specific
+frontend/.next/
+frontend/.env.local
+frontend/node_modules/
+frontend/.turbo/
+frontend/build/
+

@@ -3,7 +3,7 @@ import { Pollutant, Region, Dataset, HealthTip, TrendChart, SeasonalityChart } f
 import { supabase } from "@/integrations/supabase/client";
 
 // Define the base URL for API requests - fallback to mock data if API fails
-export const API_URL = "http://localhost:8000"; 
+export const API_URL = import.meta.env.VITE_API_URL; 
 
 // Define types for API responses
 export type ApiResponse<T> = {

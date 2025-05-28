@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
 from fastapi.security import HTTPBearer
@@ -32,6 +32,7 @@ app.add_middleware(
 )
 
 # Include routers
+api_router = APIRouter(prefix="/api")
 app.include_router(endpoints_users.router, prefix="/users", tags=["Users"])
 app.include_router(endpoints_models.router, prefix="/models", tags=["Models"])
 app.include_router(endpoints_datasets.router, prefix="/datasets", tags=["Datasets"])
@@ -41,6 +42,8 @@ app.include_router(endpoints_insights.router, prefix="/insights", tags=["Insight
 app.include_router(endpoints_dashboard.router, prefix="/dashboard", tags=["Dashboard"])
 app.include_router(metadata_router, prefix="/metadata", tags=["Metadata"])
 app.include_router(alerts_router, prefix="/alerts", tags=["AQI Alerts"])
+
+app.include_router(api_router)
 
 # Inject security scheme into OpenAPI
 def custom_openapi():
