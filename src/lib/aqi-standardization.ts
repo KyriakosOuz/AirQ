@@ -119,14 +119,29 @@ export const normalizeCategory = (category: string | undefined | null): AqiCateg
     return category as AqiCategory;
   }
   
-  // Try to map common variations
-  const categoryLower = category.toLowerCase();
-  if (categoryLower.includes('good')) return AQI_CATEGORIES.GOOD;
-  if (categoryLower.includes('moderate')) return AQI_CATEGORIES.MODERATE;
-  if (categoryLower.includes('sensitive')) return AQI_CATEGORIES.UNHEALTHY_SENSITIVE;
-  if (categoryLower.includes('unhealthy') && !categoryLower.includes('very')) return AQI_CATEGORIES.UNHEALTHY;
-  if (categoryLower.includes('very')) return AQI_CATEGORIES.VERY_UNHEALTHY;
-  if (categoryLower.includes('hazardous')) return AQI_CATEGORIES.HAZARDOUS;
+  // Try to map common variations - improved mapping
+  const categoryLower = category.toLowerCase().trim();
+  
+  if (categoryLower === 'good' || categoryLower.includes('good')) {
+    return AQI_CATEGORIES.GOOD;
+  }
+  if (categoryLower === 'moderate' || categoryLower.includes('moderate')) {
+    return AQI_CATEGORIES.MODERATE;
+  }
+  if (categoryLower.includes('unhealthy for sensitive') || 
+      categoryLower.includes('sensitive groups') ||
+      categoryLower === 'unhealthy for sensitive groups') {
+    return AQI_CATEGORIES.UNHEALTHY_SENSITIVE;
+  }
+  if (categoryLower === 'unhealthy' || (categoryLower.includes('unhealthy') && !categoryLower.includes('very') && !categoryLower.includes('sensitive'))) {
+    return AQI_CATEGORIES.UNHEALTHY;
+  }
+  if (categoryLower.includes('very unhealthy') || categoryLower === 'very unhealthy') {
+    return AQI_CATEGORIES.VERY_UNHEALTHY;
+  }
+  if (categoryLower === 'hazardous' || categoryLower.includes('hazardous')) {
+    return AQI_CATEGORIES.HAZARDOUS;
+  }
   
   return AQI_CATEGORIES.MODERATE; // Default fallback
 };

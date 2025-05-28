@@ -1,253 +1,205 @@
 
 import React, { useState, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { RegionSelector } from "@/components/ui/region-selector";
-import { PollutantSelector } from "@/components/ui/pollutant-selector";
-import { insightApi } from "@/lib/api";
-import { Pollutant } from "@/lib/types";
-import { LineChart, Line, BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { toast } from "sonner";
+import { TrendingUp, Calendar, Trophy } from "lucide-react";
+import { InsightFilters } from "@/components/insights/InsightFilters";
+import { TrendTab } from "@/components/insights/TrendTab";
+import { SeasonalityTab } from "@/components/insights/SeasonalityTab";
+import { TopPollutedTab } from "@/components/insights/TopPollutedTab";
+import { CurrentSelectionBreadcrumb } from "@/components/insights/CurrentSelectionBreadcrumb";
+import { useInsightOptions } from "@/hooks/useInsightOptions";
+import { formatPollutantName } from "@/lib/utils";
+import { useTrendInsights } from "@/hooks/useTrendInsights";
+import { useSeasonalInsights } from "@/hooks/useSeasonalInsights";
+import { useTopPollutedInsights } from "@/hooks/useTopPollutedInsights";
+import { useInsightFiltersStore } from "@/stores/insightFiltersStore";
+import { Pollutant } from "@/lib/types";
 
 const Insights: React.FC = () => {
-  const [region, setRegion] = useState("thessaloniki");
-  const [pollutant, setPollutant] = useState<Pollutant>("no2_conc");
-  const [year, setYear] = useState<number>(2023);
-  const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState("trend");
+  const [hasSubmitted, setHasSubmitted] = useState(false);
   
-  const [trendData, setTrendData] = useState<any[]>([]);
-  const [seasonalData, setSeasonalData] = useState<any[]>([]);
-  const [topPollutedData, setTopPollutedData] = useState<any[]>([]);
-  
-  // Years for selection - normally would come from API
-  const years = Array.from({ length: 9 }, (_, i) => 2015 + i);
+  // Use Zustand store for filters
+  const { 
+    region, 
+    pollutant, 
+    year, 
+    setRegion, 
+    setPollutant, 
+    setYear 
+  } = useInsightFiltersStore();
 
-  useEffect(() => {
-    // Initial data loading
-    fetchInsights();
-  }, []);
+  // React Query hooks for data fetching
+  const trendQuery = useTrendInsights(hasSubmitted ? region : null, hasSubmitted ? pollutant : null, hasSubmitted ? year : null);
+  const seasonalQuery = useSeasonalInsights(hasSubmitted ? region : null, hasSubmitted ? pollutant : null, hasSubmitted ? year : null);
+  const topPollutedQuery = useTopPollutedInsights(hasSubmitted ? pollutant : null, hasSubmitted ? year : null);
 
-  const fetchInsights = async () => {
-    setLoading(true);
-    try {
-      // Fetch trend data
-      const trendResponse = await insightApi.getTrend({ 
-        pollutant, 
-        region 
-      });
-      
-      if (trendResponse.success && trendResponse.data) {
-        // Convert the backend format to a format suitable for charts
-        // Backend returns: { labels: string[], values: number[], deltas: number[] }
-        const transformedTrendData = trendResponse.data.labels.map((year, index) => ({
-          year,
-          value: trendResponse.data.values[index],
-          delta: trendResponse.data.deltas[index]
-        }));
-        setTrendData(transformedTrendData);
-      } else {
-        console.error("Failed to fetch trend data:", trendResponse.error);
-        toast.error("Failed to load trend data");
-        setTrendData([]);
-      }
-      
-      // Fetch seasonal data
-      const seasonalResponse = await insightApi.getSeasonality({ 
-        pollutant, 
-        region 
-      });
-      
-      if (seasonalResponse.success && seasonalResponse.data) {
-        // Convert the backend format to a format suitable for charts
-        // Backend returns: { labels: string[], values: number[] }
-        const transformedSeasonalData = seasonalResponse.data.labels.map((month, index) => ({
-          month,
-          value: seasonalResponse.data.values[index]
-        }));
-        setSeasonalData(transformedSeasonalData);
-      } else {
-        console.error("Failed to fetch seasonality data:", seasonalResponse.error);
-        toast.error("Failed to load seasonal data");
-        setSeasonalData([]);
-      }
-      
-      // Fetch top polluted data
-      const topPollutedResponse = await insightApi.getTopPolluted({
-        pollutant,
-        year
-      });
-      
-      if (topPollutedResponse.success && topPollutedResponse.data) {
-        // Ensure data is an array
-        const safeData = Array.isArray(topPollutedResponse.data) ? topPollutedResponse.data : [];
-        setTopPollutedData(safeData);
-      } else {
-        console.error("Failed to fetch top polluted data:", topPollutedResponse.error);
-        toast.error("Failed to load top polluted data");
-        setTopPollutedData([]);
-      }
-      
-      toast.success(`Insights updated for ${pollutant}`);
-    } catch (error) {
-      console.error(error);
-      toast.error("Failed to load insights data");
-    } finally {
-      setLoading(false);
+  // Dynamic options hook
+  const { isValidCombination } = useInsightOptions();
+
+  // Helper function to get region display name
+  const getRegionDisplayName = (region: string) => {
+    return region.split('-').map(word => 
+      word.charAt(0).toUpperCase() + word.slice(1)
+    ).join(' ');
+  };
+
+  // Transform data for components
+  const transformTrendData = (data: any) => {
+    if (!data?.trend) return [];
+    const trendSection = data.trend;
+    if (trendSection?.labels && trendSection?.values) {
+      return trendSection.labels.map((label: string, index: number) => ({
+        year: label,
+        value: trendSection.values[index],
+        delta: trendSection.deltas?.[index] || 0
+      }));
     }
+    return [];
+  };
+
+  const transformSeasonalData = (data: any) => {
+    if (!data?.seasonal_avg) return [];
+    const seasonalSection = data.seasonal_avg;
+    if (seasonalSection?.labels && seasonalSection?.values) {
+      return seasonalSection.labels.map((month: string, index: number) => ({
+        month,
+        value: seasonalSection.values[index]
+      }));
+    }
+    return [];
+  };
+
+  const transformTopPollutedData = (data: any) => {
+    if (!Array.isArray(data)) return [];
+    return data.map(({ name, value }) => ({
+      name: getRegionDisplayName(name),
+      value
+    }));
+  };
+
+  // Handle submit button click
+  const handleSubmit = () => {
+    setHasSubmitted(true);
+    const pollutantDisplayName = formatPollutantName(pollutant.replace('_conc', ''));
+    toast.success(`Loading insights for ${pollutantDisplayName} in ${getRegionDisplayName(region)} (${year})`);
+  };
+
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
   };
   
   const handleRegionChange = (value: string) => {
     setRegion(value);
-    fetchInsights();
+    setHasSubmitted(false);
   };
   
   const handlePollutantChange = (value: Pollutant) => {
     setPollutant(value);
-    fetchInsights();
+    setHasSubmitted(false);
   };
   
   const handleYearChange = (value: string) => {
     setYear(parseInt(value));
-    fetchInsights();
+    setHasSubmitted(false);
   };
+
+  const isLoading = trendQuery.isLoading || seasonalQuery.isLoading || topPollutedQuery.isLoading;
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col space-y-2">
         <h1 className="text-3xl font-bold tracking-tight">Air Quality Insights</h1>
         <p className="text-muted-foreground">
-          Analyze historical trends and patterns in air quality data.
+          Explore historical air quality data across different regions and time periods.
         </p>
       </div>
+
+      {/* Filter Selection Panel */}
+      <InsightFilters
+        activeTab={activeTab}
+        region={region}
+        pollutant={pollutant}
+        year={year}
+        onRegionChange={handleRegionChange}
+        onPollutantChange={handlePollutantChange}
+        onYearChange={handleYearChange}
+        onSubmit={handleSubmit}
+        loading={isLoading}
+      />
+
+      {/* Current Selection Breadcrumb */}
+      {hasSubmitted && (
+        <CurrentSelectionBreadcrumb
+          region={region}
+          year={year}
+          pollutant={pollutant}
+        />
+      )}
       
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Region</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <RegionSelector value={region} onValueChange={handleRegionChange} />
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Pollutant</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <PollutantSelector value={pollutant} onValueChange={handlePollutantChange} />
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Year</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Select value={year.toString()} onValueChange={handleYearChange}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select year" />
-              </SelectTrigger>
-              <SelectContent>
-                {years.map((yearOption) => (
-                  <SelectItem key={yearOption} value={yearOption.toString()}>
-                    {yearOption}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </CardContent>
-        </Card>
-      </div>
-      
-      <Button onClick={fetchInsights} disabled={loading}>
-        {loading ? "Loading..." : "Update Insights"}
-      </Button>
-      
-      <Tabs defaultValue="trend" className="w-full">
-        <TabsList className="grid grid-cols-3 mb-4">
-          <TabsTrigger value="trend">Annual Trend</TabsTrigger>
-          <TabsTrigger value="seasonality">Seasonality</TabsTrigger>
-          <TabsTrigger value="top-polluted">Top Polluted Areas</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="trend">
-          <Card>
-            <CardHeader>
-              <CardTitle>Annual {pollutant} Trend</CardTitle>
-              <CardDescription>
-                Yearly average concentrations over time
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="h-96">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={trendData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="year" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Line type="monotone" dataKey="value" name={`${pollutant} μg/m³`} stroke="#0ea5e9" strokeWidth={2} activeDot={{ r: 8 }} />
-                </LineChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="seasonality">
-          <Card>
-            <CardHeader>
-              <CardTitle>Monthly {pollutant} Pattern</CardTitle>
-              <CardDescription>
-                Monthly average concentrations showing seasonal patterns
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="h-96">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={seasonalData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="#10b981" stopOpacity={0.1}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Area type="monotone" dataKey="value" name={`${pollutant} μg/m³`} stroke="#10b981" fillOpacity={1} fill="url(#colorValue)" />
-                </AreaChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="top-polluted">
-          <Card>
-            <CardHeader>
-              <CardTitle>Most Polluted Areas ({year})</CardTitle>
-              <CardDescription>
-                Regions with highest {pollutant} concentrations
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="h-96">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart layout="vertical" data={topPollutedData} margin={{ top: 10, right: 30, left: 50, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis type="number" />
-                  <YAxis dataKey="name" type="category" width={150} />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="value" name={`${pollutant} μg/m³`} fill="#f97316" />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+      {/* Charts Section - Only show after submission */}
+      {hasSubmitted && (
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+          <TabsList className="grid grid-cols-3 mb-4">
+            <TabsTrigger value="trend" className="flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" />
+              Annual Trend
+            </TabsTrigger>
+            <TabsTrigger value="seasonality" className="flex items-center gap-2">
+              <Calendar className="h-4 w-4" />
+              Seasonality
+            </TabsTrigger>
+            <TabsTrigger value="top-polluted" className="flex items-center gap-2">
+              <Trophy className="h-4 w-4" />
+              Top Polluted Areas
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="trend">
+            <TrendTab
+              region={region}
+              pollutant={pollutant}
+              data={transformTrendData(trendQuery.data)}
+              loading={trendQuery.isLoading}
+              error={trendQuery.error?.message}
+              dataUnit={trendQuery.data?.trend?.unit || "μg/m³"}
+            />
+          </TabsContent>
+          
+          <TabsContent value="seasonality">
+            <SeasonalityTab
+              region={region}
+              pollutant={pollutant}
+              data={transformSeasonalData(seasonalQuery.data)}
+              loading={seasonalQuery.isLoading}
+              error={seasonalQuery.error?.message}
+              dataUnit="μg/m³"
+            />
+          </TabsContent>
+          
+          <TabsContent value="top-polluted">
+            <TopPollutedTab
+              pollutant={pollutant}
+              year={year}
+              data={transformTopPollutedData(topPollutedQuery.data)}
+              loading={topPollutedQuery.isLoading}
+              error={topPollutedQuery.error?.message}
+              dataUnit="μg/m³"
+            />
+          </TabsContent>
+        </Tabs>
+      )}
+
+      {/* Instructions for first-time users */}
+      {!hasSubmitted && (
+        <div className="text-center py-12 bg-muted/20 rounded-lg">
+          <h3 className="text-lg font-medium mb-2">Ready to Explore Air Quality Insights?</h3>
+          <p className="text-muted-foreground">
+            Select your filters above and click "Generate Insights" to view detailed air quality analysis.
+          </p>
+        </div>
+      )}
     </div>
   );
 };

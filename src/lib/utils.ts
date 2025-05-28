@@ -1,4 +1,3 @@
-
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 import { useEffect, useRef } from "react"
@@ -118,4 +117,28 @@ export function getErrorMessage(error: unknown): string {
   
   // Fallback for any other type of error
   return "An unexpected error occurred";
+}
+
+/**
+ * Format pollutant names for display with proper capitalization
+ * "pollution" -> "Pollution", "no2_conc" -> "NO2", etc.
+ */
+export function formatPollutantName(pollutant: string): string {
+  if (!pollutant) return "";
+  
+  // Handle special case for "pollution"
+  if (pollutant.toLowerCase() === "pollution") {
+    return "Pollution";
+  }
+  
+  // Handle chemical formulas (keep uppercase)
+  const chemicalFormulas = ["no2", "o3", "so2", "co", "no", "pm10", "pm25"];
+  const pollutantLower = pollutant.toLowerCase().replace("_conc", "");
+  
+  if (chemicalFormulas.includes(pollutantLower)) {
+    return pollutantLower.toUpperCase();
+  }
+  
+  // Default: capitalize first letter
+  return pollutant.charAt(0).toUpperCase() + pollutant.slice(1).toLowerCase();
 }

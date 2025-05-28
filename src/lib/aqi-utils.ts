@@ -1,3 +1,4 @@
+
 import { AqiLevel, Pollutant } from "./types";
 
 // Re-export everything from the new standardized system
@@ -79,48 +80,48 @@ export const normalizeCategoryLabel = (category: string): string => {
   return CATEGORY_NORMALIZATION[category] || category.toLowerCase().replace(/\s+/g, "-");
 };
 
-// Keep existing AQI thresholds for pollutant calculations
+// Updated AQI thresholds to match the new specifications
 export const AQI_THRESHOLDS: Record<Pollutant, Array<[number, string]>> = {
   "pollution": [
-    [1, "good"],
-    [2, "moderate"],
-    [3, "unhealthy-sensitive"],
-    [4, "unhealthy"],
+    [20, "good"],
+    [40, "moderate"],
+    [70, "unhealthy-sensitive"],
+    [100, "unhealthy"],
     [Infinity, "very-unhealthy"]
   ],
   "no2_conc": [
-    [40, "good"],
-    [100, "moderate"],
-    [200, "unhealthy-sensitive"],
-    [400, "unhealthy"],
+    [20, "good"],
+    [40, "moderate"],
+    [80, "unhealthy-sensitive"],
+    [120, "unhealthy"],
     [Infinity, "very-unhealthy"]
   ],
   "o3_conc": [
     [60, "good"],
     [100, "moderate"],
-    [140, "unhealthy-sensitive"],
-    [180, "unhealthy"],
+    [160, "unhealthy-sensitive"],
+    [200, "unhealthy"],
     [Infinity, "very-unhealthy"]
   ],
   "so2_conc": [
     [20, "good"],
-    [80, "moderate"],
-    [250, "unhealthy-sensitive"],
-    [350, "unhealthy"],
+    [50, "moderate"],
+    [100, "unhealthy-sensitive"],
+    [150, "unhealthy"],
     [Infinity, "very-unhealthy"]
   ],
   "co_conc": [
-    [4.4, "good"],
-    [9.4, "moderate"],
-    [12.4, "unhealthy-sensitive"],
-    [15.4, "unhealthy"],
+    [3, "good"],
+    [6, "moderate"],
+    [10, "unhealthy-sensitive"],
+    [15, "unhealthy"],
     [Infinity, "very-unhealthy"]
   ],
   "no_conc": [
-    [30, "good"],
-    [60, "moderate"],
-    [120, "unhealthy-sensitive"],
-    [200, "unhealthy"],
+    [25, "good"],
+    [50, "moderate"],
+    [100, "unhealthy-sensitive"],
+    [150, "unhealthy"],
     [Infinity, "very-unhealthy"]
   ]
 };

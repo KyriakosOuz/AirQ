@@ -1,21 +1,20 @@
-# 1) BUILD STAGE
-FROM node:18-alpine AS builder
+# 1. Χτίζουμε την εφαρμογή με Node
+FROM node:18 AS build
 
 WORKDIR /app
-# copy package files and install dependencies first (for better cache)
-COPY package.json package-lock.json ./
-RUN npm ci
-
-# copy source & build
+COPY package*.json ./
+RUN npm install
 COPY . .
 RUN npm run build
 
-# 2) PRODUCTION STAGE
+# 2. Χρησιμοποιούμε nginx για σερβίρισμα της build έκδοσης
 FROM nginx:alpine
 
-# copy built files from builder
-COPY --from=builder /app/dist /usr/share/nginx/html
+COPY --from=build /app/dist /usr/share/nginx/html
 
-# expose port 80 and run nginx
+# Αν χρησιμοποιήσεις custom routing, πρόσθεσε και αυτό:
+COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
+
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
+main
