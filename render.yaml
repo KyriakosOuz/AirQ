@@ -1,0 +1,43 @@
+services:
+  - type: web
+    name: airq-app
+    env: docker
+    repo: https://github.com/your-username/your-repo-name
+    region: frankfurt
+    plan: free
+    dockerCommand: docker-compose up
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: SUPABASE_BUCKET_DATASETS
+        sync: false
+      - key: SUPABASE_BUCKET_MODELS
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: PASSWORD
+        sync: false
+      - key: HOST
+        sync: false
+      - key: PORT
+        sync: false
+      - key: DBNAME
+        sync: false
+      - key: SUPABASE_JWT_SECRET
+        sync: false
+      - key: MISTRAL_API_KEY
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: SENDER_EMAIL
+        sync: false
