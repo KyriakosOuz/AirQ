@@ -10,21 +10,12 @@ load_dotenv()
 USER = os.getenv("DB_USER")
 PASSWORD = os.getenv("PASSWORD")
 HOST = os.getenv("HOST")
-PORT = os.getenv("DB_PORT", "6543")  # default για ασφάλεια
+PORT = os.getenv("DB_PORT", "6543")
 DBNAME = os.getenv("DBNAME")
-print("🧪 DEBUG ENV VALUES")
-print("USER:", USER)
-print("PASSWORD (quoted):", PASSWORD)
-print("HOST:", HOST)
-print("PORT:", PORT)
-print("DBNAME:", DBNAME)
 
 if USER and PASSWORD and HOST and DBNAME:
     encoded_password = urllib.parse.quote_plus(PASSWORD)
     DATABASE_URL = f"postgresql+psycopg2://{USER}:{encoded_password}@{HOST}:{PORT}/{DBNAME}?sslmode=require"
-
-    # Mask password in print
-    print("DATABASE_URL (masked):", DATABASE_URL.replace(encoded_password, "*****"))
 
     engine = create_engine(DATABASE_URL, poolclass=NullPool)
 
