@@ -19,20 +19,20 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="Air Quality App - Thessaloniki",
-    version="0.1.0"
+    version="0.1.0",
+    root_path="/api"
 )
 
 # Optional: allow frontend requests during dev
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://preview--thess-air-guardian.lovable.app", "http://localhost:8000", "http://localhost"],
+    allow_origins=["https://airq-frontend.onrender.com"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # Include routers
-api_router = APIRouter(prefix="/api")
 app.include_router(endpoints_users.router, prefix="/users", tags=["Users"])
 app.include_router(endpoints_models.router, prefix="/models", tags=["Models"])
 app.include_router(endpoints_datasets.router, prefix="/datasets", tags=["Datasets"])
@@ -42,8 +42,6 @@ app.include_router(endpoints_insights.router, prefix="/insights", tags=["Insight
 app.include_router(endpoints_dashboard.router, prefix="/dashboard", tags=["Dashboard"])
 app.include_router(metadata_router, prefix="/metadata", tags=["Metadata"])
 app.include_router(alerts_router, prefix="/alerts", tags=["AQI Alerts"])
-
-app.include_router(api_router)
 
 # Inject security scheme into OpenAPI
 def custom_openapi():
