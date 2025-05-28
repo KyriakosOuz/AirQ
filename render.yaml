@@ -2,7 +2,7 @@ services:
   - type: web
     name: airq-app
     env: docker
-    repo: https://github.com/your-username/your-repo-name
+    repo: https://github.com/KyriakosOuz/AirQ.git
     region: frankfurt
     plan: free
     dockerCommand: docker-compose up
