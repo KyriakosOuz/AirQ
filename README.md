@@ -97,14 +97,6 @@ No setup is needed to access the live app — the frontend and backend are fully
 
 ---
 
-## 🚀 Deployment
-
-- Frontend can be deployed via **Vercel**, **Netlify**, or any static hosting platform.
-- Backend can be deployed to **Railway**, **Fly.io**, **Render**, or your own VPS.
-- Supabase handles authentication, file storage, and the PostgreSQL database.
-
----
-
 ## 🛠 Developer Info
 
 - Add unit tests under `/test/` folder.
