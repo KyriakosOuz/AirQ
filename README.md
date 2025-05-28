@@ -90,28 +90,23 @@ All data is sourced from:
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/your-username/air-quality-app.git
-cd air-quality-app
+git clone https://github.com/your-username/airq.git
+cd airq
 ```
 
-### 2. Configure `.env`
+### 2. Run the app with Docker
 
-```env
-SUPABASE_PROJECT_URL=https://your-project-id.supabase.co
-SUPABASE_SERVICE_KEY=your-service-key
-SUPABASE_JWT_SECRET=your-secret
-SUPABASE_BUCKET_MODELS=models
-SUPABASE_BUCKET_DATASETS=datasets
-```
+The app is already configured to use a hosted Supabase backend and PostgreSQL database.
+You do not need to set up any environment variables.
 
-### 3. Build & run with Docker
+Simply run:
 
 ```bash
-docker-compose up --build
+docker compose up --build
 ```
 
-- Backend: [http://localhost:8000](http://localhost:8000)
-- Frontend: [http://localhost:5173](http://localhost:5173)
+- Backend API (Swagger docs): [http://localhost:8000/docs](http://localhost:8000/docs)
+- Frontend: [http://localhost:8080](http://localhost:8080)
 
 ---
 
