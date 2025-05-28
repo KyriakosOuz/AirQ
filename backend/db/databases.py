@@ -10,7 +10,7 @@ load_dotenv()
 USER = os.getenv("DB_USER")
 PASSWORD = os.getenv("PASSWORD")
 HOST = os.getenv("HOST")
-PORT = os.getenv("DB_PORT", "6543")
+PORT = os.getenv("PORT")
 DBNAME = os.getenv("DBNAME")
 
 if USER and PASSWORD and HOST and DBNAME:
