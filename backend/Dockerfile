@@ -5,7 +5,7 @@ FROM python:3.10-slim
 WORKDIR /app
 
 # Copy files
-COPY . /app
+COPY ./backend /app
 
 # Install dependencies
 RUN pip install --upgrade pip
