@@ -209,7 +209,6 @@ async def forecast_from_model(
 async def get_risk_timeline(
     region: str,
     pollutant: str,
-    frequency: str,
     start_date: str = Query(...),
     end_date: str = Query(...),
     user=Depends(get_current_user_id)
