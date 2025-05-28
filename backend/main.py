@@ -68,4 +68,8 @@ def custom_openapi():
     app.openapi_schema = openapi_schema
     return app.openapi_schema
 
+@app.get("/")
+def root():
+    return {"message": "AirQ backend is running. Visit /docs for API documentation."}
+
 app.openapi = custom_openapi
