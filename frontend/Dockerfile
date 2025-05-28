@@ -2,10 +2,10 @@
 FROM node:20 AS builder
 
 WORKDIR /app
-COPY ./frontend /app
+COPY . /app
 
 # Ensure .env.production is present
-COPY ./frontend/.env.production /app/.env.production
+COPY .env.production /app/.env.production
 
 RUN npm install
 RUN npm run build
