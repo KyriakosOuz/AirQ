@@ -30,3 +30,4 @@ services:
       - ./dist:/usr/share/nginx/html
     depends_on:
       - frontend
+main
