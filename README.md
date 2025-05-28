@@ -85,28 +85,15 @@ All data is sourced from:
 
 ---
 
-## ⚙️ Running Locally (with Docker)
+## 🚀 Production Deployment (Render)
 
-### 1. Clone the repository
+This app is deployed on Render:
 
-```bash
-git clone https://github.com/your-username/airq.git
-cd airq
-```
+Frontend: https://airq-frontend.onrender.com
 
-### 2. Run the app with Docker
+Backend API base URL: https://airq-kqu2.onrender.com/api
 
-The app is already configured to use a hosted Supabase backend and PostgreSQL database.
-You do not need to set up any environment variables.
-
-Simply run:
-
-```bash
-docker compose up --build
-```
-
-- Backend API (Swagger docs): [http://localhost:8000/docs](http://localhost:8000/docs)
-- Frontend: [http://localhost:8080](http://localhost:8080)
+No setup is needed to access the live app — the frontend and backend are fully integrated via environment variables and CORS.
 
 ---
 
