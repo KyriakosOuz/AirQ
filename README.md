@@ -1,4 +1,4 @@
-<img width="1422" alt="video_poster" src="https://github.com/user-attachments/assets/98825576-19a8-4ba6-be78-da15be8a8612" /># ThessAir: Air Quality Forecasting and Health Insights
+# ThessAir: Air Quality Forecasting and Health Insights
 
 ThessAir is a web application that predicts air pollution trends across Thessaloniki’s municipalities and provides personalized health insights. It supports both **administrative users** (for data/model management) and **citizens** (for forecasts and health alerts), using public open data.
 
