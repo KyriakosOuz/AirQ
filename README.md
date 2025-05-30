@@ -60,6 +60,10 @@ Key tables:
 ## 🔁 App Flow
 
 ### For Admins
+You can use the following credentials to access as admin
+- **Username:** kyriakos.ouzounis@gmail.com
+- **Password:** test99
+
 1. Upload CSV datasets (region/year).
 2. Train models using:
    - Region
