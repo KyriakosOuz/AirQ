@@ -1,8 +1,14 @@
-<div style="position: relative; padding-bottom: 46.04166666666667%; height: 0;"><iframe src="https://www.loom.com/embed/0fcd4d66529848c5b0acd565f90d521c?sid=ed2d643c-142d-4020-9318-d2182d7c3461" frameborder="0" webkitallowfullscreen mozallowfullscreen allowfullscreen style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></iframe></div>
-
-# ThessAir: Air Quality Forecasting and Health Insights
+<img width="1422" alt="video_poster" src="https://github.com/user-attachments/assets/98825576-19a8-4ba6-be78-da15be8a8612" /># ThessAir: Air Quality Forecasting and Health Insights
 
 ThessAir is a web application that predicts air pollution trends across Thessaloniki’s municipalities and provides personalized health insights. It supports both **administrative users** (for data/model management) and **citizens** (for forecasts and health alerts), using public open data.
+
+---
+
+## 🎥 Demo Video
+
+[![Watch the Demo](./assets/video_poster.png)](https://www.loom.com/share/0fcd4d66529848c5b0acd565f90d521c?sid=4adc10ef-a3d4-4df1-9971-1b8079f9fcff)
+
+> Click the thumbnail above to see ThessAir in action — from model training to personalized health insights.
 
 ---
 
