@@ -113,7 +113,7 @@ No setup is needed to access the live app — the frontend and backend are fully
 
 - Add unit tests under `/test/` folder.
 - All major backend logic lives under `/services/`.
-- Supabase tables are mirrored in `/db/models.py`.
+- All major endpoints live under `/api/endpoints_*.py`.
 
 ---
 
