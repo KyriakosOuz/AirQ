@@ -3,7 +3,7 @@ from supabase import create_client
 import os
 from dotenv import load_dotenv
 from io import BytesIO
-import httpx
+# import httpx  # duplicate import
 from core.config import settings
 import logging
 
@@ -168,3 +168,4 @@ def get_risk_level_from_category(category: str) -> str:
     elif category == "very unhealthy":
         return "Severe"
     return "Unknown"
+

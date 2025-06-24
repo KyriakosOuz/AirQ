@@ -116,6 +116,7 @@ No setup is needed to access the live app — the frontend and backend are fully
 1. See [`backend/README.md`](backend/README.md) for running the API server.
 2. See [`frontend/README.md`](frontend/README.md) for running the React app.
 3. Run `pytest` inside `backend` to execute unit tests.
+4. Copy `.env.example` files in `backend/` and `frontend/` to `.env` and fill in your credentials.
 
 ---
 

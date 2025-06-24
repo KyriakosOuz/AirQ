@@ -1,5 +1,5 @@
 import os
-import requests
+# import requests  # unused in this module
 from fastapi import Depends, HTTPException, Security
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, JWTError
@@ -20,6 +20,16 @@ if not SUPABASE_JWT_SECRET:
 
 from db.databases import engine
 from sqlalchemy import text
+
+
+def decode_jwt_token(token: str) -> dict:
+    """Decode a Supabase JWT and return its payload."""
+    return jwt.decode(
+        token,
+        SUPABASE_JWT_SECRET,
+        algorithms=[ALGORITHM],
+        options={"verify_aud": False}
+    )
 
 
 def get_current_user_id(credentials: HTTPAuthorizationCredentials = Security(security)) -> dict:
