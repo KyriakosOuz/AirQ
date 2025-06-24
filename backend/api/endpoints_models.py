@@ -313,17 +313,18 @@ async def check_model_exists(region: str, pollutant: str, frequency: str):
 
     return {"exists": count > 0}
 
-@router.get("/info/{model_id}")
-async def get_model_info(model_id: str, user=Depends(get_current_user_id)):
-    with engine.connect() as conn:
-        row = conn.execute(text("""
-            SELECT * FROM models WHERE id = :id
-        """), {"id": model_id}).mappings().fetchone()
-
-    if not row:
-        raise HTTPException(status_code=404, detail="Model not found.")
-
-    return dict(row)
+# @router.get("/info/{model_id}")
+# async def get_model_info(model_id: str, user=Depends(get_current_user_id)):
+#     """Deprecated duplicate endpoint kept for reference."""
+#     with engine.connect() as conn:
+#         row = conn.execute(text("""
+#             SELECT * FROM models WHERE id = :id
+#         """), {"id": model_id}).mappings().fetchone()
+#
+#     if not row:
+#         raise HTTPException(status_code=404, detail="Model not found.")
+#
+#     return dict(row)
 
 class CompareModelsRequest(BaseModel):
     model_ids: List[str]
