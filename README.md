@@ -109,9 +109,18 @@ No setup is needed to access the live app — the frontend and backend are fully
 
 ---
 
+## 🛠 Development Setup
+
+1. See [`backend/README.md`](backend/README.md) for running the API server.
+2. See [`frontend/README.md`](frontend/README.md) for running the React app.
+3. Run `pytest` inside `backend` to execute unit tests.
+
+---
+
 ## 🛠 Developer Info
 
-- Add unit tests under `/test/` folder.
+- Additional documentation is available under the [`docs/`](docs/) directory.
+- Add unit tests under `/test/` within the backend.
 - All major backend logic lives under `/services/`.
 - All major endpoints live under `/api/endpoints_*.py`.
 
@@ -127,4 +136,4 @@ This application uses publicly available air quality data provided by:
 
 ## 🤝 License
 
-MIT License. See `LICENSE.md` for details.
+MIT License. See `LICENSE` for details.
