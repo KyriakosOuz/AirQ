@@ -55,6 +55,8 @@ Key tables:
 - `recommendations`: Health suggestions (AI generated)
 - `aqi_subscriptions`: User alert settings
 
+You can recreate these tables using [`docs/db_schema.sql`](docs/db_schema.sql).
+
 ---
 
 ## 🔁 App Flow
@@ -123,6 +125,7 @@ No setup is needed to access the live app — the frontend and backend are fully
 - Add unit tests under `/test/` within the backend.
 - All major backend logic lives under `/services/`.
 - All major endpoints live under `/api/endpoints_*.py`.
+- The SQL schema lives in [`docs/db_schema.sql`](docs/db_schema.sql).
 
 ---
 
