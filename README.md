@@ -99,15 +99,15 @@ All data is sourced from:
 
 ---
 
-## 🚀 Production Deployment (Render)
+## 🚀 Deploying on Render
 
-This app is deployed on Render:
+This project no longer has a live deployment. If you want your own instance running on [Render](https://render.com), follow these steps:
 
-Frontend: https://airq-frontend.onrender.com
-
-Backend API base URL: https://airq-kqu2.onrender.com/api
-
-No setup is needed to access the live app — the frontend and backend are fully integrated via environment variables and CORS.
+1. Create a **Web Service** for the backend using `backend/Dockerfile`.
+   - Add the environment variables from `backend/.env.example`.
+2. Create another **Web Service** for the frontend using `frontend/Dockerfile`.
+   - Set `VITE_API_URL` to the URL of your backend service (e.g., `https://your-backend.onrender.com/api`).
+3. Once both services are deployed, open the frontend service URL in your browser.
 
 ---
 
